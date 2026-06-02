@@ -15,8 +15,8 @@ export function Header() {
   const title = pageTitles[location.pathname] || 'Dashboard'
 
   return (
-    <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-border-subtle flex items-center justify-between px-8 sticky top-0 z-30">
-      <h2 className="text-sm font-semibold text-white tracking-tight">{title}</h2>
+    <header className="h-14 bg-surface/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-30">
+      <h2 className="text-sm font-semibold text-[var(--color-text)] tracking-tight">{title}</h2>
       <p className="text-xs text-[var(--color-text-muted)] font-mono tabular-nums">
         {new Date().toLocaleDateString('en-US', {
           weekday: 'short',

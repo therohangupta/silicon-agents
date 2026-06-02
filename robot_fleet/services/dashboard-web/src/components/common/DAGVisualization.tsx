@@ -202,7 +202,7 @@ export function DAGVisualization({ tasks, height = '600px' }: DAGVisualizationPr
 
   if (!tasks || tasks.length === 0) {
     return (
-      <div className="text-center py-8 text-[var(--color-text-secondary)] bg-surface-overlay/50 rounded-lg">
+      <div className="text-center py-8 text-[var(--color-text-secondary)] bg-slate-50 rounded-lg">
         No tasks to visualize
       </div>
     )
@@ -210,8 +210,8 @@ export function DAGVisualization({ tasks, height = '600px' }: DAGVisualizationPr
 
   if (isGenerating && !svgContent) {
     return (
-      <div className="text-center py-8 text-[var(--color-text-secondary)] bg-surface-overlay/50 rounded-lg">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border mx-auto mb-2"></div>
+      <div className="text-center py-8 text-[var(--color-text-secondary)] bg-slate-50 rounded-lg">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-200 mx-auto mb-2"></div>
         Generating DAG visualization...
       </div>
     )
@@ -221,13 +221,13 @@ export function DAGVisualization({ tasks, height = '600px' }: DAGVisualizationPr
     return (
       <div className="space-y-4">
         <div className="text-sm text-red-400 text-center">Graphviz failed — showing text fallback</div>
-        <div className="bg-surface border border-border rounded-lg p-4 overflow-auto max-h-96">
+        <div className="bg-surface border border-slate-200 rounded-lg p-4 overflow-auto max-h-96">
           <div className="font-mono text-sm text-[var(--color-text)] space-y-2">
             {tasks.map(task => (
               <div key={task.task_id} className="flex items-start space-x-4">
                 <div className="text-blue-400 font-bold min-w-[3rem]">T{task.task_id}</div>
                 <div className="flex-1">
-                  <div className="text-white">{task.description}</div>
+                  <div className="text-[var(--color-text)]">{task.description}</div>
                   {task.dependency_task_ids?.length > 0 && (
                     <div className="text-[var(--color-text-secondary)] text-xs mt-1">
                       Depends on: {task.dependency_task_ids.join(', ')}
@@ -263,7 +263,7 @@ export function DAGVisualization({ tasks, height = '600px' }: DAGVisualizationPr
 
       <div
         ref={containerRef}
-        className="relative bg-white border border-border rounded-lg overflow-hidden shadow-lg"
+        className="relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-lg"
         style={{ height, cursor: isDragging ? 'grabbing' : 'grab' }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

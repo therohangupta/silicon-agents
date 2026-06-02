@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Target, Plus, Trash2, Search, ChevronDown, Info, GitBranch, Bot, CheckCircle, Play, AlertTriangle, XCircle } from 'lucide-react'
 import { Card } from '../components/common/Card'
+import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/common/Button'
 import { Modal } from '../components/common/Modal'
 import { EmptyState } from '../components/common/EmptyState'
@@ -91,7 +92,7 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
     <Modal isOpen={isOpen} onClose={onClose} title={`Goal #${goal.goal_id}`} size="wide" className="max-h-[90vh]">
       <div className="space-y-6 max-h-[75vh] overflow-y-auto">
         {/* Tab Navigation */}
-        <div className="flex space-x-1 border-b border-border pb-2 overflow-x-auto">
+        <div className="flex space-x-1 border-b border-slate-200 pb-2 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -99,7 +100,7 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
               className={cn(
                 'px-4 py-2 text-sm font-medium rounded-t-md transition-colors flex items-center space-x-2',
                 activeTab === tab.id
-                  ? 'bg-surface-overlay text-white border-b-2 border-blue-500'
+                  ? 'bg-slate-50 text-[var(--color-text)] border-b-2 border-blue-500'
                   : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text)]'
               )}
             >
@@ -115,11 +116,11 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
             {/* Goal Description */}
             <Card className="p-6">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Target className="w-6 h-6 text-purple-400" />
+                <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0 border border-violet-200">
+                  <Target className="w-6 h-6 text-violet-900" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-white mb-2">Goal Description</h3>
+                  <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">Goal Description</h3>
                   <p className="text-[var(--color-text)] leading-relaxed">{goal.description}</p>
                 </div>
               </div>
@@ -127,25 +128,25 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
 
             {/* Statistics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="p-4 border-border">
+              <Card className="p-4 border-slate-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                    <GitBranch className="w-5 h-5 text-blue-400" />
+                  <div className="w-10 h-10 bg-sky-100 rounded-lg flex items-center justify-center border border-sky-200">
+                    <GitBranch className="w-5 h-5 text-sky-900" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-blue-400">{goalPlans.length}</div>
+                    <div className="text-2xl font-bold text-sky-950">{goalPlans.length}</div>
                     <div className="text-sm text-[var(--color-text-secondary)]">Plans Generated</div>
                   </div>
                 </div>
               </Card>
 
-              <Card className="p-4 border-border">
+              <Card className="p-4 border-slate-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center border border-emerald-200">
+                    <CheckCircle className="w-5 h-5 text-emerald-900" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-emerald-400">
+                    <div className="text-2xl font-bold text-emerald-950">
                       {goalPlans.reduce((total, plan) => {
                         if (plan.allocation_artifacts?.task_descriptions) {
                           return total + plan.allocation_artifacts.task_descriptions.filter((task: any) => task.goal_id === goalId?.toString()).length
@@ -158,13 +159,13 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
                 </div>
               </Card>
 
-              <Card className="p-4 border-border">
+              <Card className="p-4 border-slate-200">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                    <Bot className="w-5 h-5 text-purple-400" />
+                  <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center border border-violet-200">
+                    <Bot className="w-5 h-5 text-violet-900" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-purple-400">{goalRobots.length}</div>
+                    <div className="text-2xl font-bold text-violet-950">{goalRobots.length}</div>
                     <div className="text-sm text-[var(--color-text-secondary)]">Robots Assigned</div>
                   </div>
                 </div>
@@ -176,8 +177,8 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
         {activeTab === 'plans' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Generated Plans</h3>
-              <span className="text-sm text-[var(--color-text-muted)] bg-surface-overlay px-3 py-1 rounded-full">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">Generated Plans</h3>
+              <span className="text-sm text-[var(--color-text-muted)] bg-slate-50 px-3 py-1 rounded-full">
                 {goalPlans.length} plans
               </span>
             </div>
@@ -188,25 +189,25 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
                   const executionStatus = plan.execution_status || 'not_executed'
                   const goalCount = Array.isArray(plan.goal_ids) ? new Set(plan.goal_ids).size : 0
 
-                  let badgeConfig = { bg: 'bg-surface-elevated/30', border: 'border-border', text: 'text-[var(--color-text-secondary)]', label: 'Unknown', icon: AlertTriangle }
+                  let badgeConfig = { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-[var(--color-text-secondary)]', label: 'Unknown', icon: AlertTriangle }
 
                   if (executionStatus === 'completed') {
-                    badgeConfig = { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', label: 'Completed', icon: CheckCircle }
+                    badgeConfig = { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-950', label: 'Completed', icon: CheckCircle }
                   } else if (executionStatus === 'executing') {
-                    badgeConfig = { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', label: 'Running', icon: Play }
+                    badgeConfig = { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-950', label: 'Running', icon: Play }
                   } else {
-                    badgeConfig = { bg: 'bg-surface-elevated/30', border: 'border-border', text: 'text-[var(--color-text-secondary)]', label: 'Not Started', icon: AlertTriangle }
+                    badgeConfig = { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-[var(--color-text-secondary)]', label: 'Not Started', icon: AlertTriangle }
                   }
 
                   return (
-                    <Card key={plan.plan_id} className="p-4 hover:bg-surface-overlay/50 transition-colors cursor-pointer"
+                    <Card key={plan.plan_id} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer"
                           onClick={() => window.open(`/plans/${plan.plan_id}`, '_blank')}>
                       {/* Plan Header */}
                       <div className="flex items-center justify-between mb-3">
-                        <span className="px-2 py-1 bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 rounded text-xs font-semibold">
+                        <span className="px-2 py-1 tonal-plan-id rounded text-xs font-semibold">
                           P{plan.plan_id}
                         </span>
-                        <div className={cn('px-2 py-1 rounded text-xs flex items-center gap-1 font-medium', badgeConfig.bg, badgeConfig.text)}>
+                        <div className={cn('px-2 py-1 rounded text-xs flex items-center gap-1 font-medium border', badgeConfig.bg, badgeConfig.border, badgeConfig.text)}>
                           <badgeConfig.icon className="w-3 h-3" />
                           {badgeConfig.label}
                         </div>
@@ -214,7 +215,7 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
 
                       {/* Plan Name & Description */}
                       <div className="mb-3">
-                        <h4 className="font-medium text-white mb-1">{plan.name || `Plan ${plan.plan_id}`}</h4>
+                        <h4 className="font-medium text-[var(--color-text)] mb-1">{plan.name || `Plan ${plan.plan_id}`}</h4>
                         {plan.description && (
                           <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">{plan.description}</p>
                         )}
@@ -222,11 +223,11 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
 
                       {/* Strategy Tags */}
                       <div className="flex items-center gap-2 mb-3">
-                        <button className="px-2 py-1 bg-blue-500/20 border border-blue-500/40 text-blue-300 rounded text-xs font-semibold hover:bg-blue-500/30 transition-colors">
+                        <button className="px-2 py-1 tonal-sky rounded text-xs font-semibold hover:bg-sky-200/90 transition-colors">
                           {getPlanningStrategyName(plan.planning_strategy)}
                         </button>
                         {plan.allocation_strategy && plan.allocation_strategy !== 4 && (
-                          <button className="px-2 py-1 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded text-xs font-semibold hover:bg-purple-500/30 transition-colors">
+                          <button className="px-2 py-1 tonal-violet rounded text-xs font-semibold hover:bg-violet-200/90 transition-colors">
                             {getAllocationStrategyName(plan.allocation_strategy)}
                           </button>
                         )}
@@ -234,23 +235,23 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
 
                       {/* Statistics */}
                       <div className="grid grid-cols-3 gap-2">
-                        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded p-2 text-center">
-                          <div className="text-lg font-bold text-emerald-300 mb-1">
+                        <div className="tonal-emerald rounded p-2 text-center">
+                          <div className="text-lg font-bold mb-1">
                             {goalCount}
                           </div>
-                          <div className="text-xs text-[var(--color-text-secondary)]">Goals</div>
+                          <div className="text-xs opacity-90">Goals</div>
                         </div>
-                        <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 text-center">
-                          <div className="text-lg font-bold text-blue-300 mb-1">
+                        <div className="tonal-sky rounded p-2 text-center">
+                          <div className="text-lg font-bold mb-1">
                             {Array.isArray(plan.task_ids) ? plan.task_ids.length : 0}
                           </div>
-                          <div className="text-xs text-[var(--color-text-secondary)]">Tasks</div>
+                          <div className="text-xs opacity-90">Tasks</div>
                         </div>
-                        <div className="bg-purple-500/10 border border-purple-500/20 rounded p-2 text-center">
-                          <div className="text-lg font-bold text-purple-300 mb-1">
+                        <div className="tonal-violet rounded p-2 text-center">
+                          <div className="text-lg font-bold mb-1">
                             {plan.allocation_artifacts?.final_allocation?.allocations?.length || 0}
                           </div>
-                          <div className="text-xs text-[var(--color-text-secondary)]">Robots</div>
+                          <div className="text-xs opacity-90">Robots</div>
                         </div>
                       </div>
                     </Card>
@@ -270,8 +271,8 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
         {activeTab === 'robots' && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">Assigned Robots</h3>
-              <span className="text-sm text-[var(--color-text-muted)] bg-surface-overlay px-3 py-1 rounded-full">
+              <h3 className="text-lg font-semibold text-[var(--color-text)]">Assigned Robots</h3>
+              <span className="text-sm text-[var(--color-text-muted)] bg-slate-50 px-3 py-1 rounded-full">
                 {goalRobots.length} robots
               </span>
             </div>
@@ -295,12 +296,12 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
                           <div className="flex items-center gap-3">
                             <div className={cn(
                               'w-8 h-8 rounded-lg flex items-center justify-center',
-                              isReachable ? 'bg-emerald-500/10' : 'bg-surface-overlay'
+                              isReachable ? 'bg-emerald-500/10' : 'bg-slate-50'
                             )}>
                               <Bot className={cn('w-4 h-4', isReachable ? 'text-emerald-400' : 'text-[var(--color-text-muted)]')} />
                             </div>
                             <div>
-                              <h3 className="font-medium text-white">{robot.robot_id}</h3>
+                              <h3 className="font-medium text-[var(--color-text)]">{robot.robot_id}</h3>
                               <p className="text-xs text-[var(--color-text-muted)]">{robot.robot_type}</p>
                             </div>
                           </div>
@@ -326,20 +327,20 @@ function GoalDetailsModal({ goalId, isOpen, onClose }: { goalId: number | null; 
                           {robot.capabilities.slice(0, 3).map((capability: string, index: number) => (
                             <span
                               key={index}
-                              className="px-2 py-0.5 bg-surface-elevated/50 text-[var(--color-text)] rounded text-xs font-medium"
+                              className="px-2 py-0.5 bg-slate-100 text-[var(--color-text)] rounded text-xs font-medium"
                             >
                               {capability}
                             </span>
                           ))}
                           {robot.capabilities.length > 3 && (
-                            <span className="px-2 py-0.5 bg-surface-elevated/50 text-[var(--color-text-secondary)] rounded text-xs">
+                            <span className="px-2 py-0.5 bg-slate-100 text-[var(--color-text-secondary)] rounded text-xs">
                               +{robot.capabilities.length - 3} more
                             </span>
                           )}
                         </div>
 
                         {/* Connection Info */}
-                        <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
+                        <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-200">
                           <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
                             <span className="font-mono">
                               {robot.task_server_info?.host}:{robot.task_server_info?.port}
@@ -398,7 +399,7 @@ function CreateGoalModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Describe what you want the robots to accomplish..."
             rows={4}
-            className="w-full px-4 py-3 bg-surface-overlay border border-border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyber-500 resize-none"
+            className="w-full px-4 py-3 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 resize-none"
             required
           />
         </div>
@@ -529,20 +530,21 @@ export function Goals() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Goals</h1>
-          <p className="text-[var(--color-text-secondary)]">
-            {filteredAndSortedGoals.length} of {goals.length} goals
-            {searchTerm && ` matching "${searchTerm}"`}
-          </p>
-        </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="w-4 h-4" />
-          Create Goal
-        </Button>
-      </div>
+      <PageHeader
+        title="Goals"
+        meta={
+          <>
+            {filteredAndSortedGoals.length} of {goals.length}
+            {searchTerm && ` · “${searchTerm}”`}
+          </>
+        }
+        actions={
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="w-4 h-4" />
+            Create Goal
+          </Button>
+        }
+      />
 
       {/* Search and Sort Controls */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -554,7 +556,7 @@ export function Goals() {
             placeholder="Search goals by description..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-surface-overlay/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500/50"
+            className="w-full pl-10 pr-4 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
           />
         </div>
 
@@ -563,7 +565,7 @@ export function Goals() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'goal_id' | 'created_date')}
-            className="px-3 py-2 bg-surface-overlay/50 border border-border rounded-lg text-white focus:outline-none focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500/50"
+            className="px-3 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
           >
             <option value="goal_id">ID</option>
             <option value="created_date">Date Created</option>
@@ -571,7 +573,7 @@ export function Goals() {
 
           <button
             onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            className="px-3 py-2 bg-surface-overlay/50 border border-border rounded-lg text-white hover:bg-surface-elevated/50 transition-colors flex items-center gap-1"
+            className="px-3 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] hover:bg-slate-100 transition-colors flex items-center gap-1"
           >
             {sortOrder === 'asc' ? '↑' : '↓'}
             <ChevronDown className="w-4 h-4" />
@@ -583,63 +585,44 @@ export function Goals() {
       {filteredAndSortedGoals.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredAndSortedGoals.map((goal) => (
-            <Card key={goal.goal_id} className="p-4 hover:bg-surface-overlay/50 transition-colors cursor-pointer"
+            <Card key={goal.goal_id} hover className="group relative overflow-hidden p-0 cursor-pointer"
                   onClick={() => setPlansModalGoal(goal.goal_id)}>
-              {/* Goal Header */}
-              <div className="flex items-start justify-between mb-4">
-                <span className="px-2 py-1 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded text-xs font-semibold">
-                  G{goal.goal_id}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    deleteMutation.mutate(goal.goal_id)
-                  }}
-                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 h-8 w-8"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+              {/* Top accent bar */}
+              <div className="h-1 bg-gradient-to-r from-violet-500 via-cyan-500 to-violet-500 opacity-60 group-hover:opacity-100 transition-opacity" />
 
-              {/* Goal Description */}
-              <div className="mb-4">
-                <p className="text-sm text-[var(--color-text)] line-clamp-3">
+              <div className="p-5">
+                {/* Goal Header */}
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <span className="tonal-goal-id">G{goal.goal_id}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteMutation.mutate(goal.goal_id)
+                    }}
+                    className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+
+                {/* Goal Description */}
+                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3 mb-4">
                   {goal.description}
                 </p>
-              </div>
 
-              {/* Statistics Boxes */}
-              <div className="grid grid-cols-3 gap-2">
-                {/* Tasks Box */}
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 text-center">
-                  <div className="text-lg font-bold text-blue-300 mb-1">
-                    {goal.task_ids.length}
-                  </div>
-                  <div className="text-xs text-blue-400 font-medium">
-                    Tasks
-                  </div>
-                </div>
-
-                {/* Plans Box */}
-                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded p-2 text-center">
-                  <div className="text-lg font-bold text-emerald-300 mb-1">
-                    {getPlansCountForGoal(goal.goal_id)}
-                  </div>
-                  <div className="text-xs text-emerald-400 font-medium">
-                    Plans
-                  </div>
-                </div>
-
-                {/* Robots Box */}
-                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2 text-center">
-                  <div className="text-lg font-bold text-yellow-300 mb-1">
-                    {getRobotsCountForGoal(goal.goal_id)}
-                  </div>
-                  <div className="text-xs text-yellow-400 font-medium">
-                    Robots
-                  </div>
+                {/* Stat Chips */}
+                <div className="flex items-center gap-2">
+                  <span className="tonal-sky">
+                    {goal.task_ids.length} tasks
+                  </span>
+                  <span className="tonal-emerald">
+                    {getPlansCountForGoal(goal.goal_id)} plans
+                  </span>
+                  <span className="tonal-violet">
+                    {getRobotsCountForGoal(goal.goal_id)} robots
+                  </span>
                 </div>
               </div>
             </Card>

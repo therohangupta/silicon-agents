@@ -5,6 +5,7 @@ This module creates and configures the FastAPI application.
 All routes are organized into routers in the routers/ directory.
 """
 
+import asyncio
 import logging
 import time
 
@@ -13,14 +14,19 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .config import CORS_ORIGINS
+from .config import CORS_ORIGINS, NATS_URL
 from .dependencies import init_bridge, close_bridge, get_bridge
 from .routers import api_router
 from .routers import websocket as websocket_mod
+from .routers import live_video as live_video_mod
+from .routers import robot_telemetry as robot_telemetry_mod
 from .routers.websocket import event_bus
 from .routers.embodiments import ports_router
 from .services import close_telemetry_client
+from .consumers.telemetry_consumer import run_telemetry_consumer
+from packages.message_bus.nats_jetstream import NatsJetStreamBus
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -56,11 +62,36 @@ async def lifespan(app: FastAPI):
     """
     Manage application lifecycle.
     
-    Initializes the gRPC bridge on startup and closes it on shutdown.
+    Initializes the gRPC bridge and NATS telemetry consumer on startup.
     """
     init_bridge()
+
+    # Start NATS telemetry consumer (best-effort; gateway works without it)
+    bus = NatsJetStreamBus(url=NATS_URL)
+    consumer_task = None
+    try:
+        await bus.connect()
+        await bus.ensure_stream("TELEMETRY", ["telemetry.>"])
+        consumer_task = asyncio.create_task(run_telemetry_consumer(bus))
+        logger.info("Gateway NATS telemetry consumer started")
+    except Exception:
+        logger.warning(
+            "NATS JetStream unavailable at %s — telemetry WS will not work",
+            NATS_URL,
+            exc_info=True,
+        )
+    app.state.message_bus = bus
+
     yield
+
     event_bus.notify(["__shutdown__"])
+    if consumer_task is not None:
+        consumer_task.cancel()
+        try:
+            await consumer_task
+        except asyncio.CancelledError:
+            pass
+    await bus.close()
     close_bridge()
     await close_telemetry_client()
 
@@ -108,6 +139,8 @@ REST API for managing robot fleets, goals, plans, and execution.
     
     # WebSocket + internal event endpoints (no /api prefix)
     app.include_router(websocket_mod.router)
+    app.include_router(robot_telemetry_mod.router)
+    app.include_router(live_video_mod.router)
     
     # Health check endpoint (root level)
     @app.get("/health", tags=["Health"])

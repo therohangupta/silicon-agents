@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Globe, Plus, Trash2, MessageSquare } from 'lucide-react'
 import { Card } from '../components/common/Card'
+import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/common/Button'
 import { Modal } from '../components/common/Modal'
 import { EmptyState } from '../components/common/EmptyState'
@@ -38,7 +39,7 @@ function AddStatementModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
             onChange={(e) => setStatement(e.target.value)}
             placeholder="Describe a fact about the world state..."
             rows={4}
-            className="w-full px-4 py-3 bg-surface-overlay border border-border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyber-500 resize-none"
+            className="w-full px-4 py-3 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 resize-none"
             required
           />
           <p className="text-xs text-[var(--color-text-muted)] mt-2">
@@ -85,24 +86,23 @@ export function World() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">World State</h1>
-          <p className="text-[var(--color-text-secondary)]">{statements.length} statements defined</p>
-        </div>
-        <Button onClick={() => setIsModalOpen(true)}>
-          <Plus className="w-4 h-4" />
-          Add Statement
-        </Button>
-      </div>
+      <PageHeader
+        title="World State"
+        meta={<>{statements.length} statements defined</>}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)}>
+            <Plus className="w-4 h-4" />
+            Add Statement
+          </Button>
+        }
+      />
 
       {/* Info Card */}
-      <Card className="border-cyber-500/30 bg-cyber-500/5">
+      <Card className="border-l-[3px] border-l-cyan-500 bg-[var(--color-surface-raised)]">
         <div className="flex items-start gap-3">
-          <Globe className="w-5 h-5 text-cyber-400 flex-shrink-0 mt-0.5" />
+          <Globe className="w-5 h-5 text-cyan-800 flex-shrink-0 mt-0.5" />
           <div>
-            <h3 className="font-medium text-white mb-1">About World State</h3>
+            <h3 className="font-medium text-[var(--color-text)] mb-1">About World State</h3>
             <p className="text-sm text-[var(--color-text-secondary)]">
               World statements describe the current state of the environment. The planner uses these 
               statements to understand the context and generate appropriate task plans. Be descriptive 
@@ -117,13 +117,13 @@ export function World() {
         <div className="space-y-3">
           {statements.map((ws) => (
             <Card key={ws.id} className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                <MessageSquare className="w-5 h-5 text-emerald-400" />
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 ring-1 ring-emerald-200/60 flex items-center justify-center flex-shrink-0">
+                <MessageSquare className="w-5 h-5 text-emerald-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-white">{ws.statement}</p>
+                    <p className="text-[var(--color-text)]">{ws.statement}</p>
                     <p className="text-xs text-[var(--color-text-muted)] mt-1 font-mono">
                       ID: {ws.id.substring(0, 8)}... • {formatDate(ws.created_at)}
                     </p>
@@ -132,7 +132,7 @@ export function World() {
                     variant="ghost"
                     size="sm"
                     onClick={() => deleteMutation.mutate(ws.id)}
-                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    className="text-red-400 hover:text-red-600 hover:bg-red-50"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

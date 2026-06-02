@@ -44,14 +44,44 @@ services:
       db:
         condition: service_healthy
 
+  nats:
+    image: nats:2-alpine
+    command: ["--jetstream", "--store_dir", "/data"]
+    ports:
+      - "4222:4222"     # NATS client
+      - "8222:8222"     # NATS monitoring
+    volumes:
+      - ./.data/nats:/data
+
   telemetry:
     build:
       context: .
       dockerfile: services/telemetry/Dockerfile
     environment:
       GATEWAY_EVENT_URL: http://gateway:8000/internal/events
+      NATS_URL: nats://nats:4222
+      TELEMETRY_GRPC_PORT: "9001"
+      BLOB_STORAGE_ROOT: /data/blobs
     ports:
       - "9000:9000"     # packages/config.py TELEMETRY_PORT
+      - "9001:9001"     # packages/config.py TELEMETRY_GRPC_PORT
+    volumes:
+      - ./.data/telemetry:/data
+    depends_on:
+      - nats
+
+  storage-writer:
+    build:
+      context: .
+      dockerfile: services/storage_writer/Dockerfile
+    environment:
+      NATS_URL: nats://nats:4222
+      PARQUET_STORAGE_ROOT: /data/parquet
+      BLOB_STORAGE_ROOT: /data/blobs
+    volumes:
+      - ./.data/telemetry:/data
+    depends_on:
+      - nats
 
   gateway:
     build:
@@ -61,11 +91,16 @@ services:
       GRPC_SERVER_ADDRESS: fleet-server:50051
       DATABASE_URL: postgresql+asyncpg://robot_user:secret@db:5432/robot_fleet
       TELEMETRY_URL: http://telemetry:9000
+      NATS_URL: nats://nats:4222
+      BLOB_STORAGE_ROOT: /data/blobs
     ports:
       - "8000:8000"     # packages/config.py GATEWAY_PORT
+    volumes:
+      - ./.data/telemetry:/data
     depends_on:
       - fleet-server
       - telemetry
+      - nats
 
 volumes:
   db_data:

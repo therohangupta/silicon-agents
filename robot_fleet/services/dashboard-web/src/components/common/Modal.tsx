@@ -48,17 +48,17 @@ export function Modal({ isOpen, onClose, title, children, className, size = 'lg'
       {/* Modal */}
       <div
         className={cn(
-          'relative bg-surface-raised border border-border rounded-2xl shadow-modal w-full mx-4 animate-slide-up',
+          'relative bg-white border border-slate-200/70 rounded-2xl shadow-2xl w-full mx-4 animate-slide-up',
           sizeClasses[size],
           className
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-          <h3 className="text-base font-semibold text-white">{title}</h3>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <h3 className="text-base font-semibold text-[var(--color-text)]">{title}</h3>
           <button
             onClick={onClose}
-            className="p-1.5 text-[var(--color-text-muted)] hover:text-white rounded-lg hover:bg-surface-overlay transition-colors duration-150"
+            className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text)] rounded-lg hover:bg-slate-50 transition-colors duration-150"
           >
             <X className="w-4 h-4" />
           </button>

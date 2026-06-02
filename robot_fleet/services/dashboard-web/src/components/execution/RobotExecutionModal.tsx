@@ -9,12 +9,16 @@ import {
   ChevronDown,
   ChevronRight,
   MessageSquare,
+  Wifi,
+  WifiOff,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Modal } from '../common/Modal'
 import { StatusBadge } from '../common/StatusBadge'
+import { LiveVideoCanvas } from '../common/LiveVideoCanvas'
 import { TaskIdChip } from './TaskIdChip'
 import { cn } from '../../lib/utils'
+import { useTelemetryStream } from '../../hooks/useTelemetryStream'
 import type { Task } from '../../types'
 
 interface RobotExecutionModalProps {
@@ -25,12 +29,13 @@ interface RobotExecutionModalProps {
   tasks: Task[]
   allTasks: Task[]
   elapsedTimes: Map<number, number>
+  taskServerInfo?: { host: string; port: number } | null
 }
 
 const statusIcon: Record<string, React.ReactNode> = {
-  completed: <CheckCircle className="w-4 h-4 text-emerald-400" />,
-  in_progress: <Clock className="w-4 h-4 text-amber-400 animate-pulse" />,
-  failed: <AlertCircle className="w-4 h-4 text-red-400" />,
+  completed: <CheckCircle className="w-4 h-4 text-emerald-700" />,
+  in_progress: <Clock className="w-4 h-4 text-amber-700 animate-pulse" />,
+  failed: <AlertCircle className="w-4 h-4 text-red-700" />,
   pending: <Circle className="w-4 h-4 text-[var(--color-text-secondary)]" />,
 }
 
@@ -50,8 +55,13 @@ export function RobotExecutionModal({
   tasks,
   allTasks,
   elapsedTimes,
+  taskServerInfo,
 }: RobotExecutionModalProps) {
   const [expandedResults, setExpandedResults] = useState<Set<number>>(new Set())
+  const telemetryRobotId = taskServerInfo
+    ? `${taskServerInfo.host}:${taskServerInfo.port}`
+    : robotId
+  const telemetry = useTelemetryStream(isOpen ? telemetryRobotId : null)
 
   const taskMap = new Map(allTasks.map(t => [t.task_id, t]))
 
@@ -83,18 +93,18 @@ export function RobotExecutionModal({
               Current Task
             </h4>
             {currentTask ? (
-              <div className="p-4 rounded-lg border-2 border-amber-500/40 bg-amber-500/5">
+              <div className="p-4 rounded-lg border-2 border-amber-400 bg-amber-50">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock className="w-4 h-4 text-amber-400 animate-pulse" />
-                  <span className="text-xs font-mono text-amber-400">#{currentTask.task_id}</span>
+                  <Clock className="w-4 h-4 text-amber-700 animate-pulse" />
+                  <span className="text-xs font-mono text-amber-950">#{currentTask.task_id}</span>
                   <StatusBadge status="in_progress" />
                   {elapsedTimes.has(currentTask.task_id) && (
-                    <span className="text-xs font-mono text-amber-300 ml-auto">
+                    <span className="text-xs font-mono text-amber-900 ml-auto">
                       {formatElapsed(elapsedTimes.get(currentTask.task_id)!)}
                     </span>
                   )}
                 </div>
-                <p className="text-white text-sm leading-relaxed">{currentTask.description}</p>
+                <p className="text-[var(--color-text)] text-sm leading-relaxed">{currentTask.description}</p>
                 {currentTask.dependency_task_ids.length > 0 && (
                   <div className="flex items-center gap-1.5 mt-2 text-xs text-[var(--color-text-secondary)]">
                     <span>Deps:</span>
@@ -105,7 +115,7 @@ export function RobotExecutionModal({
                 )}
               </div>
             ) : (
-              <div className="p-4 rounded-lg border border-border bg-surface-overlay/40 text-center text-sm text-[var(--color-text-muted)]">
+              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/40 text-center text-sm text-[var(--color-text-muted)]">
                 {completedTasks.length === tasks.length ? 'All tasks complete' : 'Idle — waiting for dependencies'}
               </div>
             )}
@@ -121,7 +131,7 @@ export function RobotExecutionModal({
                 {pendingTasks.map(task => (
                   <div
                     key={task.task_id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border-subtle bg-surface-overlay/30"
+                    className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 bg-slate-50/30"
                   >
                     {statusIcon.pending}
                     <span className="text-xs font-mono text-[var(--color-text-muted)]">#{task.task_id}</span>
@@ -129,8 +139,8 @@ export function RobotExecutionModal({
                     <span className={cn(
                       'text-xs px-1.5 py-0.5 rounded',
                       depsReady(task)
-                        ? 'bg-emerald-500/10 text-emerald-400'
-                        : 'bg-surface-elevated/50 text-[var(--color-text-muted)]'
+                        ? 'bg-emerald-100 text-emerald-950 border border-emerald-300'
+                        : 'bg-slate-100 text-[var(--color-text-muted)]'
                     )}>
                       {depsReady(task) ? 'Ready' : 'Blocked'}
                     </span>
@@ -151,8 +161,8 @@ export function RobotExecutionModal({
                   <div
                     key={task.task_id}
                     className={cn(
-                      'rounded-lg border bg-surface-overlay/30',
-                      task.status === 'failed' ? 'border-red-500/25' : 'border-border-subtle'
+                      'rounded-lg border bg-slate-50/30',
+                      task.status === 'failed' ? 'border-red-500/25' : 'border-slate-200'
                     )}
                   >
                     <div
@@ -161,8 +171,8 @@ export function RobotExecutionModal({
                     >
                       {statusIcon[task.status] || statusIcon.pending}
                       <span className={cn(
-                        'text-xs font-mono',
-                        task.status === 'failed' ? 'text-red-400' : 'text-emerald-400'
+                        'text-xs font-mono font-medium',
+                        task.status === 'failed' ? 'text-red-950' : 'text-slate-900'
                       )}>
                         #{task.task_id}
                       </span>
@@ -176,7 +186,7 @@ export function RobotExecutionModal({
                     </div>
                     {expandedResults.has(task.task_id) && task.result && (
                       <div className="px-3 pb-3">
-                        <div className="bg-surface/80 rounded p-3 border border-border">
+                        <div className="bg-surface/80 rounded p-3 border border-slate-200">
                           <div className="flex items-center gap-1.5 mb-1.5">
                             <MessageSquare className="w-3.5 h-3.5 text-[var(--color-text-muted)]" />
                             <span className="text-xs font-medium text-[var(--color-text-muted)]">Result</span>
@@ -194,68 +204,113 @@ export function RobotExecutionModal({
           )}
         </div>
 
-        {/* Right column: telemetry placeholders */}
+        {/* Right column: live telemetry */}
         <div className="space-y-4">
-          {/* Video feed placeholder */}
-          <div className="rounded-lg border border-border bg-surface-overlay/60 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
-              <Video className="w-4 h-4 text-[var(--color-text-muted)]" />
-              <span className="text-sm font-medium text-[var(--color-text-secondary)]">Live Video Feed</span>
-            </div>
-            <div className="aspect-video flex flex-col items-center justify-center text-[var(--color-text-muted)] bg-surface/50">
-              <Video className="w-10 h-10 mb-3 opacity-40" />
-              <p className="text-sm">Video feed not connected</p>
-              <p className="text-xs mt-1 font-mono opacity-50">
-                /robots/{robotId}/video
-              </p>
-            </div>
+          {/* Connection indicator */}
+          <div className="flex items-center gap-2 text-xs">
+            {telemetry.connected ? (
+              <>
+                <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-emerald-700 font-medium">Telemetry connected</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-400">Telemetry disconnected</span>
+              </>
+            )}
           </div>
 
-          {/* Joint states placeholder */}
-          <div className="rounded-lg border border-border bg-surface-overlay/60 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
+          {/* Video feed — MJPEG stream from telemetry server media plane */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200">
+              <Video className="w-4 h-4 text-[var(--color-text-muted)]" />
+              <span className="text-sm font-medium text-[var(--color-text-secondary)]">Live Video Feed</span>
+              <span className="text-xs text-[var(--color-text-muted)] ml-auto font-mono">MJPEG</span>
+            </div>
+            {telemetryRobotId ? (
+              <div className="aspect-video bg-black flex items-center justify-center">
+                <LiveVideoCanvas robotId={telemetryRobotId} className="w-full h-full" />
+              </div>
+            ) : (
+              <div className="aspect-video flex flex-col items-center justify-center text-[var(--color-text-muted)] bg-surface/50">
+                <Video className="w-10 h-10 mb-3 opacity-40" />
+                <p className="text-sm">No video feed available</p>
+              </div>
+            )}
+          </div>
+
+          {/* Joint states */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200">
               <Activity className="w-4 h-4 text-[var(--color-text-muted)]" />
               <span className="text-sm font-medium text-[var(--color-text-secondary)]">Joint States</span>
             </div>
             <div className="p-4">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="text-[var(--color-text-muted)] border-b border-border-subtle">
+                  <tr className="text-[var(--color-text-muted)] border-b border-slate-200">
                     <th className="text-left pb-2 font-medium">Joint</th>
                     <th className="text-right pb-2 font-medium">Position</th>
                     <th className="text-right pb-2 font-medium">Velocity</th>
-                    <th className="text-right pb-2 font-medium">Torque</th>
+                    <th className="text-right pb-2 font-medium">Effort</th>
                   </tr>
                 </thead>
-                <tbody className="text-[var(--color-text-muted)]">
-                  {['base', 'shoulder', 'elbow', 'wrist_1', 'wrist_2', 'gripper'].map(joint => (
-                    <tr key={joint} className="border-b border-border-subtle">
-                      <td className="py-1.5 font-mono">{joint}</td>
-                      <td className="py-1.5 text-right">—</td>
-                      <td className="py-1.5 text-right">—</td>
-                      <td className="py-1.5 text-right">—</td>
+                <tbody className="text-[var(--color-text)]">
+                  {telemetry.jointStates.length > 0 ? (
+                    telemetry.jointStates.map((joint) => (
+                      <tr key={joint.name} className="border-b border-slate-200">
+                        <td className="py-1.5 font-mono text-slate-700">{joint.name}</td>
+                        <td className="py-1.5 text-right font-mono">{joint.position.toFixed(4)}</td>
+                        <td className="py-1.5 text-right font-mono">{joint.velocity.toFixed(4)}</td>
+                        <td className="py-1.5 text-right font-mono">{joint.effort.toFixed(4)}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-4 text-center text-[var(--color-text-muted)]">
+                        No joint data received
+                      </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
-              <p className="text-xs text-[var(--color-text-muted)] font-mono mt-3 text-center opacity-50">
-                /robots/{robotId}/joints
-              </p>
             </div>
           </div>
 
-          {/* Joint commands log placeholder */}
-          <div className="rounded-lg border border-border bg-surface-overlay/60 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
+          {/* Action command log */}
+          <div className="rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200">
               <Terminal className="w-4 h-4 text-[var(--color-text-muted)]" />
-              <span className="text-sm font-medium text-[var(--color-text-secondary)]">Joint Commands</span>
+              <span className="text-sm font-medium text-[var(--color-text-secondary)]">Action Commands</span>
+              {telemetry.actionLog.length > 0 && (
+                <span className="text-xs text-[var(--color-text-muted)] ml-auto">{telemetry.actionLog.length} entries</span>
+              )}
             </div>
-            <div className="h-32 flex flex-col items-center justify-center text-[var(--color-text-muted)] bg-surface/50">
-              <Terminal className="w-8 h-8 mb-2 opacity-40" />
-              <p className="text-xs">Command stream not connected</p>
-              <p className="text-xs mt-1 font-mono opacity-50">
-                /robots/{robotId}/commands
-              </p>
+            <div className="max-h-40 overflow-y-auto">
+              {telemetry.actionLog.length > 0 ? (
+                <div className="divide-y divide-slate-200">
+                  {telemetry.actionLog.slice(0, 20).map((entry, i) => (
+                    <div key={i} className="px-4 py-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        {entry.attributes?.cmd_type && (
+                          <span className="font-mono text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded">
+                            {entry.attributes.cmd_type}
+                          </span>
+                        )}
+                        <span className="text-[var(--color-text-muted)] font-mono">
+                          {entry.signals.map(s => `${s.name}: ${s.values[0]?.toFixed(3)}`).join(', ')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-24 flex flex-col items-center justify-center text-[var(--color-text-muted)]">
+                  <Terminal className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-xs">No commands received</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

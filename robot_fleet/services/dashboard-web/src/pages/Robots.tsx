@@ -3,12 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Bot, Plus, Trash2, Wifi, WifiOff, RefreshCw, CheckCircle, XCircle, Loader2, FileCode, Download, Settings, Cpu, Network, FileX, Target, Wrench, Info, Send, RotateCcw, Video, Activity, Terminal } from 'lucide-react'
 import { Card } from '../components/common/Card'
+import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/common/Button'
 import { Modal } from '../components/common/Modal'
 import { EmptyState } from '../components/common/EmptyState'
-import { useRealtimeUpdates, robotsApi } from '../lib/api'
+import { LiveVideoCanvas } from '../components/common/LiveVideoCanvas'
+import { useRealtimeUpdates, robotsApi, worldApi } from '../lib/api'
 
 import { cn } from '../lib/utils'
+import { useTelemetryStream } from '../hooks/useTelemetryStream'
 import type { Robot } from '../types'
 
 // =============================================================================
@@ -72,13 +75,13 @@ function InfoCard({
           "p-2 rounded-lg flex-shrink-0",
           status === true ? "bg-emerald-500/10 text-emerald-400" :
           status === false ? "bg-red-500/10 text-red-400" :
-          "bg-surface-overlay text-[var(--color-text-secondary)]"
+          "bg-slate-50 text-[var(--color-text-secondary)]"
         )}>
           {icon}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide font-medium">{title}</p>
-          <p className="font-medium text-white truncate">{value}</p>
+          <p className="font-medium text-[var(--color-text)] truncate">{value}</p>
           {subtitle && <p className="text-xs text-[var(--color-text-secondary)] truncate">{subtitle}</p>}
         </div>
       </div>
@@ -110,98 +113,69 @@ function RobotCard({
   const isReachable = health?.reachable === true
 
   return (
-    <Card hover className="relative overflow-hidden cursor-pointer" onClick={onClick}>
+    <Card hover className="group relative overflow-hidden p-0 cursor-pointer" onClick={onClick}>
+      {/* Top accent */}
       <div className={cn(
-        'absolute top-0 left-0 w-1 h-full',
-        isChecking ? 'bg-yellow-500' : isReachable ? 'bg-emerald-500' : 'bg-red-500'
+        'h-1',
+        isChecking ? 'bg-gradient-to-r from-yellow-400 to-amber-400' :
+        isReachable ? 'bg-gradient-to-r from-emerald-400 to-cyan-400' :
+        'bg-gradient-to-r from-red-400 to-rose-400'
       )} />
 
-      <div className="pl-4">
+      <div className="p-5">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             <div className={cn(
-              'w-10 h-10 rounded-lg flex items-center justify-center',
-              isReachable ? 'bg-emerald-500/10' : 'bg-surface-overlay'
+              'w-10 h-10 rounded-xl flex items-center justify-center',
+              isReachable ? 'bg-emerald-50 ring-1 ring-emerald-200/60' : 'bg-slate-50 ring-1 ring-slate-200/60'
             )}>
-              <Bot className={cn('w-5 h-5', isReachable ? 'text-emerald-400' : 'text-[var(--color-text-muted)]')} />
+              <Bot className={cn('w-5 h-5', isReachable ? 'text-emerald-600' : 'text-slate-400')} />
             </div>
             <div>
-              <h3 className="font-semibold text-white">{robot.robot_id}</h3>
-              <p className="text-xs text-[var(--color-text-muted)]">{robot.robot_type}</p>
+              <h3 className="font-semibold text-slate-900">{robot.robot_id}</h3>
+              <p className="text-xs text-slate-500">{robot.robot_type}</p>
             </div>
           </div>
 
-          {/* Connection Status */}
-          <div className="flex items-center gap-1.5">
-            {isChecking ? (
-              <Loader2 className="w-4 h-4 text-yellow-400 animate-spin" />
-            ) : isReachable ? (
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <XCircle className="w-4 h-4 text-red-400" />
-            )}
-            <span className={cn(
-              'text-xs font-medium',
-              isChecking ? 'text-yellow-400' : isReachable ? 'text-emerald-400' : 'text-red-400'
-            )}>
-              {isChecking ? 'Checking...' : isReachable ? 'Connected' : 'Unreachable'}
-            </span>
-          </div>
+          <span className={cn(
+            'inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full',
+            isChecking ? 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200/80' :
+            isReachable ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/80' :
+            'bg-red-50 text-red-700 ring-1 ring-red-200/80'
+          )}>
+            {isChecking ? <Loader2 className="w-3 h-3 animate-spin" /> :
+             isReachable ? <CheckCircle className="w-3 h-3" /> :
+             <XCircle className="w-3 h-3" />}
+            {isChecking ? 'Checking' : isReachable ? 'Online' : 'Offline'}
+          </span>
         </div>
 
-        {/* Allocations */}
+        {/* Allocation pills */}
         <div className="flex flex-wrap gap-1.5 mb-3">
-          <span className="px-2 py-0.5 bg-surface-overlay rounded text-xs text-[var(--color-text-secondary)] font-mono">
-            {allocations?.plans_count || 0} plans
-          </span>
-          <span className="px-2 py-0.5 bg-surface-overlay rounded text-xs text-[var(--color-text-secondary)] font-mono">
-            {allocations?.goals_count || 0} goals
-          </span>
-          <span className="px-2 py-0.5 bg-surface-overlay rounded text-xs text-[var(--color-text-secondary)] font-mono">
-            {allocations?.tasks_count || 0} tasks
-          </span>
+          <span className="tonal-sky">{allocations?.plans_count || 0} plans</span>
+          <span className="tonal-emerald">{allocations?.goals_count || 0} goals</span>
+          <span className="tonal-violet">{allocations?.tasks_count || 0} tasks</span>
         </div>
 
-        {/* Connection Info & Actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-border">
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            {isReachable ? (
-              <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <WifiOff className="w-3.5 h-3.5 text-red-400" />
-            )}
-            <span className="font-mono">
-              {robot.task_server_info?.host}:{robot.task_server_info?.port}
-            </span>
-            {health?.latency_ms && (
-              <span className="text-emerald-400">({Math.round(health.latency_ms)}ms)</span>
-            )}
+        {/* Connection footer */}
+        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            {isReachable ? <Wifi className="w-3.5 h-3.5 text-emerald-500" /> : <WifiOff className="w-3.5 h-3.5 text-red-400" />}
+            <span className="font-mono">{robot.task_server_info?.host}:{robot.task_server_info?.port}</span>
+            {health?.latency_ms && <span className="text-emerald-600">({Math.round(health.latency_ms)}ms)</span>}
           </div>
-          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onCheckHealth(robot.robot_id)}
-              className="text-[var(--color-text-secondary)] hover:text-white"
-            >
-              <RefreshCw className="w-4 h-4" />
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+            <Button variant="ghost" size="sm" onClick={() => onCheckHealth(robot.robot_id)} className="text-slate-400 hover:text-slate-700 p-1.5 h-7 w-7">
+              <RefreshCw className="w-3.5 h-3.5" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(robot.robot_id)}
-              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-            >
-              <Trash2 className="w-4 h-4" />
+            <Button variant="ghost" size="sm" onClick={() => onDelete(robot.robot_id)} className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 h-7 w-7">
+              <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </div>
         </div>
 
-        {/* Error message */}
-        {health?.error && (
-          <p className="text-xs text-red-400 mt-2">{health.error}</p>
-        )}
+        {health?.error && <p className="text-xs text-red-600 mt-2">{health.error}</p>}
       </div>
     </Card>
   )
@@ -227,8 +201,8 @@ function ConfigSection({
       >
         <div className="flex items-center gap-2">
           {icon && <div className="text-[var(--color-text-secondary)]">{icon}</div>}
-          <h5 className="font-medium text-white">{title}</h5>
-          <span className="text-xs text-[var(--color-text-muted)] bg-surface-overlay px-2 py-0.5 rounded-full">
+          <h5 className="font-medium text-[var(--color-text)]">{title}</h5>
+          <span className="text-xs text-[var(--color-text-muted)] bg-slate-50 px-2 py-0.5 rounded-full">
             {items.length}
           </span>
         </div>
@@ -240,7 +214,7 @@ function ConfigSection({
       {isExpanded && (
         <div className="space-y-2">
           {items.map(({key, value}) => (
-            <div key={key} className="flex justify-between items-start py-1 border-b border-border/50">
+            <div key={key} className="flex justify-between items-start py-1 border-b border-slate-200/50">
               <span className="text-sm text-[var(--color-text-secondary)] font-mono flex-shrink-0 mr-4">{key}:</span>
               <span className="text-sm text-[var(--color-text)] font-mono break-all text-right">
                 {typeof value === 'object' ? JSON.stringify(value) : String(value)}
@@ -336,7 +310,7 @@ function ConfigurationViewer({
 
   return (
     <div className="space-y-4">
-      <div className="text-xs text-[var(--color-text-secondary)] font-mono p-2 bg-surface/60 rounded border border-border">
+      <div className="text-xs text-[var(--color-text-secondary)] font-mono p-2 bg-surface/60 rounded border border-slate-200">
         📁 {filePath}
       </div>
 
@@ -351,7 +325,7 @@ function ConfigurationViewer({
 
       {/* Raw JSON fallback */}
       <Card className="p-4">
-        <h5 className="font-medium text-white mb-3 flex items-center gap-2">
+        <h5 className="font-medium text-[var(--color-text)] mb-3 flex items-center gap-2">
           <FileCode className="w-4 h-4" />
           Raw Configuration
         </h5>
@@ -381,7 +355,7 @@ function TabNavigation({
   onTabChange: (tabId: string) => void
 }) {
   return (
-    <div className="flex border-b border-border mb-6">
+    <div className="flex border-b border-slate-200 mb-6">
       {tabs.map(tab => (
         <button
           key={tab.id}
@@ -432,7 +406,7 @@ function OverviewTab({ robot, health }: { robot: Robot, health?: RobotHealth }) 
       {robot.description && (
         <Card className="p-4">
           <h4 className="text-sm font-medium text-[var(--color-text-secondary)] mb-2 uppercase tracking-wide">Description</h4>
-          <p className="text-white leading-relaxed">{robot.description}</p>
+          <p className="text-[var(--color-text)] leading-relaxed">{robot.description}</p>
         </Card>
       )}
 
@@ -442,11 +416,11 @@ function OverviewTab({ robot, health }: { robot: Robot, health?: RobotHealth }) 
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-[var(--color-text-muted)]">Host:</span>
-            <span className="text-white ml-2 font-mono">{robot.task_server_info?.host || 'Unknown'}</span>
+            <span className="text-[var(--color-text)] ml-2 font-mono">{robot.task_server_info?.host || 'Unknown'}</span>
           </div>
           <div>
             <span className="text-[var(--color-text-muted)]">Port:</span>
-            <span className="text-white ml-2 font-mono">{robot.task_server_info?.port || 'Unknown'}</span>
+            <span className="text-[var(--color-text)] ml-2 font-mono">{robot.task_server_info?.port || 'Unknown'}</span>
           </div>
           <div>
             <span className="text-[var(--color-text-muted)]">Status:</span>
@@ -503,15 +477,15 @@ function AllocationsTab({ robotId }: { robotId: string }) {
       {/* Allocation Summary */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-white">{allocations.plans_count}</div>
+          <div className="text-2xl font-bold text-[var(--color-text)]">{allocations.plans_count}</div>
           <div className="text-sm text-[var(--color-text-secondary)]">Active Plans</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-white">{allocations.goals_count}</div>
+          <div className="text-2xl font-bold text-[var(--color-text)]">{allocations.goals_count}</div>
           <div className="text-sm text-[var(--color-text-secondary)]">Goals Assigned</div>
         </Card>
         <Card className="p-4 text-center">
-          <div className="text-2xl font-bold text-white">{allocations.tasks_count}</div>
+          <div className="text-2xl font-bold text-[var(--color-text)]">{allocations.tasks_count}</div>
           <div className="text-sm text-[var(--color-text-secondary)]">Tasks Assigned</div>
         </Card>
       </div>
@@ -520,7 +494,7 @@ function AllocationsTab({ robotId }: { robotId: string }) {
       {allocations.plans.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="font-medium text-white flex items-center gap-2">
+            <h4 className="font-medium text-[var(--color-text)] flex items-center gap-2">
               <Target className="w-4 h-4" />
               Allocated Plans ({allocations.plans.length})
             </h4>
@@ -549,21 +523,23 @@ function AllocationsTab({ robotId }: { robotId: string }) {
           {/* Plans Grid */}
           <div className="max-h-96 overflow-y-auto">
             {filteredPlans.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredPlans.map((plan) => (
                   <Card
                     key={plan.plan_id}
-                    className="p-3 cursor-pointer hover:bg-surface-elevated/50 transition-all duration-200 hover:shadow-lg hover:scale-[1.02]"
+                    className="p-4 cursor-pointer hover:bg-slate-50 transition-all duration-200 hover:shadow-md"
                     onClick={() => navigate(`/plans/${plan.plan_id}?from=robot-${robotId}`)}
                   >
-                    <div className="flex justify-between items-center mb-2">
-                      <div className="font-semibold text-white text-sm">#{plan.plan_id}: {plan.name}</div>
+                    <div className="flex justify-between items-start gap-2 mb-2">
+                      <div className="font-semibold text-slate-900 text-sm min-w-0 leading-snug">
+                        #{plan.plan_id}: {plan.name}
+                      </div>
                       <div className={cn(
-                        'px-1.5 py-0.5 rounded text-xs font-medium',
-                        plan.status === 'completed' ? 'bg-emerald-500/20 text-emerald-300' :
-                        plan.status === 'executing' ? 'bg-amber-500/20 text-amber-300' :
-                        plan.status === 'failed' ? 'bg-red-500/20 text-red-300' :
-                        'bg-amber-500/20 text-amber-300'
+                        'shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold',
+                        plan.status === 'completed' ? 'tonal-emerald' :
+                        plan.status === 'executing' ? 'tonal-amber' :
+                        plan.status === 'failed' ? 'tonal-red' :
+                        'tonal-amber'
                       )}>
                         {plan.status === 'not_executed' ? 'Pending' :
                          plan.status === 'executing' ? 'Running' :
@@ -574,47 +550,44 @@ function AllocationsTab({ robotId }: { robotId: string }) {
                     {/* Plan Name and Description */}
                     <div className="mb-3">
                       {plan.description && (
-                        <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2">
+                        <p className="text-xs text-slate-600 line-clamp-2">
                           {plan.description}
                         </p>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Robot Tasks Box */}
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 text-center">
-                        <div className="text-lg font-bold text-blue-300 mb-1">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col items-center justify-center text-center gap-1 rounded-lg bg-cyan-50 ring-1 ring-cyan-200/70 px-3 py-3 min-h-[5.5rem]">
+                        <span className="text-2xl font-bold tabular-nums text-cyan-950 leading-none">
                           {plan.task_count}
-                        </div>
-                        <div className="text-xs text-blue-400 font-medium leading-tight">
-                          Tasks Assigned<br />to this Robot
-                        </div>
+                        </span>
+                        <span className="text-[11px] font-semibold text-cyan-900 leading-snug">
+                          Tasks on this robot
+                        </span>
                       </div>
-
-                      {/* Plan Goals Box */}
-                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded p-2 text-center">
-                        <div className="text-lg font-bold text-emerald-300 mb-1">
+                      <div className="flex flex-col items-center justify-center text-center gap-1 rounded-lg bg-emerald-50 ring-1 ring-emerald-200/70 px-3 py-3 min-h-[5.5rem]">
+                        <span className="text-2xl font-bold tabular-nums text-emerald-950 leading-none">
                           {plan.goal_ids.length}
-                        </div>
-                        <div className="text-xs text-emerald-400 font-medium">
-                          Plan Goals
-                        </div>
+                        </span>
+                        <span className="text-[11px] font-semibold text-emerald-900 leading-snug">
+                          Plan goals
+                        </span>
                       </div>
                     </div>
 
                     {plan.goal_ids.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-border">
+                      <div className="mt-2 pt-2 border-t border-slate-200">
                         <div className="flex flex-wrap gap-0.5">
                           {plan.goal_ids.slice(0, 4).map((goalId) => (
                             <span
                               key={goalId}
-                              className="px-1.5 py-0.5 bg-cyber-500/20 text-cyber-300 rounded text-xs font-medium"
+                              className="px-1.5 py-0.5 bg-cyan-100 text-cyan-950 border border-cyan-300 rounded text-xs font-medium"
                             >
                               G{goalId}
                             </span>
                           ))}
                           {plan.goal_ids.length > 4 && (
-                            <span className="px-1.5 py-0.5 bg-surface-elevated text-[var(--color-text-secondary)] rounded text-xs">
+                            <span className="px-1.5 py-0.5 bg-slate-100 text-[var(--color-text-secondary)] rounded text-xs">
                               +{plan.goal_ids.length - 4}
                             </span>
                           )}
@@ -650,9 +623,9 @@ function CapabilitiesTab({ capabilities }: { capabilities: string[] }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Wrench className="w-5 h-5 text-[var(--color-text-secondary)]" />
-          <h4 className="text-lg font-semibold text-white">Robot Capabilities</h4>
+          <h4 className="text-lg font-semibold text-[var(--color-text)]">Robot Capabilities</h4>
         </div>
-        <span className="text-sm text-[var(--color-text-muted)] bg-surface-overlay px-3 py-1 rounded-full">
+        <span className="text-sm text-[var(--color-text-muted)] bg-slate-50 px-3 py-1 rounded-full">
           {capabilities.length} skills
         </span>
       </div>
@@ -662,7 +635,7 @@ function CapabilitiesTab({ capabilities }: { capabilities: string[] }) {
           {capabilities.map((capability, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 p-3 bg-surface-overlay/50 rounded-lg border border-border"
+              className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200"
             >
               <div className="w-2 h-2 bg-cyber-400 rounded-full flex-shrink-0"></div>
               <span className="text-sm text-[var(--color-text)] font-mono">
@@ -738,7 +711,7 @@ function ConfigurationTab({ robot }: { robot: Robot }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <FileCode className="w-5 h-5 text-[var(--color-text-secondary)]" />
-          <h4 className="text-lg font-semibold text-white">Configuration Details</h4>
+          <h4 className="text-lg font-semibold text-[var(--color-text)]">Configuration Details</h4>
         </div>
         <Button
           size="sm"
@@ -842,6 +815,7 @@ function RobotDetailModal({
 function SendTaskTab({ robot, health }: { robot: Robot, health?: RobotHealth }) {
   const [taskDescription, setTaskDescription] = useState('')
   const [isSending, setIsSending] = useState(false)
+  const [recordEpisode, setRecordEpisode] = useState(false)
   const [response, setResponse] = useState<{
     success: boolean
     message: string
@@ -849,6 +823,10 @@ function SendTaskTab({ robot, health }: { robot: Robot, health?: RobotHealth }) 
     timestamp: Date
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const telemetryRobotId = robot.task_server_info
+    ? `${robot.task_server_info.host}:${robot.task_server_info.port}`
+    : null
+  const telemetry = useTelemetryStream(telemetryRobotId)
 
   const handleSendTask = async () => {
     if (!taskDescription.trim()) {
@@ -869,13 +847,30 @@ function SendTaskTab({ robot, health }: { robot: Robot, health?: RobotHealth }) 
       const host = robot.task_server_info.host === 'host.docker.internal' ? 'localhost' : robot.task_server_info.host
       const robotUrl = `http://${host}:${robot.task_server_info.port}/do_task`
 
+      const taskId = crypto.randomUUID()
+
+      let fullDescription = taskDescription
+      try {
+        const statements = await worldApi.list()
+        if (statements.length > 0) {
+          const worldText = statements.map(s => s.statement).join('\n')
+          fullDescription = `STATEMENTS ABOUT THE WORLD:\n${worldText}\nDO THE FOLLOWING TASK:\n${taskDescription}`
+        } else {
+          fullDescription = `DO THE FOLLOWING TASK:\n${taskDescription}`
+        }
+      } catch {
+        fullDescription = `DO THE FOLLOWING TASK:\n${taskDescription}`
+      }
+
       const res = await fetch(robotUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          task_description: taskDescription
+          task_description: fullDescription,
+          task_id: taskId,
+          record_episode: recordEpisode,
         }),
       })
 
@@ -929,7 +924,7 @@ function SendTaskTab({ robot, health }: { robot: Robot, health?: RobotHealth }) 
             value={taskDescription}
             onChange={(e) => setTaskDescription(e.target.value)}
             placeholder="Enter a natural language task description (e.g., 'navigate to the kitchen and pick up the red cup')"
-            className="w-full h-28 px-3 py-2 bg-surface-overlay border border-border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyber-500 resize-none text-sm"
+            className="w-full h-28 px-3 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 resize-none text-sm"
             disabled={!isReachable || isSending}
           />
 
@@ -939,7 +934,20 @@ function SendTaskTab({ robot, health }: { robot: Robot, health?: RobotHealth }) 
             </div>
           )}
 
-          <div className="flex justify-end mt-3">
+          <div className="flex items-center justify-between mt-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={recordEpisode}
+                onChange={(e) => setRecordEpisode(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-cyan-500 transition-colors relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-4 after:h-4 after:bg-white after:rounded-full after:transition-transform peer-checked:after:translate-x-4 after:shadow-sm" />
+              <span className="text-sm font-medium text-slate-600 group-hover:text-slate-800">
+                Record Episode
+              </span>
+              <span className="text-xs text-slate-400">(save telemetry to Parquet + blobs)</span>
+            </label>
             <Button
               onClick={handleSendTask}
               disabled={!isReachable || isSending || !taskDescription.trim()}
@@ -1006,68 +1014,113 @@ function SendTaskTab({ robot, health }: { robot: Robot, health?: RobotHealth }) 
         )}
       </div>
 
-      {/* Right column: telemetry panels */}
+      {/* Right column: live telemetry */}
       <div className="space-y-4">
-        {/* Video feed */}
-        <div className="rounded-lg border border-border bg-surface-overlay/60 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
+        {/* Telemetry connection indicator */}
+        <div className="flex items-center gap-2 text-xs">
+          {telemetry.connected ? (
+            <>
+              <Wifi className="w-3.5 h-3.5 text-emerald-600" />
+              <span className="text-emerald-700 font-medium">Telemetry connected</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-slate-400">Telemetry disconnected</span>
+            </>
+          )}
+        </div>
+
+        {/* Video feed — MJPEG stream from telemetry server media plane */}
+        <div className="rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200">
             <Video className="w-4 h-4 text-[var(--color-text-muted)]" />
             <span className="text-sm font-medium text-[var(--color-text-secondary)]">Live Video Feed</span>
+            <span className="text-xs text-[var(--color-text-muted)] ml-auto font-mono">MJPEG</span>
           </div>
-          <div className="aspect-video flex flex-col items-center justify-center text-[var(--color-text-muted)] bg-surface/50">
-            <Video className="w-10 h-10 mb-3 opacity-40" />
-            <p className="text-sm">Video feed not connected</p>
-            <p className="text-xs mt-1 font-mono opacity-50">
-              /robots/{robot.robot_id}/video
-            </p>
-          </div>
+          {telemetryRobotId ? (
+            <div className="aspect-video bg-black flex items-center justify-center">
+              <LiveVideoCanvas robotId={telemetryRobotId} className="w-full h-full" />
+            </div>
+          ) : (
+            <div className="aspect-video flex flex-col items-center justify-center text-[var(--color-text-muted)] bg-surface/50">
+              <Video className="w-10 h-10 mb-3 opacity-40" />
+              <p className="text-sm">No video feed available</p>
+            </div>
+          )}
         </div>
 
         {/* Joint states */}
-        <div className="rounded-lg border border-border bg-surface-overlay/60 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
+        <div className="rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200">
             <Activity className="w-4 h-4 text-[var(--color-text-muted)]" />
             <span className="text-sm font-medium text-[var(--color-text-secondary)]">Joint States</span>
           </div>
           <div className="p-4">
             <table className="w-full text-xs">
               <thead>
-                <tr className="text-[var(--color-text-muted)] border-b border-border-subtle">
+                <tr className="text-[var(--color-text-muted)] border-b border-slate-200">
                   <th className="text-left pb-2 font-medium">Joint</th>
                   <th className="text-right pb-2 font-medium">Position</th>
                   <th className="text-right pb-2 font-medium">Velocity</th>
-                  <th className="text-right pb-2 font-medium">Torque</th>
+                  <th className="text-right pb-2 font-medium">Effort</th>
                 </tr>
               </thead>
-              <tbody className="text-[var(--color-text-muted)]">
-                {['base', 'shoulder', 'elbow', 'wrist_1', 'wrist_2', 'gripper'].map(joint => (
-                  <tr key={joint} className="border-b border-border-subtle">
-                    <td className="py-1.5 font-mono">{joint}</td>
-                    <td className="py-1.5 text-right">—</td>
-                    <td className="py-1.5 text-right">—</td>
-                    <td className="py-1.5 text-right">—</td>
+              <tbody className="text-[var(--color-text)]">
+                {telemetry.jointStates.length > 0 ? (
+                  telemetry.jointStates.map((joint) => (
+                    <tr key={joint.name} className="border-b border-slate-200">
+                      <td className="py-1.5 font-mono text-slate-700">{joint.name}</td>
+                      <td className="py-1.5 text-right font-mono">{joint.position.toFixed(4)}</td>
+                      <td className="py-1.5 text-right font-mono">{joint.velocity.toFixed(4)}</td>
+                      <td className="py-1.5 text-right font-mono">{joint.effort.toFixed(4)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="py-4 text-center text-[var(--color-text-muted)]">
+                      No joint data received
+                    </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
-            <p className="text-xs text-[var(--color-text-muted)] font-mono mt-3 text-center opacity-50">
-              /robots/{robot.robot_id}/joints
-            </p>
           </div>
         </div>
 
-        {/* Command log */}
-        <div className="rounded-lg border border-border bg-surface-overlay/60 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle">
+        {/* Action command log */}
+        <div className="rounded-lg border border-slate-200 bg-slate-50/60 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200">
             <Terminal className="w-4 h-4 text-[var(--color-text-muted)]" />
-            <span className="text-sm font-medium text-[var(--color-text-secondary)]">Joint Commands</span>
+            <span className="text-sm font-medium text-[var(--color-text-secondary)]">Action Commands</span>
+            {telemetry.actionLog.length > 0 && (
+              <span className="text-xs text-[var(--color-text-muted)] ml-auto">{telemetry.actionLog.length} entries</span>
+            )}
           </div>
-          <div className="h-32 flex flex-col items-center justify-center text-[var(--color-text-muted)] bg-surface/50">
-            <Terminal className="w-8 h-8 mb-2 opacity-40" />
-            <p className="text-xs">Command stream not connected</p>
-            <p className="text-xs mt-1 font-mono opacity-50">
-              /robots/{robot.robot_id}/commands
-            </p>
+          <div className="max-h-40 overflow-y-auto">
+            {telemetry.actionLog.length > 0 ? (
+              <div className="divide-y divide-slate-200">
+                {telemetry.actionLog.slice(0, 20).map((entry, i) => (
+                  <div key={i} className="px-4 py-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      {entry.attributes?.cmd_type && (
+                        <span className="font-mono text-cyan-700 bg-cyan-50 px-1.5 py-0.5 rounded">
+                          {entry.attributes.cmd_type}
+                        </span>
+                      )}
+                      <span className="text-[var(--color-text-muted)] font-mono">
+                        {entry.signals.map(s => `${s.name}: ${s.values[0]?.toFixed(3)}`).join(', ')}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="h-24 flex flex-col items-center justify-center text-[var(--color-text-muted)]">
+                <Terminal className="w-8 h-8 mb-2 opacity-40" />
+                <p className="text-xs">No commands received</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1127,7 +1180,7 @@ function RegisterRobotModal({
             value={configPath}
             onChange={(e) => setConfigPath(e.target.value)}
             placeholder="robot_fleet/robots/examples/moma/moma.yaml"
-            className="w-full px-4 py-2 bg-surface-overlay border border-border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyber-500 font-mono text-sm"
+            className="w-full px-4 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-mono text-sm"
             required
           />
           <p className="text-xs text-[var(--color-text-muted)] mt-1">
@@ -1144,7 +1197,7 @@ function RegisterRobotModal({
             value={robotId}
             onChange={(e) => setRobotId(e.target.value)}
             placeholder="moma-kitchen"
-            className="w-full px-4 py-2 bg-surface-overlay border border-border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyber-500 font-mono text-sm"
+            className="w-full px-4 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-mono text-sm"
             required
           />
           <p className="text-xs text-[var(--color-text-muted)] mt-1">
@@ -1162,7 +1215,7 @@ function RegisterRobotModal({
               value={host}
               onChange={(e) => setHost(e.target.value)}
               placeholder="localhost"
-              className="w-full px-4 py-2 bg-surface-overlay border border-border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyber-500 font-mono text-sm"
+              className="w-full px-4 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-mono text-sm"
               required
             />
           </div>
@@ -1178,7 +1231,7 @@ function RegisterRobotModal({
               placeholder="8001"
               min={1}
               max={65535}
-              className="w-full px-4 py-2 bg-surface-overlay border border-border rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyber-500 font-mono text-sm"
+              className="w-full px-4 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 font-mono text-sm"
               required
             />
           </div>
@@ -1393,46 +1446,47 @@ export function Robots() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Robot Fleet</h1>
-          <p className="text-[var(--color-text-secondary)]">
-            {robots.length} registered • {connectedCount} connected
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="secondary" 
-            onClick={refreshAllFromYaml}
-            disabled={isRefreshingAll || robots.length === 0}
-            title="Re-read all YAML files and update robot capabilities"
-          >
-            <Download className={cn("w-4 h-4", isRefreshingAll && "animate-spin")} />
-            {isRefreshingAll ? 'Syncing...' : 'Sync YAMLs'}
-          </Button>
-          <Button 
-            variant="secondary" 
-            onClick={checkAllHealth}
-            disabled={isCheckingAll || robots.length === 0}
-          >
-            <RefreshCw className={cn("w-4 h-4", isCheckingAll && "animate-spin")} />
-            {isCheckingAll ? 'Checking...' : 'Check All'}
-          </Button>
-          <Button onClick={() => setIsRegisterModalOpen(true)}>
-            <Plus className="w-4 h-4" />
-            Register Robot
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Robot Fleet"
+        meta={
+          <>
+            {robots.length} registered · {connectedCount} connected
+          </>
+        }
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              onClick={refreshAllFromYaml}
+              disabled={isRefreshingAll || robots.length === 0}
+              title="Re-read all YAML files and update robot capabilities"
+            >
+              <Download className={cn('w-4 h-4', isRefreshingAll && 'animate-spin')} />
+              {isRefreshingAll ? 'Syncing...' : 'Sync YAMLs'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={checkAllHealth}
+              disabled={isCheckingAll || robots.length === 0}
+            >
+              <RefreshCw className={cn('w-4 h-4', isCheckingAll && 'animate-spin')} />
+              {isCheckingAll ? 'Checking...' : 'Check All'}
+            </Button>
+            <Button onClick={() => setIsRegisterModalOpen(true)}>
+              <Plus className="w-4 h-4" />
+              Register Robot
+            </Button>
+          </>
+        }
+      />
 
       {/* Refresh Message */}
       {refreshMessage && (
         <div className={cn(
-          'p-3 rounded-lg border text-sm',
+          'p-3 rounded-xl text-sm ring-1',
           refreshMessage.startsWith('✓') 
-            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-            : 'bg-red-500/10 border-red-500/20 text-red-400'
+            ? 'bg-emerald-50 ring-emerald-200/70 text-emerald-800'
+            : 'bg-red-50 ring-red-200/70 text-red-800'
         )}>
           {refreshMessage}
         </div>

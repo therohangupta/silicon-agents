@@ -15,6 +15,7 @@ services:
       GRPC_SERVER_ADDRESS: fleet-server:50051
       DATABASE_URL: postgresql+asyncpg://robot_user:secret@db:5432/robot_fleet
       TELEMETRY_URL: http://telemetry:9000
+      NATS_URL: nats://nats:4222
 
   fleet-server:
     volumes:
@@ -31,6 +32,15 @@ services:
       dockerfile: services/telemetry/Dockerfile
     volumes:
       - ./services/telemetry/src:/app/services/telemetry/src:ro
+      - ./packages:/app/packages:ro
     command: ["uvicorn", "services.telemetry.src.main:app", "--host", "0.0.0.0", "--port", "9000", "--reload"]
     environment:
       GATEWAY_EVENT_URL: http://gateway:8000/internal/events
+      NATS_URL: nats://nats:4222
+
+  storage-writer:
+    volumes:
+      - ./services/storage_writer/src:/app/services/storage_writer/src:ro
+      - ./packages:/app/packages:ro
+    environment:
+      NATS_URL: nats://nats:4222

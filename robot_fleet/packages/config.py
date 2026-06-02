@@ -111,6 +111,25 @@ HEARTBEAT_SCANNER_INTERVAL_SECS = 0.5
 MAX_HEARTBEATS_PER_ROBOT = 20
 
 # =============================================================================
+# NATS / Message Bus
+# =============================================================================
+
+NATS_URL = os.environ.get("NATS_URL", "nats://localhost:4222")
+
+# =============================================================================
+# Telemetry Storage
+# =============================================================================
+
+BLOB_STORAGE_BACKEND = os.environ.get("BLOB_STORAGE_BACKEND", "local")  # "local" | "s3"
+BLOB_STORAGE_ROOT = os.environ.get("BLOB_STORAGE_ROOT", str(REPO_ROOT / "data" / "blobs"))
+PARQUET_STORAGE_ROOT = os.environ.get("PARQUET_STORAGE_ROOT", str(REPO_ROOT / "data" / "parquet"))
+
+S3_BUCKET = os.environ.get("S3_BUCKET", "")
+S3_REGION = os.environ.get("S3_REGION", "us-east-1")
+
+TELEMETRY_GRPC_PORT = int(os.environ.get("TELEMETRY_GRPC_PORT", "9001"))
+
+# =============================================================================
 # CORS Configuration
 # =============================================================================
 

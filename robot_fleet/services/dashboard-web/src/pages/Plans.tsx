@@ -6,6 +6,7 @@ import {
   AlertCircle, Users, Zap, AlertTriangle, Copy, Search, Loader2, ChevronDown, Rocket, Wand2, FileText, XCircle, RotateCcw
 } from 'lucide-react'
 import { Card } from '../components/common/Card'
+import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/common/Button'
 import { Modal } from '../components/common/Modal'
 import { ManualPlanCreation } from '../components/modals/ManualPlanCreation'
@@ -37,21 +38,21 @@ function MethodSelectionCard({
   return (
     <Card
       className={cn(
-        'cursor-pointer hover:border-border transition-all p-3',
+        'cursor-pointer hover:border-slate-200 transition-all p-3',
         isSelected && 'ring-2 ring-cyber-500/50 shadow-lg shadow-cyber-500/20 border-cyber-500'
       )}
       onClick={onClick}
     >
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-white text-sm">{method.name}</h3>
+          <h3 className="font-semibold text-[var(--color-text)] text-sm">{method.name}</h3>
           <div className="flex items-center gap-2">
             <span className={cn(
               'px-2 py-0.5 rounded text-xs font-medium border',
-              method.method_type === 'foundation model' && 'bg-blue-500/10 border-blue-500/30 text-blue-400',
-              method.method_type === 'hybrid' && 'bg-purple-500/10 border-purple-500/30 text-purple-400',
-              method.method_type === 'algorithmic' && 'bg-orange-500/10 border-orange-500/30 text-orange-400',
-              method.method_type === 'manual' && 'bg-surface-elevated/30 border-border text-[var(--color-text-secondary)]'
+              method.method_type === 'foundation model' && 'tonal-sky',
+              method.method_type === 'hybrid' && 'tonal-violet',
+              method.method_type === 'algorithmic' && 'tonal-orange',
+              method.method_type === 'manual' && 'bg-slate-50 border-slate-200 text-[var(--color-text-secondary)]'
             )}>
               {method.method_type}
             </span>
@@ -299,10 +300,10 @@ export function Plans() {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-surface-elevated rounded w-48"></div>
+          <div className="h-8 bg-slate-100 rounded w-48"></div>
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-32 bg-surface-elevated rounded"></div>
+              <div key={i} className="h-32 bg-slate-100 rounded"></div>
             ))}
           </div>
         </div>
@@ -315,11 +316,11 @@ export function Plans() {
     return (
       <div className="p-6">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-surface-elevated rounded w-48"></div>
+          <div className="h-8 bg-slate-100 rounded w-48"></div>
           <div className="text-[var(--color-text-secondary)]">Loading plan statuses...</div>
           <div className="space-y-3">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-32 bg-surface-elevated rounded"></div>
+              <div key={i} className="h-32 bg-slate-100 rounded"></div>
             ))}
           </div>
         </div>
@@ -329,27 +330,28 @@ export function Plans() {
 
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Plans</h1>
-          <p className="text-[var(--color-text-secondary)] mt-1">
-            {plans.length} of {allPlans.length} plans
-            {searchTerm && ` matching "${searchTerm}"`}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Wand2 className="w-4 h-4 mr-2" />
-            Create Plan with AI
-          </Button>
-          <Button onClick={() => setIsManualPlanModalOpen(true)} variant="secondary">
-            <FileText className="w-4 h-4 mr-2" />
-            Create Plan Manually
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Plans"
+        meta={
+          <>
+            {plans.length} of {allPlans.length} shown
+            {searchTerm && ` · matching "${searchTerm}"`}
+          </>
+        }
+        actions={
+          <>
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Wand2 className="w-4 h-4 mr-2" />
+              Create Plan with AI
+            </Button>
+            <Button onClick={() => setIsManualPlanModalOpen(true)} variant="secondary">
+              <FileText className="w-4 h-4 mr-2" />
+              Create Plan Manually
+            </Button>
+          </>
+        }
+      />
 
       {/* Search and Sort Controls */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -361,7 +363,7 @@ export function Plans() {
             placeholder="Search plans by name, description, or ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-surface-overlay/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500/50"
+            className="w-full pl-10 pr-4 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
           />
         </div>
 
@@ -370,7 +372,7 @@ export function Plans() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'id' | 'created_at')}
-            className="px-3 py-2 bg-surface-overlay/50 border border-border rounded-lg text-white focus:outline-none focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500/50"
+            className="px-3 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-cyan-500/30"
           >
             <option value="created_at">Date Created</option>
             <option value="id">Plan ID</option>
@@ -378,7 +380,7 @@ export function Plans() {
 
           <button
             onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            className="px-3 py-2 bg-surface-overlay/50 border border-border rounded-lg text-white hover:bg-surface-elevated/50 transition-colors flex items-center gap-1"
+            className="px-3 py-2 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] hover:bg-slate-100 transition-colors flex items-center gap-1"
           >
             {sortOrder === 'asc' ? '↑' : '↓'}
             <ChevronDown className="w-4 h-4" />
@@ -425,7 +427,7 @@ export function Plans() {
               'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
               statusFilter === key
                 ? 'bg-cyber-500 text-white'
-                : 'bg-surface-elevated text-[var(--color-text)] hover:bg-surface-elevated'
+                : 'bg-slate-100 text-[var(--color-text)] hover:bg-slate-100'
             )}
           >
             {label} ({count})
@@ -476,14 +478,14 @@ export function Plans() {
             const taskCount = Array.isArray(plan.task_ids) ? plan.task_ids.length : 0
 
             // Determine badge safely
-            let badgeConfig = { bg: 'bg-surface-elevated/30', border: 'border-border', text: 'text-[var(--color-text-secondary)]', label: 'Unknown', icon: AlertTriangle }
+            let badgeConfig = { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-[var(--color-text-secondary)]', label: 'Unknown', icon: AlertTriangle }
 
             if (executionStatus === 'completed') {
-              badgeConfig = { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', label: 'Completed', icon: CheckCircle }
+              badgeConfig = { bg: 'bg-emerald-100', border: 'border-emerald-300', text: 'text-emerald-950', label: 'Completed', icon: CheckCircle }
             } else if (executionStatus === 'failed') {
-              badgeConfig = { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', label: 'Failed', icon: XCircle }
+              badgeConfig = { bg: 'bg-red-100', border: 'border-red-300', text: 'text-red-950', label: 'Failed', icon: XCircle }
             } else if (executionStatus === 'executing') {
-              badgeConfig = { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', label: 'Running', icon: Play }
+              badgeConfig = { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-950', label: 'Running', icon: Play }
             } else if (status?.status === 'fully_allocated') {
               // Safe robot availability check
               let assignedRobotIds: string[] = []
@@ -506,167 +508,122 @@ export function Plans() {
               })
 
               if (robotsReady) {
-                badgeConfig = { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400', label: 'Ready', icon: Zap }
+                badgeConfig = { bg: 'bg-sky-100', border: 'border-sky-300', text: 'text-sky-950', label: 'Ready', icon: Zap }
               } else {
-                badgeConfig = { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'Robots Offline', icon: AlertTriangle }
+                badgeConfig = { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-950', label: 'Robots Offline', icon: AlertTriangle }
               }
             } else if (status?.status === 'partially_allocated') {
-              badgeConfig = { bg: 'bg-orange-500/10', border: 'border-orange-500/30', text: 'text-orange-400', label: 'Partial', icon: AlertCircle }
+              badgeConfig = { bg: 'bg-orange-100', border: 'border-orange-300', text: 'text-orange-950', label: 'Partial', icon: AlertCircle }
             } else if (status?.status === 'unallocated') {
-              badgeConfig = { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', label: 'Needs Allocation', icon: Users }
+              badgeConfig = { bg: 'bg-amber-100', border: 'border-amber-300', text: 'text-amber-950', label: 'Needs Allocation', icon: Users }
             } else if (status?.status === 'empty' || (status?.total_tasks || 0) === 0) {
-              badgeConfig = { bg: 'bg-surface-elevated/30', border: 'border-border', text: 'text-[var(--color-text-secondary)]', label: 'No Tasks', icon: AlertTriangle }
+              badgeConfig = { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-[var(--color-text-secondary)]', label: 'No Tasks', icon: AlertTriangle }
             }
 
             return (
-              <Card key={plan.plan_id} className="p-4 hover:bg-surface-overlay/50 transition-colors cursor-pointer"
+              <Card key={plan.plan_id} hover className="group relative overflow-hidden p-0 cursor-pointer"
                     onClick={() => navigate(`/plans/${plan.plan_id}`)}>
-                {/* Plan Header */}
-                <div className="flex items-start justify-between mb-3">
-                  {/* Plan ID Badge - Left */}
-                  <span className="px-2 py-1 bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 rounded text-xs font-semibold">
-                    P{plan.plan_id}
-                  </span>
+                {/* Top accent */}
+                <div className={cn(
+                  'h-1 transition-opacity',
+                  badgeConfig.label === 'Completed' ? 'bg-gradient-to-r from-emerald-400 to-cyan-400' :
+                  badgeConfig.label === 'Running' ? 'bg-gradient-to-r from-amber-400 to-orange-400' :
+                  badgeConfig.label === 'Failed' ? 'bg-gradient-to-r from-red-400 to-rose-400' :
+                  'bg-gradient-to-r from-cyan-500 via-violet-500 to-cyan-500 opacity-40 group-hover:opacity-100'
+                )} />
 
-                  {/* Action Buttons - Top Right */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const copyName = plan.name ? `${plan.name} (Copy)` : `Plan #${plan.plan_id} (Copy)`
-                        const copyDescription = plan.description || 'Copy of plan'
-
-                        copyPlanMutation.mutate({
-                          planId: plan.plan_id,
-                          name: copyName,
-                          description: copyDescription
-                        })
-                      }}
-                      disabled={copyingPlanId !== null}
-                      className="text-green-400 hover:text-green-300 hover:bg-green-500/10 p-2 h-8 w-8"
-                      title="Copy plan for re-execution"
-                    >
-                      {copyingPlanId === plan.plan_id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        deleteMutation.mutate(plan.plan_id)
-                      }}
-                      disabled={deleteMutation.isPending}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 h-8 w-8"
-                      title="Delete plan"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                <div className="p-5">
+                  {/* Header row */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="tonal-plan-id">P{plan.plan_id}</span>
+                      <span className={cn('inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full', badgeConfig.bg, 'ring-1', badgeConfig.border, badgeConfig.text)}>
+                        <badgeConfig.icon className="w-3 h-3" />
+                        {badgeConfig.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const copyName = plan.name ? `${plan.name} (Copy)` : `Plan #${plan.plan_id} (Copy)`
+                          const copyDescription = plan.description || 'Copy of plan'
+                          copyPlanMutation.mutate({ planId: plan.plan_id, name: copyName, description: copyDescription })
+                        }}
+                        disabled={copyingPlanId !== null}
+                        className="text-cyan-600 hover:text-cyan-800 hover:bg-cyan-50 p-1.5 h-7 w-7"
+                        title="Copy plan"
+                      >
+                        {copyingPlanId === plan.plan_id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(plan.plan_id) }}
+                        disabled={deleteMutation.isPending}
+                        className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 h-7 w-7"
+                        title="Delete plan"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                {/* Plan Name and Execution Status Row */}
-                <div className="flex items-start justify-between mb-2">
-                  {/* Plan Name and Description - Left */}
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white text-sm mb-1 line-clamp-1">
-                      {plan.name}
-                    </h3>
-                    {plan.description && (
-                      <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2">
-                        {plan.description}
-                      </p>
+                  {/* Name + Description */}
+                  <h3 className="font-semibold text-slate-900 text-sm mb-1 line-clamp-1">{plan.name}</h3>
+                  {plan.description && (
+                    <p className="text-xs text-slate-500 line-clamp-2 mb-3">{plan.description}</p>
+                  )}
+
+                  {/* Strategy tags */}
+                  <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                    {plan.planning_strategy && (
+                      <button
+                        className="tonal-sky hover:ring-cyan-400 transition-shadow"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (plan.planning_strategy === 4) return
+                          const methodId = getPlanningMethodId(plan.planning_strategy)
+                          navigate(`/plans?plan=${plan.plan_id}&method_type=planner&method=${methodId}`)
+                        }}
+                      >
+                        {getPlanningStrategyName(plan.planning_strategy)}
+                      </button>
+                    )}
+                    {status?.status && status.status !== 'unallocated' && plan.allocation_strategy && plan.allocation_strategy !== 4 && (
+                      <button
+                        className="tonal-violet hover:ring-violet-400 transition-shadow"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (plan.allocation_strategy === 5) return
+                          const methodId = getAllocationMethodId(plan.allocation_strategy)
+                          navigate(`/plans?plan=${plan.plan_id}&method_type=allocator&method=${methodId}`)
+                        }}
+                      >
+                        {getAllocationStrategyName(plan.allocation_strategy)}
+                      </button>
                     )}
                   </div>
 
-                  {/* Execution Status - Right */}
-                  <span className={cn('px-2 py-1 rounded text-xs flex items-center gap-1 font-medium ml-2', badgeConfig.bg, 'border', badgeConfig.border, badgeConfig.text)}>
-                    <badgeConfig.icon className="w-3 h-3" />
-                    {badgeConfig.label}
-                  </span>
-                </div>
-
-                {/* Strategy Information - Tag Style */}
-                <div className="flex items-center gap-2 mb-4">
-                  {plan.planning_strategy && (
-                    <button
-                      className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-sm font-semibold hover:bg-blue-500/30 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        // Manual planning is not a method-details modal
-                        if (plan.planning_strategy === 4) return
-                        const methodId = getPlanningMethodId(plan.planning_strategy)
-                        console.log('Planning method clicked:', plan.planning_strategy, '-> methodId:', methodId)
-                        navigate(`/plans?plan=${plan.plan_id}&method_type=planner&method=${methodId}`)
-                      }}
-                    >
-                      {getPlanningStrategyName(plan.planning_strategy)}
-                    </button>
-                  )}
-                  {status?.status && status.status !== 'unallocated' && plan.allocation_strategy && plan.allocation_strategy !== 4 && (
-                    <button
-                      className="px-3 py-1.5 bg-purple-500/20 border border-purple-500/40 text-purple-300 rounded-lg text-sm font-semibold hover:bg-purple-500/30 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        // Manual allocation is not a method-details modal
-                        if (plan.allocation_strategy === 5) return
-                        const methodId = getAllocationMethodId(plan.allocation_strategy)
-                        navigate(`/plans?plan=${plan.plan_id}&method_type=allocator&method=${methodId}`)
-                      }}
-                    >
-                      {getAllocationStrategyName(plan.allocation_strategy)}
-                    </button>
-                  )}
-                </div>
-
-                {/* Statistics Boxes - 3 Columns */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
-                  {/* Goals Box */}
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded p-2 text-center">
-                    <div className="text-lg font-bold text-emerald-300 mb-1">
-                      {goalCount}
+                  {/* Stats row */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    <div className="rounded-lg bg-emerald-50 ring-1 ring-emerald-200/70 p-2.5 text-center">
+                      <div className="text-lg font-bold text-emerald-800 tabular-nums">{goalCount}</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600">Goals</div>
                     </div>
-                    <div className="text-xs text-emerald-400 font-medium">
-                      Goals
+                    <div className="rounded-lg bg-cyan-50 ring-1 ring-cyan-200/70 p-2.5 text-center">
+                      <div className="text-lg font-bold text-cyan-800 tabular-nums">{taskCount}</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-cyan-600">Tasks</div>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 ring-1 ring-slate-200/70 p-2.5 text-center">
+                      <div className="text-lg font-bold text-slate-800 tabular-nums">
+                        {status && status.total_tasks > 0 ? `${Math.round((status.allocated_tasks / status.total_tasks) * 100)}%` : '0%'}
+                      </div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Allocated</div>
                     </div>
                   </div>
-
-                  {/* Tasks Box */}
-                  <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 text-center">
-                    <div className="text-lg font-bold text-blue-300 mb-1">
-                      {taskCount}
-                    </div>
-                    <div className="text-xs text-blue-400 font-medium">
-                      Tasks
-                    </div>
-                  </div>
-
-                  {/* Allocation Box */}
-                  {status && status.total_tasks > 0 ? (
-                    <div className="bg-surface-elevated/30 border border-border rounded p-2 text-center">
-                      <div className="text-lg font-bold text-[var(--color-text)] mb-1">
-                        {Math.round((status.allocated_tasks / status.total_tasks) * 100)}%
-                      </div>
-                      <div className="text-xs text-[var(--color-text-secondary)]">
-                        Allocated
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-surface-elevated/30 border border-border rounded p-2 text-center opacity-50">
-                      <div className="text-lg font-bold text-[var(--color-text-muted)] mb-1">
-                        0%
-                      </div>
-                      <div className="text-xs text-[var(--color-text-muted)]">
-                        Allocated
-                      </div>
-                    </div>
-                  )}
-                </div>
 
                 {/* Action Buttons - Full Width */}
                 <div className="w-full">
@@ -723,7 +680,7 @@ export function Plans() {
                   {/* Restart Button (for failed plans) */}
                   {plan.execution_status === 'failed' && (
                     <Button
-                      className="w-full mt-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30"
+                      className="w-full mt-2 bg-red-100 hover:bg-red-200 text-red-950 border border-red-300"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation()
@@ -742,6 +699,7 @@ export function Plans() {
                     </Button>
                   )}
                 </div>
+              </div>
               </Card>
               )
            })}
@@ -800,8 +758,8 @@ export function Plans() {
       {copyingPlanId && (
         <Modal isOpen={true} onClose={() => {}} title="" size="sm">
           <div className="flex flex-col items-center justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mb-4" />
-            <h3 className="text-lg font-semibold text-white mb-2">Copying Plan #{copyingPlanId}</h3>
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-700 mb-4" />
+            <h3 className="text-lg font-semibold text-[var(--color-text)] mb-2">Copying Plan #{copyingPlanId}</h3>
             <p className="text-[var(--color-text-secondary)] text-center">
               Creating a duplicate plan for re-execution...
             </p>
@@ -906,7 +864,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
             value={planName}
             onChange={(e) => setPlanName(e.target.value)}
             placeholder="Enter a descriptive name for your plan"
-            className="w-full px-4 py-3 bg-surface-elevated/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all"
+            className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-lg text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all"
           />
         </div>
         <div>
@@ -918,7 +876,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
             onChange={(e) => setPlanDescription(e.target.value)}
             rows={3}
             placeholder="Describe what this plan accomplishes..."
-            className="w-full px-4 py-3 bg-surface-elevated/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all resize-none"
+            className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-lg text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all resize-none"
           />
         </div>
       </div>
@@ -928,7 +886,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
           {/* Planning Methods Column */}
           <div className="space-y-4">
-            <h4 className="text-base font-medium text-white flex items-center gap-2">
+            <h4 className="text-base font-medium text-[var(--color-text)] flex items-center gap-2">
               <span className="w-2 h-2 bg-cyber-400 rounded-full"></span>
               Planning Methods
             </h4>
@@ -941,8 +899,8 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
                   className={cn(
                     'px-3 py-1 text-xs rounded-full border transition-all',
                     plannerFilter === type
-                      ? 'bg-cyber-500/20 border-cyber-500/50 text-cyber-300'
-                      : 'border-border text-[var(--color-text-secondary)] hover:border-border-strong'
+                      ? 'bg-cyan-100 border-cyan-400 text-cyan-950'
+                      : 'border-slate-200 text-[var(--color-text-secondary)] hover:border-slate-200-strong'
                   )}
                 >
                   {type === 'all' ? 'All' : type}
@@ -963,7 +921,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
 
           {/* Allocation Methods Column */}
           <div className="space-y-4">
-            <h4 className="text-base font-medium text-white flex items-center gap-2">
+            <h4 className="text-base font-medium text-[var(--color-text)] flex items-center gap-2">
               <span className="w-2 h-2 bg-emerald-400 rounded-full"></span>
               Allocation Methods
             </h4>
@@ -976,8 +934,8 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
                   className={cn(
                     'px-3 py-1 text-xs rounded-full border transition-all',
                     allocatorFilter === type
-                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                      : 'border-border text-[var(--color-text-secondary)] hover:border-border-strong'
+                      ? 'bg-emerald-100 border-emerald-400 text-emerald-950'
+                      : 'border-slate-200 text-[var(--color-text-secondary)] hover:border-slate-200-strong'
                   )}
                 >
                   {type === 'all' ? 'All' : type}
@@ -996,13 +954,13 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
             </div>
 
             {/* No Allocation Option */}
-            <div className="pt-4 border-t border-border">
+            <div className="pt-4 border-t border-slate-200">
               <Card
                 className={cn(
                   'cursor-pointer transition-all p-3',
                   skipAllocation
                     ? 'ring-2 ring-amber-500/50 border-amber-500 bg-gradient-to-br from-amber-500/10 to-orange-500/10'
-                    : 'hover:border-border-strong border-border'
+                    : 'hover:border-slate-200-strong border-slate-200'
                 )}
                 onClick={() => {
                   setSkipAllocation(!skipAllocation)
@@ -1023,7 +981,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
                     )}
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-semibold text-white text-sm mb-1">Skip Allocation</h4>
+                    <h4 className="font-semibold text-[var(--color-text)] text-sm mb-1">Skip Allocation</h4>
                     <p className="text-xs text-[var(--color-text-secondary)]">Create plan without automatic robot allocation - assign robots manually later</p>
                   </div>
                 </div>
@@ -1036,7 +994,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
       {/* Goals Selection - Beautiful Cards with Search */}
       <div>
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-[var(--color-text)] flex items-center gap-3">
             <span className="w-3 h-3 bg-gradient-to-r from-violet-400 to-pink-400 rounded-full"></span>
             Select Goals to Plan For
           </h3>
@@ -1053,7 +1011,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
             placeholder="Search goals by ID or description..."
             value={goalSearch}
             onChange={(e) => setGoalSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-surface-overlay/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 transition-all"
+            className="w-full pl-10 pr-4 py-3 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:ring-2 focus:ring-cyan-500/30 transition-all"
           />
         </div>
 
@@ -1066,7 +1024,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
                 'cursor-pointer transition-all duration-200 p-4 group relative',
                 selectedGoals.includes(goal.goal_id)
                   ? 'ring-2 ring-cyber-500 border-cyber-500 bg-gradient-to-br from-cyber-500/10 to-emerald-500/10 shadow-lg shadow-cyber-500/20'
-                  : 'hover:border-border-strong hover:shadow-md hover:shadow-slate-500/10 border-border'
+                  : 'hover:border-slate-200-strong hover:shadow-md hover:shadow-slate-500/10 border-slate-200'
               )}
               onClick={() => {
                 if (selectedGoals.includes(goal.goal_id)) {
@@ -1079,7 +1037,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-semibold text-white text-sm">
+                    <h4 className="font-semibold text-[var(--color-text)] text-sm">
                       Goal #{goal.goal_id}
                     </h4>
                   </div>
@@ -1108,10 +1066,10 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
       </div>
 
       {/* Submit Section */}
-      <div className="flex items-center justify-between pt-6 border-t border-border">
+      <div className="flex items-center justify-between pt-6 border-t border-slate-200">
         <div className="text-sm text-[var(--color-text-secondary)]">
           {selectedGoals.length > 0 && selectedPlanner && (
-            <span className="text-green-400">
+            <span className="text-emerald-800 font-medium">
               ✓ Ready to create plan with {selectedGoals.length} goal{selectedGoals.length > 1 ? 's' : ''}
             </span>
           )}
@@ -1137,7 +1095,7 @@ function CreatePlanForm({ goals, strategies, onSubmit, onCancel, isLoading }: Cr
               !planDescription.trim() ? 'Enter a plan description' :
               'Ready to create plan'
             }
-            className="bg-gradient-to-r from-cyber-500 to-emerald-500 hover:from-cyber-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-white bg-gradient-to-r from-cyber-500 to-emerald-500 hover:from-cyber-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Creating Plan...' : (
               <>
@@ -1195,7 +1153,7 @@ function AllocatePlanForm({ robots, onSubmit, onCancel, isLoading }: AllocatePla
   if (allocatorsLoading) {
     return (
       <div className="p-8 text-center text-[var(--color-text-secondary)]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-border mx-auto mb-4"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-200 mx-auto mb-4"></div>
         Loading allocation methods...
       </div>
     )
@@ -1219,14 +1177,14 @@ function AllocatePlanForm({ robots, onSubmit, onCancel, isLoading }: AllocatePla
         <>
           {/* Allocation Methods - Same design as CreatePlanForm */}
           <div>
-        <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-3">
+        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-6 flex items-center gap-3">
           <span className="w-3 h-3 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full"></span>
           Choose Allocation Method
         </h3>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h4 className="text-base font-medium text-white flex items-center gap-2">
+            <h4 className="text-base font-medium text-[var(--color-text)] flex items-center gap-2">
               <span className="w-2 h-2 bg-emerald-400 rounded-full"></span>
               Allocation Methods
             </h4>
@@ -1239,8 +1197,8 @@ function AllocatePlanForm({ robots, onSubmit, onCancel, isLoading }: AllocatePla
                   className={cn(
                     'px-3 py-1 text-xs rounded-full border transition-all',
                     allocatorFilter === type
-                      ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
-                      : 'border-border text-[var(--color-text-secondary)] hover:border-border-strong'
+                      ? 'bg-emerald-100 border-emerald-400 text-emerald-950'
+                      : 'border-slate-200 text-[var(--color-text-secondary)] hover:border-slate-200-strong'
                   )}
                 >
                   {type === 'all' ? 'All' : type}
@@ -1263,7 +1221,7 @@ function AllocatePlanForm({ robots, onSubmit, onCancel, isLoading }: AllocatePla
 
       {/* Available Robots */}
       <div>
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-3">
+        <h3 className="text-lg font-semibold text-[var(--color-text)] mb-4 flex items-center gap-3">
           <span className="w-3 h-3 bg-gradient-to-r from-violet-400 to-pink-400 rounded-full"></span>
           Available Robots
         </h3>
@@ -1279,19 +1237,19 @@ function AllocatePlanForm({ robots, onSubmit, onCancel, isLoading }: AllocatePla
               className={cn(
                 'p-3 transition-all',
                 robot.status === 'running' || robot.status === 'registered'
-                  ? 'bg-emerald-500/10 border-emerald-500/30'
-                  : 'bg-surface-elevated/50 border-border'
+                  ? 'bg-emerald-50 border-emerald-300'
+                  : 'bg-slate-100 border-slate-200'
               )}
             >
               <div className="flex items-center gap-3">
                 <div className={cn(
                   'w-3 h-3 rounded-full flex-shrink-0',
                   robot.status === 'running' || robot.status === 'registered'
-                    ? 'bg-emerald-400 shadow-lg shadow-emerald-400/50'
-                    : 'bg-surface-elevated'
+                    ? 'bg-emerald-600 shadow-lg shadow-emerald-600/30'
+                    : 'bg-slate-100'
                 )} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-white text-sm truncate">
+                  <div className="font-medium text-[var(--color-text)] text-sm truncate">
                     {robot.robot_id}
                   </div>
                   <div className="text-xs text-[var(--color-text-secondary)]">
@@ -1299,10 +1257,10 @@ function AllocatePlanForm({ robots, onSubmit, onCancel, isLoading }: AllocatePla
                   </div>
                 </div>
                 <div className={cn(
-                  'text-xs px-2 py-1 rounded-full',
+                  'text-xs px-2 py-1 rounded-full border',
                   robot.status === 'running' || robot.status === 'registered'
-                    ? 'bg-emerald-500/20 text-emerald-300'
-                    : 'bg-surface-elevated text-[var(--color-text-secondary)]'
+                    ? 'tonal-emerald'
+                    : 'bg-slate-100 text-[var(--color-text-secondary)] border-slate-200'
                 )}>
                   {robot.status === 'running' || robot.status === 'registered' ? 'Available' : 'Offline'}
                 </div>
@@ -1313,10 +1271,10 @@ function AllocatePlanForm({ robots, onSubmit, onCancel, isLoading }: AllocatePla
       </div>
 
       {/* Submit Section */}
-      <div className="flex items-center justify-between pt-6 border-t border-border">
+      <div className="flex items-center justify-between pt-6 border-t border-slate-200">
         <div className="text-sm text-[var(--color-text-secondary)]">
           {selectedAllocator && (
-            <span className="text-green-400">
+            <span className="text-emerald-800 font-medium">
               ✓ Ready to allocate plan with {allocationOptions.find(a => a.type === selectedAllocator)?.name || 'selected method'}
             </span>
           )}

@@ -84,3 +84,6 @@ package-lock.json
 
 # Secrets
 .env
+
+# Runtime data (Docker bind mounts)
+.data/

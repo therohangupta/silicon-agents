@@ -9,6 +9,8 @@ from typing import Optional
 from argparse import ArgumentParser
 from ..planners.types.replanner import Replanner
 from ..events import emit_task_changed, emit_plan_changed
+from packages.fleet_sdk.src.models import PlanModel
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,31 @@ class Executor:
         self.plan_id = plan_id
         self.replan = False
         self.previous_task_status_messages = []
+        self.execution_logs: list[str] = []
+
+    async def _load_existing_plan_logs(self):
+        """Load existing plan logs so execution events append instead of overwriting."""
+        try:
+            async with self.registry.async_session_factory() as session:
+                result = await session.execute(
+                    select(PlanModel.server_logs).where(PlanModel.plan_id == self.plan_id)
+                )
+                existing = result.scalar_one_or_none()
+                if existing:
+                    self.execution_logs = [line for line in str(existing).split("\n") if line.strip()]
+                else:
+                    self.execution_logs = []
+        except Exception as e:
+            logger.error("Failed to load existing logs for plan %s: %s", self.plan_id, e)
+            self.execution_logs = []
+
+    async def _append_execution_log(self, message: str):
+        """Append and persist execution log lines on the plan record."""
+        self.execution_logs.append(message)
+        try:
+            await self.registry.update_plan(self.plan_id, server_logs=self.execution_logs)
+        except Exception as e:
+            logger.error("Failed to persist execution logs for plan %s: %s", self.plan_id, e)
 
     async def _generate_dag(self) -> AllocatedDAGPlan:
         plan = await self.registry.get_plan(self.plan_id)
@@ -89,6 +116,7 @@ class Executor:
     async def _start_task_inner(self, robot_id: int, task_id: int, task_description: str):
         try:
             logger.info("Starting task %s for robot %s", task_description, robot_id)
+            await self._append_execution_log(f"Task {task_id} started on robot {robot_id}")
 
             await self.registry.update_task_status(task_id, 2)  # TASK_IN_PROGRESS = 2
             emit_task_changed(task_id, plan_id=self.plan_id, status="in_progress")
@@ -107,6 +135,7 @@ class Executor:
 
             result = await robot_client.do_task(task_description)
             logger.info("Task %s for robot %s completed with result: %s", task_description, robot_id, result)
+            await self._append_execution_log(f"Task {task_id} completed on robot {robot_id}: {result.message}")
 
             # Store execution result in database
             result_message = f"Success: {result.message}" if result.success else f"Failed: {result.message}"
@@ -125,6 +154,7 @@ class Executor:
                 elif result.replan:
                     await self.registry.update_task_status(task_id, 5)  # TASK_FAILED = 5
                     emit_task_changed(task_id, plan_id=self.plan_id, status="failed")
+                    await self._append_execution_log(f"Task {task_id} failed and triggered replanning: {result.message}")
 
                     replanner = Replanner(registry=self.registry)
                     self.plan_id = await replanner.replan(
@@ -141,8 +171,10 @@ class Executor:
                     emit_task_changed(task_id, plan_id=self.plan_id, status="failed")
                     self.abort = True
                     logger.error("Task %s failed (non-replan) — aborting plan execution", task_id)
+                    await self._append_execution_log(f"Task {task_id} failed on robot {robot_id}: {result.message}")
         except Exception as e:
             logger.error("Exception in _start_task for robot %s, task %s: %s", robot_id, task_id, e, exc_info=True)
+            await self._append_execution_log(f"Task {task_id} crashed on robot {robot_id}: {str(e)}")
             try:
                 await self.registry.update_task_status(task_id, 5)  # TASK_FAILED = 5
                 await self.registry.update_task(task_id, result=f"Exception: {str(e)}")
@@ -158,8 +190,10 @@ class Executor:
             await self._execute_inner()
 
     async def _execute_inner(self):
+        await self._load_existing_plan_logs()
         await self.registry.update_plan(self.plan_id, execution_status=1)  # 1 = executing
         emit_plan_changed(self.plan_id, status="executing")
+        await self._append_execution_log(f"Plan {self.plan_id} execution started")
 
         dag = await self._generate_dag()
         task_to_dependency_map = {node.task_id: node.depends_on for node in dag.nodes}
@@ -226,10 +260,12 @@ class Executor:
             await self.registry.update_plan(self.plan_id, execution_status=3)  # 3 = failed
             emit_plan_changed(self.plan_id, status="failed")
             logger.info("Plan aborted — marked as failed")
+            await self._append_execution_log(f"Plan {self.plan_id} execution failed")
         else:
             await self.registry.update_plan(self.plan_id, execution_status=2)  # 2 = completed
             emit_plan_changed(self.plan_id, status="completed")
             logger.info("Plan completed successfully")
+            await self._append_execution_log(f"Plan {self.plan_id} execution completed successfully")
 
         
 async def main():

@@ -17,12 +17,12 @@ export function Layout({ children }: LayoutProps) {
   }, [collapsed])
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg)]">
+    <div className="min-h-screen mission-shell-bg">
       <div className="flex relative">
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} />
         <div
           className="flex-1 transition-[margin] duration-200 ease-out"
-          style={{ marginLeft: collapsed ? 56 : 240 }}
+          style={{ marginLeft: collapsed ? 56 : 224 }}
         >
           <main className="px-8 py-6 min-h-screen">
             {children}

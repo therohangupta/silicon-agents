@@ -14,7 +14,7 @@ Each router handles a specific domain of endpoints:
 
 from fastapi import APIRouter
 
-from . import robots, goals, plans, tasks, world, embodiments, methods, strategies, telemetry, metrics
+from . import robots, goals, plans, tasks, world, embodiments, methods, strategies, telemetry, metrics, robot_telemetry
 
 # Create a combined router that includes all sub-routers
 api_router = APIRouter(prefix="/api")

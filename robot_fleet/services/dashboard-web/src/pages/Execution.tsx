@@ -15,12 +15,13 @@ import {
   RotateCcw,
 } from 'lucide-react'
 import { Card } from '../components/common/Card'
+import { PageHeader } from '../components/layout/PageHeader'
 import { Button } from '../components/common/Button'
 import { StatusBadge } from '../components/common/StatusBadge'
 import { DAGVisualization } from '../components/common/DAGVisualization'
 import { TaskIdChip } from '../components/execution/TaskIdChip'
 import { RobotExecutionModal } from '../components/execution/RobotExecutionModal'
-import { plansApi, tasksApi, robotsApi, methodsApi, useRealtimeUpdates } from '../lib/api'
+import { plansApi, tasksApi, robotsApi, methodsApi, metricsApi, useRealtimeUpdates } from '../lib/api'
 import { cn, getPlanningStrategyName, getAllocationStrategyName, setMethodData } from '../lib/utils'
 import { GatewayRealtimeClient } from '@robot-fleet/client-sdk'
 import type { Task } from '../types'
@@ -33,6 +34,14 @@ interface LogEntry {
   ts: number
   message: string
   level: 'info' | 'success' | 'error'
+}
+
+interface MetricRow {
+  timestamp?: string
+  event_type?: string
+  entity_id?: string
+  duration_ms?: number
+  success?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +58,123 @@ function formatElapsed(ms: number): string {
 
 function formatTimestamp(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+}
+
+function parsePersistedEventLog(serverLogs: string | undefined, planId: number, planTaskIds: Set<number>): LogEntry[] {
+  if (!serverLogs || serverLogs.trim().length === 0) return []
+
+  const base = Date.now()
+  const rawLines = serverLogs
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+
+  // Merge continuation lines back into their parent event.
+  const startsNewEvent = (line: string): boolean => {
+    if (/^(Plan|Task)\b/.test(line)) return true
+    if (/^\d{4}-\d{2}-\d{2}/.test(line)) return true
+    return false
+  }
+
+  const merged: string[] = []
+  for (const line of rawLines) {
+    if (merged.length === 0 || startsNewEvent(line)) {
+      merged.push(line)
+    } else {
+      merged[merged.length - 1] += `\n${line}`
+    }
+  }
+
+  const isExecutionLifecycleLine = (line: string): boolean => {
+    // Only accept concrete execution lifecycle messages.
+    // Drop planner/generator chatter like "Task Given by Planner".
+    return (
+      /\bPlan\s+#?\d+\s+execution\s+started\b/i.test(line) ||
+      /\bPlan\s+#?\d+\s+(completed|failed)\b/i.test(line) ||
+      /\bTask\s+#?\d+\s+(started|completed|failed)\b/i.test(line)
+    )
+  }
+
+  const lines = merged
+    .filter(isExecutionLifecycleLine)
+    .filter((line) => {
+      // If a line explicitly references a plan id, keep only current plan.
+      const planMatch = line.match(/\bPlan\s+#?(\d+)\b/i)
+      if (planMatch) return Number(planMatch[1]) === planId
+
+      // If a line explicitly references a task id, keep only tasks in this plan.
+      const taskMatch = line.match(/\bTask\s+#?(\d+)\b/i)
+      if (taskMatch) return planTaskIds.has(Number(taskMatch[1]))
+
+      // For generic lines, keep them.
+      return true
+    })
+    .slice(-200)
+
+  return lines
+    .map((line, idx) => {
+      const lower = line.toLowerCase()
+      const level: LogEntry['level'] =
+        lower.includes('error') || lower.includes('fail') ? 'error' :
+        lower.includes('success') || lower.includes('complete') ? 'success' :
+        'info'
+      return {
+        ts: base - (lines.length - idx) * 1000,
+        message: line,
+        level,
+      }
+    })
+    .reverse()
+}
+
+function buildEventLogFromMetrics(metrics: MetricRow[], tasks: Task[], planId: number): LogEntry[] {
+  if (!metrics || metrics.length === 0) return []
+  const taskById = new Map(tasks.map(t => [String(t.task_id), t]))
+  const rows = metrics
+    .filter(m => {
+      if (m.event_type === 'plan_execution') return m.entity_id === String(planId)
+      if (m.event_type === 'task_execution') return !!m.entity_id && taskById.has(String(m.entity_id))
+      return false
+    })
+    .map(m => {
+      const ts = m.timestamp ? new Date(m.timestamp).getTime() : Date.now()
+      if (m.event_type === 'plan_execution') {
+        const secs = Math.max(0, Math.round((m.duration_ms ?? 0) / 1000))
+        return {
+          ts,
+          level: (m.success === false ? 'error' : 'success') as LogEntry['level'],
+          message: `Plan ${planId} ${m.success === false ? 'failed' : 'completed'}${secs ? ` in ${secs}s` : ''}`,
+        }
+      }
+      const taskId = String(m.entity_id ?? '')
+      const task = taskById.get(taskId)
+      const secs = Math.max(0, Math.round((m.duration_ms ?? 0) / 1000))
+      return {
+        ts,
+        level: (m.success === false ? 'error' : 'success') as LogEntry['level'],
+        message: `Task #${taskId}${task?.robot_id ? ` (${task.robot_id})` : ''} ${m.success === false ? 'failed' : 'completed'}${secs ? ` in ${secs}s` : ''}${task?.result ? `: ${task.result}` : ''}`,
+      }
+    })
+    .sort((a, b) => b.ts - a.ts)
+
+  return rows.slice(0, 200)
+}
+
+function getExpandedEventMessage(message: string, taskMap: Map<number, Task>): string {
+  if (!message.includes('…')) return message
+  const m = message.match(/Task #(\d+)\s+(completed|failed)\s+on\s+([^:\n]+):[\s\S]*/i)
+  if (!m) return message
+
+  const taskId = Number(m[1])
+  const status = m[2].toLowerCase()
+  const robot = m[3]
+  const task = taskMap.get(taskId)
+  if (!task?.result) return message
+
+  if (status === 'completed') {
+    return `Task #${taskId} completed on ${robot}: ${task.result}`
+  }
+  return `Task #${taskId} failed on ${robot}: ${task.result}`
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +216,7 @@ export function Execution() {
   )
   const [selectedRobot, setSelectedRobot] = useState<string | null>(null)
   const [eventLog, setEventLog] = useState<LogEntry[]>([])
+  const [expandedEventItems, setExpandedEventItems] = useState<Set<number>>(new Set())
 
   // Elapsed time tracking: taskId -> startTime (Date.now())
   const taskStartTimes = useRef<Map<number, number>>(new Map())
@@ -116,11 +243,25 @@ export function Execution() {
       return p?.execution_status === 'executing' ? 3000 : false
     },
   })
+  const planExecutionStatus = plan?.execution_status ?? 'not_executed'
 
   const isPreview = !executionStarted &&
     plan?.execution_status !== 'executing' &&
     plan?.execution_status !== 'completed' &&
     plan?.execution_status !== 'failed'
+
+  // Fresh plan route should never inherit previous plan's in-memory log/timers.
+  useEffect(() => {
+    setExecutionStarted(false)
+    setEventLog([])
+    setExpandedEventItems(new Set())
+    setWsTasks(null)
+    setElapsedTimes(new Map())
+    prevTasksRef.current = new Map()
+    taskStartTimes.current = new Map()
+    executionStartRef.current = null
+    setWallElapsed(0)
+  }, [planId])
 
   const { data: fetchedTasks = [] } = useQuery({
     queryKey: ['tasks', planId],
@@ -141,6 +282,12 @@ export function Execution() {
   const { data: allocators = [] } = useQuery({
     queryKey: ['allocators'],
     queryFn: () => methodsApi.list().then(methods => methods.filter(m => m.category === 'allocator')),
+  })
+
+  const { data: historicalMetrics } = useQuery({
+    queryKey: ['metrics', 'execution', planId],
+    queryFn: () => metricsApi.list({ service: 'fleet_server', limit: 1000 }),
+    enabled: !!planId,
   })
 
   useEffect(() => {
@@ -164,9 +311,13 @@ export function Execution() {
     const wsBaseUrl = `${protocol}//${window.location.host}`
     const client = new GatewayRealtimeClient({ wsBaseUrl })
 
-    const ws = client.connectPlanExecution(Number(planId), (msg) => {
+    const currentPlanId = Number(planId)
+    const ws = client.connectPlanExecution(currentPlanId, (msg) => {
       if (msg.type === 'tasks_update' && Array.isArray((msg as any).tasks)) {
-        setWsTasks((msg as any).tasks as Task[])
+        const filtered = ((msg as any).tasks as Task[]).filter(
+          (t) => Number((t as any).plan_id) === currentPlanId
+        )
+        setWsTasks(filtered)
       }
     })
 
@@ -198,19 +349,16 @@ export function Execution() {
           })
         } else if (task.status === 'completed') {
           taskStartTimes.current.delete(task.task_id)
-          const resultSnippet = task.result
-            ? `: ${task.result.length > 80 ? task.result.slice(0, 80) + '…' : task.result}`
-            : ''
           newEntries.push({
             ts: now,
-            message: `Task #${task.task_id} completed on ${task.robot_id ?? '?'}${resultSnippet}`,
+            message: `Task #${task.task_id} completed on ${task.robot_id ?? '?'}${task.result ? `: ${task.result}` : ''}`,
             level: 'success',
           })
         } else if (task.status === 'failed') {
           taskStartTimes.current.delete(task.task_id)
           newEntries.push({
             ts: now,
-            message: `Task #${task.task_id} failed on ${task.robot_id ?? '?'}${task.result ? ': ' + task.result.slice(0, 80) : ''}`,
+            message: `Task #${task.task_id} failed on ${task.robot_id ?? '?'}${task.result ? `: ${task.result}` : ''}`,
             level: 'error',
           })
         }
@@ -239,6 +387,32 @@ export function Execution() {
       }
     }
   }, [fetchedTasks])
+
+  // Load historical execution log for historical plans.
+  useEffect(() => {
+    if (planExecutionStatus === 'not_executed') return
+    if (eventLog.length > 0) return
+
+    // Prefer structured metrics first (cleaner + better ordering), then fallback to filtered raw logs.
+    if (historicalMetrics?.metrics?.length && planId) {
+      const fromMetrics = buildEventLogFromMetrics(
+        historicalMetrics.metrics as MetricRow[],
+        tasks,
+        Number(planId)
+      )
+      if (fromMetrics.length > 0) {
+        setEventLog(fromMetrics)
+        return
+      }
+    }
+
+    const numericPlanId = Number(planId)
+    const planTaskIds = new Set(tasks.map(t => t.task_id))
+    const persisted = parsePersistedEventLog(plan?.server_logs, numericPlanId, planTaskIds)
+    if (persisted.length > 0) {
+      setEventLog(persisted)
+    }
+  }, [planExecutionStatus, plan?.server_logs, historicalMetrics, tasks, planId, eventLog.length])
 
   // ---------------------------------------------------------------------------
   // 1-second timer to tick elapsed counters
@@ -323,6 +497,7 @@ export function Execution() {
         return {
           robotId: rid,
           robotType: robot?.robot_type ?? rTasks[0]?.robot_type ?? 'unknown',
+          taskServerInfo: robot?.task_server_info ?? null,
           currentTask: current ?? null,
           succeededCount: succeeded,
           failedCount: failed,
@@ -407,75 +582,73 @@ export function Execution() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => navigate(`/plans/${planId}`)}>
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-1">
-            <span className="px-2 py-0.5 bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 rounded text-xs font-semibold">
-              P{planId}
-            </span>
-            <h1 className="text-2xl font-bold text-white">Execution Monitor</h1>
+      <PageHeader
+        title="Execution Monitor"
+        description={plan?.name || undefined}
+        leading={
+          <Button
+            variant="secondary"
+            size="sm"
+            className="shrink-0 mt-1"
+            onClick={() => navigate(`/plans/${planId}`)}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        }
+        meta={
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="tonal-plan-id">P{planId}</span>
+            <span className="tonal-sky">{getPlanningStrategyName(plan?.planning_strategy || 0)}</span>
+            <span className="tonal-violet">{getAllocationStrategyName(plan?.allocation_strategy || 0)}</span>
           </div>
-          <div className="flex items-center gap-2">
-            {plan?.name && (
-              <span className="text-sm text-[var(--color-text-secondary)]">{plan.name}</span>
+        }
+        actions={
+          <>
+            {wallElapsed > 0 && (
+              <span className="text-sm font-mono text-[var(--color-text-secondary)] hidden sm:inline-flex items-center">
+                <Clock className="w-3.5 h-3.5 mr-1" />
+                {formatElapsed(wallElapsed)}
+              </span>
             )}
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 border border-blue-500/30 text-blue-400">
-              {getPlanningStrategyName(plan?.planning_strategy || 0)}
-            </span>
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 border border-purple-500/30 text-purple-400">
-              {getAllocationStrategyName(plan?.allocation_strategy || 0)}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {wallElapsed > 0 && (
-            <span className="text-sm font-mono text-[var(--color-text-secondary)]">
-              <Clock className="w-3.5 h-3.5 inline mr-1" />
-              {formatElapsed(wallElapsed)}
-            </span>
-          )}
-          <StatusBadge status={overallStatus} />
-          {isPreview && (
-            <Button
-              onClick={() => startMutation.mutate()}
-              disabled={startMutation.isPending}
-              className="flex items-center gap-2"
-            >
-              <Play className="w-4 h-4" />
-              {startMutation.isPending ? 'Starting...' : 'Start Execution'}
-            </Button>
-          )}
-          {overallStatus === 'failed' && (
-            <Button
-              onClick={() => copyAndRetryMutation.mutate()}
-              disabled={copyAndRetryMutation.isPending}
-              className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30"
-            >
-              <RotateCcw className="w-4 h-4" />
-              {copyAndRetryMutation.isPending ? 'Copying...' : 'Copy & Retry'}
-            </Button>
-          )}
-        </div>
-      </div>
+            <StatusBadge status={overallStatus} />
+            {isPreview && (
+              <Button
+                onClick={() => startMutation.mutate()}
+                disabled={startMutation.isPending}
+                className="flex items-center gap-2"
+              >
+                <Play className="w-4 h-4" />
+                {startMutation.isPending ? 'Starting...' : 'Start Execution'}
+              </Button>
+            )}
+            {overallStatus === 'failed' && (
+              <Button
+                onClick={() => copyAndRetryMutation.mutate()}
+                disabled={copyAndRetryMutation.isPending}
+                className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-950 border border-red-300"
+              >
+                <RotateCcw className="w-4 h-4" />
+                {copyAndRetryMutation.isPending ? 'Copying...' : 'Copy & Retry'}
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* Progress Strip */}
       <Card className="!p-4">
         {isPreview && (
-          <div className="mb-3 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-blue-300">
+          <div className="mb-3 px-3 py-2 mission-panel border-l-[3px] border-l-cyan-500 text-sm text-slate-800">
             Review the task queue below, then click <strong>Start Execution</strong> when ready.
           </div>
         )}
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm text-[var(--color-text-secondary)]">Overall Progress</span>
-          <span className="text-sm font-mono text-white">
+          <span className="text-sm font-mono text-[var(--color-text)]">
             {completedCount}/{totalTasks} tasks
           </span>
         </div>
-        <div className="h-2.5 bg-blue-500/20 rounded-full overflow-hidden flex">
+        <div className="h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
           {pctCompleted > 0 && (
             <div
               className="h-full bg-emerald-500 transition-all duration-500"
@@ -502,22 +675,22 @@ export function Execution() {
           )}
         </div>
         <div className="flex flex-wrap gap-2 mt-3">
-          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+          <span className="px-2.5 py-1 rounded-full text-xs font-medium tonal-emerald">
             {completedCount} completed
           </span>
-          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/15 text-amber-400 border border-amber-500/20">
+          <span className="px-2.5 py-1 rounded-full text-xs font-medium tonal-amber">
             {executingCount} executing
           </span>
-          <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-400 border border-blue-500/20">
+          <span className="px-2.5 py-1 rounded-full text-xs font-medium tonal-sky">
             {pendingCount} pending
           </span>
           {failedCount > 0 && (
-            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/15 text-red-400 border border-red-500/20">
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium tonal-red">
               {failedCount} failed
             </span>
           )}
           {cancelledCount > 0 && (
-            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-500/15 text-slate-400 border border-slate-500/20">
+            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-200 text-slate-900 border border-slate-400/70">
               {cancelledCount} cancelled
             </span>
           )}
@@ -533,11 +706,11 @@ export function Execution() {
           onClick={() => toggleSection('fleet')}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <Bot className="w-4 h-4 text-blue-400" />
+            <div className="w-8 h-8 bg-sky-100 border border-sky-300 rounded-lg flex items-center justify-center">
+              <Bot className="w-4 h-4 text-sky-900" />
             </div>
-            <h3 className="text-lg font-semibold text-white">Robot Fleet</h3>
-            <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded text-xs">
+            <h3 className="text-lg font-semibold text-[var(--color-text)]">Robot Fleet</h3>
+            <span className="px-2 py-1 tonal-sky rounded text-xs">
               {robotRows.length} robots
             </span>
           </div>
@@ -557,7 +730,7 @@ export function Execution() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-border">
+                    <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-slate-200">
                       <th className="pb-3 pr-4">Robot</th>
                       <th className="pb-3 pr-4">Current Task</th>
                       <th className="pb-3 pr-4 text-right">Elapsed</th>
@@ -573,15 +746,15 @@ export function Execution() {
                       return (
                       <tr
                         key={row.robotId}
-                        className="border-b border-border-subtle hover:bg-surface-overlay/50 cursor-pointer transition-colors"
+                        className="border-b border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
                         onClick={() => setSelectedRobot(row.robotId)}
                       >
                         {/* Robot */}
                         <td className="py-3 pr-4">
                           <div className="flex items-center gap-2">
-                            <Bot className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                            <span className="font-mono text-cyan-300">{row.robotId}</span>
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-elevated/50 border border-border text-[var(--color-text-muted)]">
+                            <Bot className="w-4 h-4 text-slate-700 flex-shrink-0" />
+                            <span className="font-mono text-slate-900">{row.robotId}</span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 border border-slate-200 text-[var(--color-text-muted)]">
                               {row.robotType}
                             </span>
                           </div>
@@ -594,7 +767,7 @@ export function Execution() {
                               <TaskIdChip
                                 taskId={row.currentTask.task_id}
                                 task={row.currentTask}
-                                colorClass="text-amber-400"
+                                colorClass="text-amber-900"
                               />
                               <span className="text-[var(--color-text)] truncate">
                                 {row.currentTask.description.length > 40
@@ -616,7 +789,7 @@ export function Execution() {
                         {/* Elapsed */}
                         <td className="py-3 pr-4 text-right font-mono text-xs">
                           {row.currentTask && elapsedTimes.has(row.currentTask.task_id) ? (
-                            <span className="text-amber-300">
+                            <span className="text-amber-900 font-medium">
                               {formatElapsed(elapsedTimes.get(row.currentTask.task_id)!)}
                             </span>
                           ) : (
@@ -627,7 +800,7 @@ export function Execution() {
                         {/* Progress */}
                         <td className="py-3 pr-4">
                           <div className="flex items-center justify-center gap-2">
-                            <div className="w-20 h-1.5 bg-surface-overlay rounded-full overflow-hidden flex">
+                            <div className="w-20 h-1.5 bg-slate-50 rounded-full overflow-hidden flex">
                               {pctOk > 0 && (
                                 <div
                                   className="h-full bg-emerald-500 transition-all duration-500"
@@ -650,19 +823,19 @@ export function Execution() {
                         {/* Status */}
                         <td className="py-3 text-center">
                           {row.currentTask ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium tonal-amber">
                               Executing
                             </span>
                           ) : row.finished && row.hasFailed ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400 border border-red-500/20">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium tonal-red">
                               Failed
                             </span>
                           ) : row.finished ? (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium tonal-emerald">
                               Done
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/15 text-slate-400 border border-slate-500/20">
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-800 border border-slate-400/60">
                               Waiting
                             </span>
                           )}
@@ -687,11 +860,11 @@ export function Execution() {
           onClick={() => toggleSection('queue')}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
-              <Clock className="w-4 h-4 text-amber-400" />
+            <div className="w-8 h-8 bg-amber-100 border border-amber-300 rounded-lg flex items-center justify-center">
+              <Clock className="w-4 h-4 text-amber-900" />
             </div>
-            <h3 className="text-lg font-semibold text-white">Task Queue</h3>
-            <span className="px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-xs">
+            <h3 className="text-lg font-semibold text-[var(--color-text)]">Task Queue</h3>
+            <span className="px-2 py-1 tonal-amber rounded text-xs">
               {pendingCount} pending
             </span>
           </div>
@@ -711,7 +884,7 @@ export function Execution() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-border">
+                    <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-slate-200">
                       <th className="pb-3 pr-4">Task</th>
                       <th className="pb-3 pr-4">Description</th>
                       <th className="pb-3 pr-4">Assigned Robot</th>
@@ -726,7 +899,7 @@ export function Execution() {
                         d => taskMap.get(d)?.status !== 'completed'
                       )
                       return (
-                        <tr key={task.task_id} className="border-b border-border-subtle hover:bg-surface-overlay/50 transition-colors">
+                        <tr key={task.task_id} className="border-b border-slate-200 hover:bg-slate-50 transition-colors">
                           <td className="py-2.5 pr-4">
                             <TaskIdChip taskId={task.task_id} task={task} />
                           </td>
@@ -735,7 +908,7 @@ export function Execution() {
                           </td>
                           <td className="py-2.5 pr-4">
                             {task.robot_id ? (
-                              <span className="font-mono text-xs text-cyan-400">{task.robot_id}</span>
+                              <span className="font-mono text-xs text-slate-800">{task.robot_id}</span>
                             ) : (
                               <span className="text-xs text-[var(--color-text-muted)]">—</span>
                             )}
@@ -753,7 +926,7 @@ export function Execution() {
                           </td>
                           <td className="py-2.5 text-center">
                             {ready ? (
-                              <CheckCircle className="w-4 h-4 text-emerald-400 mx-auto" />
+                              <CheckCircle className="w-4 h-4 text-emerald-700 mx-auto" />
                             ) : (
                               <Circle className="w-4 h-4 text-[var(--color-text-muted)] mx-auto" />
                             )}
@@ -778,17 +951,17 @@ export function Execution() {
           onClick={() => toggleSection('completed')}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-              <CheckCircle className="w-4 h-4 text-emerald-400" />
+            <div className="w-8 h-8 bg-emerald-100 border border-emerald-300 rounded-lg flex items-center justify-center">
+              <CheckCircle className="w-4 h-4 text-emerald-800" />
             </div>
-            <h3 className="text-lg font-semibold text-white">Completed & Failed Tasks</h3>
+            <h3 className="text-lg font-semibold text-[var(--color-text)]">Completed & Failed Tasks</h3>
             {completedCount > 0 && (
-              <span className="px-2 py-1 bg-emerald-500/20 text-emerald-300 rounded text-xs">
+              <span className="px-2 py-1 tonal-emerald rounded text-xs">
                 {completedCount} completed
               </span>
             )}
             {(failedCount + cancelledCount) > 0 && (
-              <span className="px-2 py-1 bg-red-500/20 text-red-300 rounded text-xs">
+              <span className="px-2 py-1 tonal-red rounded text-xs">
                 {failedCount + cancelledCount} failed
               </span>
             )}
@@ -809,7 +982,7 @@ export function Execution() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-border">
+                    <tr className="text-left text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-slate-200">
                       <th className="pb-3 pr-4">Task</th>
                       <th className="pb-3 pr-4">Robot</th>
                       <th className="pb-3 pr-4">Description</th>
@@ -822,20 +995,27 @@ export function Execution() {
                       <tr
                         key={task.task_id}
                         className={cn(
-                          'border-b border-border-subtle hover:bg-surface-overlay/50 transition-colors',
+                          'border-b border-slate-200 hover:bg-slate-50 transition-colors',
                           task.status === 'failed' && 'border-l-2 border-l-red-500'
                         )}
                       >
                         <td className="py-2.5 pr-4">
                           <TaskIdChip
                             taskId={task.task_id}
-                            task={task}
-                            colorClass={task.status === 'failed' ? 'text-red-400' : 'text-emerald-400'}
+                            colorClass={task.status === 'failed' ? 'text-red-800' : 'text-emerald-800'}
+                            showTooltip={false}
                           />
                         </td>
                         <td className="py-2.5 pr-4">
                           {task.robot_id ? (
-                            <span className="font-mono text-xs text-cyan-400">{task.robot_id}</span>
+                            <span
+                              className={cn(
+                                'font-mono text-xs font-medium',
+                                task.status === 'failed' ? 'text-red-950' : 'text-slate-900'
+                              )}
+                            >
+                              {task.robot_id}
+                            </span>
                           ) : (
                             <span className="text-xs text-[var(--color-text-muted)]">—</span>
                           )}
@@ -849,7 +1029,7 @@ export function Execution() {
                               <summary className="text-xs text-[var(--color-text-secondary)] cursor-pointer hover:text-[var(--color-text)] transition-colors truncate max-w-[200px]">
                                 {task.result.length > 60 ? task.result.slice(0, 60) + '…' : task.result}
                               </summary>
-                              <pre className="mt-2 text-xs text-[var(--color-text)] whitespace-pre-wrap font-mono bg-surface/80 rounded p-2 border border-border">
+                              <pre className="mt-2 text-xs text-[var(--color-text)] whitespace-pre-wrap font-mono bg-surface/80 rounded p-2 border border-slate-200">
                                 {task.result}
                               </pre>
                             </details>
@@ -882,7 +1062,7 @@ export function Execution() {
             <div className="w-8 h-8 bg-violet-500/20 rounded-lg flex items-center justify-center">
               <Activity className="w-4 h-4 text-violet-400" />
             </div>
-            <h3 className="text-lg font-semibold text-white">Task Dependencies</h3>
+            <h3 className="text-lg font-semibold text-[var(--color-text)]">Task Dependencies</h3>
           </div>
           {expandedSections.has('dag')
             ? <ChevronDown className="w-4 h-4 text-[var(--color-text-secondary)]" />
@@ -905,12 +1085,12 @@ export function Execution() {
           onClick={() => toggleSection('log')}
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-surface-elevated/30 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-slate-50 rounded-lg flex items-center justify-center">
               <ScrollText className="w-4 h-4 text-[var(--color-text-secondary)]" />
             </div>
-            <h3 className="text-lg font-semibold text-white">Event Log</h3>
+            <h3 className="text-lg font-semibold text-[var(--color-text)]">Event Log</h3>
             {eventLog.length > 0 && (
-              <span className="px-2 py-1 bg-surface-elevated/50 text-[var(--color-text-secondary)] rounded text-xs">
+              <span className="px-2 py-1 bg-slate-100 text-[var(--color-text-secondary)] rounded text-xs">
                 {eventLog.length} events
               </span>
             )}
@@ -934,19 +1114,66 @@ export function Execution() {
                     key={i}
                     className={cn(
                       'flex gap-3 py-1.5 px-2 rounded',
-                      entry.level === 'error' && 'bg-red-500/5',
-                      entry.level === 'success' && 'bg-emerald-500/5',
+                      entry.level === 'error' && 'bg-red-50',
+                      entry.level === 'success' && 'bg-emerald-50',
                     )}
                   >
                     <span className="text-[var(--color-text-muted)] shrink-0">
                       {formatTimestamp(entry.ts)}
                     </span>
                     <span className={cn(
-                      entry.level === 'error' && 'text-red-400',
-                      entry.level === 'success' && 'text-emerald-400',
+                      entry.level === 'error' && 'text-red-800',
+                      entry.level === 'success' && 'text-emerald-800',
                       entry.level === 'info' && 'text-[var(--color-text)]',
                     )}>
-                      {entry.message}
+                      {(() => {
+                        const expandedMessage = getExpandedEventMessage(entry.message, taskMap)
+                        const canExpand =
+                          expandedMessage !== entry.message ||
+                          expandedMessage.length > 180 ||
+                          expandedMessage.includes('\n')
+                        const isExpanded = expandedEventItems.has(i)
+                        if (!canExpand) {
+                          return <span className="whitespace-pre-wrap break-words">{expandedMessage}</span>
+                        }
+                        if (isExpanded) {
+                          return (
+                            <div>
+                              <pre className="whitespace-pre-wrap break-words font-mono text-xs">{expandedMessage}</pre>
+                              <button
+                                type="button"
+                                className="mt-1 text-xs underline opacity-80 hover:opacity-100"
+                                onClick={() => setExpandedEventItems(prev => {
+                                  const next = new Set(prev)
+                                  next.delete(i)
+                                  return next
+                                })}
+                              >
+                                show less
+                              </button>
+                            </div>
+                          )
+                        }
+
+                        const oneLine = expandedMessage.replace(/\s+/g, ' ').trim()
+                        const preview = oneLine.length > 180 ? oneLine.slice(0, 180) : oneLine
+                        return (
+                          <span className="whitespace-pre-wrap break-words">
+                            {preview}
+                            <button
+                              type="button"
+                              className="underline opacity-90 hover:opacity-100 ml-1"
+                              onClick={() => setExpandedEventItems(prev => {
+                                const next = new Set(prev)
+                                next.add(i)
+                                return next
+                              })}
+                            >
+                              ...
+                            </button>
+                          </span>
+                        )
+                      })()}
                     </span>
                   </div>
                 ))}
@@ -968,6 +1195,7 @@ export function Execution() {
           tasks={selectedRobotRow.tasks}
           allTasks={tasks}
           elapsedTimes={elapsedTimes}
+          taskServerInfo={selectedRobotRow.taskServerInfo}
         />
       )}
     </div>

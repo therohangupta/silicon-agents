@@ -358,7 +358,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
               value={planName}
               onChange={(e) => setPlanName(e.target.value)}
               placeholder="Enter a descriptive name for your plan"
-              className="w-full px-4 py-3 bg-surface-elevated/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all"
+              className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-lg text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all"
             />
           </div>
           <div>
@@ -370,7 +370,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
               onChange={(e) => setPlanDescription(e.target.value)}
               rows={3}
               placeholder="Describe what this plan accomplishes..."
-              className="w-full px-4 py-3 bg-surface-elevated/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all resize-none"
+              className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-lg text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-cyber-500 focus:border-transparent transition-all resize-none"
             />
           </div>
         </div>
@@ -378,7 +378,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
         {/* Goals Selection - Beautiful Cards with Search */}
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-[var(--color-text)] flex items-center gap-3">
               <span className="w-3 h-3 bg-gradient-to-r from-violet-400 to-pink-400 rounded-full"></span>
               Select Goals to Plan For
             </h3>
@@ -395,7 +395,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
               placeholder="Search goals by ID or description..."
               value={goalSearch}
               onChange={(e) => setGoalSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-surface-overlay/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:border-cyber-500 focus:ring-1 focus:ring-cyber-500 transition-all"
+              className="w-full pl-10 pr-4 py-3 bg-white/90 ring-1 ring-slate-200/70 rounded-xl text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:ring-2 focus:ring-cyan-500/30 transition-all"
             />
           </div>
 
@@ -408,14 +408,14 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
                   'cursor-pointer transition-all duration-200 p-4 group relative',
                   selectedGoals.includes(goal.goal_id)
                     ? 'ring-2 ring-cyber-500 border-cyber-500 bg-gradient-to-br from-cyber-500/10 to-emerald-500/10 shadow-lg shadow-cyber-500/20'
-                    : 'hover:border-slate-500 hover:shadow-md hover:shadow-slate-500/10 border-border'
+                    : 'hover:border-slate-500 hover:shadow-md hover:shadow-slate-500/10 border-slate-200'
                 )}
                 onClick={() => handleGoalToggle(goal.goal_id)}
               >
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <h4 className="font-semibold text-white text-sm">
+                      <h4 className="font-semibold text-[var(--color-text)] text-sm">
                         Goal #{goal.goal_id}
                       </h4>
                     </div>
@@ -444,9 +444,9 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
         </div>
 
         {/* Create and Allocate Tasks */}
-        <div className="border-t border-border pt-6">
+        <div className="border-t border-slate-200 pt-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-white flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-[var(--color-text)] flex items-center gap-3">
               <span className="w-3 h-3 bg-gradient-to-r from-amber-400 to-orange-400 rounded-full"></span>
               Create and Allocate Tasks
             </h3>
@@ -464,7 +464,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
                   value={newTaskDescription}
                   onChange={(e) => setNewTaskDescription(e.target.value)}
                   placeholder="Enter task description..."
-                  className="w-full px-4 py-3 bg-surface-elevated/50 border border-border rounded-lg text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
+                  className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-lg text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTask())}
                 />
               </div>
@@ -472,7 +472,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
                 type="button"
                 onClick={addTask}
                 disabled={!newTaskDescription.trim()}
-                className="px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
+                className="text-white px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
               </Button>
@@ -482,7 +482,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
           {/* Task List */}
           <div className="space-y-4 max-h-96 overflow-y-auto">
             {tasks.map((task, index) => (
-              <Card key={task.temp_id} className="p-4 border-border">
+              <Card key={task.temp_id} className="p-4 border-slate-200">
                 <div className="flex items-start gap-4">
                   {/* Task Number */}
                   <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
@@ -496,7 +496,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
                         value={task.description}
                         onChange={(e) => updateTask(task.temp_id, { description: e.target.value })}
                         rows={2}
-                        className="w-full px-3 py-2 bg-surface-overlay/50 border border-border rounded text-white placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all resize-none text-sm"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded text-[var(--color-text)] placeholder-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all resize-none text-sm"
                         placeholder="Task description..."
                       />
                     </div>
@@ -513,7 +513,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
                             const selectedOptions = Array.from(e.target.selectedOptions, option => option.value)
                             updateTask(task.temp_id, { dependencies: selectedOptions })
                           }}
-                          className="px-3 py-1 bg-surface-overlay/50 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="px-3 py-1 bg-slate-50 border border-slate-200 rounded text-[var(--color-text)] text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                         >
                           {tasks.slice(0, index).map((prevTask) => (
                             <option key={prevTask.temp_id} value={prevTask.temp_id}>
@@ -534,7 +534,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
                         <select
                           value={task.robot_id || ''}
                           onChange={(e) => updateTask(task.temp_id, { robot_id: e.target.value || undefined })}
-                          className="px-3 py-1 bg-surface-overlay/50 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          className="px-3 py-1 bg-slate-50 border border-slate-200 rounded text-[var(--color-text)] text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                         >
                           <option value="">No robot assigned</option>
                           {robots.map((robot) => (
@@ -563,7 +563,7 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
                           goal_id: e.target.value ? Number(e.target.value) : undefined
                         })
                       }
-                      className="px-3 py-1 bg-surface-overlay/50 border border-border rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-cyber-500"
+                      className="px-3 py-1 bg-slate-50 border border-slate-200 rounded text-[var(--color-text)] text-xs focus:outline-none focus:ring-1 focus:ring-cyber-500"
                     >
                       <option value="">No goal assigned</option>
                       {selectedGoals.map((goalId) => {
@@ -610,9 +610,9 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
 
         {/* Task Dependency Graph */}
         {tasks.length > 0 && (
-          <div className="border-t border-border pt-6">
+          <div className="border-t border-slate-200 pt-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-[var(--color-text)] flex items-center gap-3">
                 <span className="w-3 h-3 bg-gradient-to-r from-cyan-400 to-blue-400 rounded-full"></span>
                 Task Dependency Graph
               </h3>
@@ -683,14 +683,14 @@ export function ManualPlanCreation({ isOpen, onClose }: ManualPlanCreationProps)
         )}
 
         {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-4 border-t border-border">
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={selectedGoals.length === 0 || !planName.trim() || !planDescription.trim() || tasks.length === 0 || createPlanMutation.isPending}
-            className="bg-gradient-to-r from-cyber-500 to-emerald-500 hover:from-cyber-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-white bg-gradient-to-r from-cyber-500 to-emerald-500 hover:from-cyber-600 hover:to-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {createPlanMutation.isPending ? 'Creating Plan...' : 'Create Manual Plan'}
           </Button>

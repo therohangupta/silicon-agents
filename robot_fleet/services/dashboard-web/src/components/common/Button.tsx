@@ -19,11 +19,11 @@ export function Button({
     <button
       className={cn(
         'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]',
-        variant === 'primary' && 'bg-cyber-600 text-white hover:bg-cyber-500 active:bg-cyber-700',
-        variant === 'secondary' && 'bg-surface-overlay text-white border border-border hover:border-border-strong hover:bg-surface-elevated',
-        variant === 'danger' && 'bg-red-500/10 text-red-400 border border-red-500/25 hover:bg-red-500/20',
-        variant === 'ghost' && 'text-[var(--color-text-secondary)] hover:text-white hover:bg-surface-overlay',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 focus-visible:ring-offset-2',
+        variant === 'primary' && 'bg-gradient-to-r from-cyan-600 to-cyan-500 text-white shadow-sm hover:shadow-md hover:from-cyan-500 hover:to-cyan-400 active:shadow-none',
+        variant === 'secondary' && 'bg-white text-slate-700 ring-1 ring-slate-200/80 hover:ring-slate-300 hover:text-slate-900 hover:shadow-sm',
+        variant === 'danger' && 'bg-red-50 text-red-700 ring-1 ring-red-200/80 hover:bg-red-100',
+        variant === 'ghost' && 'text-slate-500 hover:text-slate-900 hover:bg-slate-50',
         size === 'sm' && 'px-2.5 py-1.5 text-xs',
         size === 'md' && 'px-3.5 py-2 text-sm',
         size === 'lg' && 'px-5 py-2.5 text-sm',

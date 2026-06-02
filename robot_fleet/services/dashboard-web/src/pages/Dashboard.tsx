@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Bot, Target, GitBranch, CheckCircle, Clock, AlertCircle } from 'lucide-react'
 import { Card } from '../components/common/Card'
+import { PageHeader } from '../components/layout/PageHeader'
 import { robotsApi, goalsApi, plansApi, tasksApi, useRealtimeUpdates } from '../lib/api'
 import { cn } from '../lib/utils'
 import type { Task } from '../types'
@@ -28,7 +29,7 @@ function StatCard({
         <div className={cn('w-9 h-9 rounded-lg flex items-center justify-center mb-3', color.replace('bg-', 'bg-').concat('/10'))}>
           <Icon className={cn('w-[18px] h-[18px]', color.replace('bg-', 'text-'))} />
         </div>
-        <p className="text-2xl font-bold text-white mb-0.5 tracking-tight">{value}</p>
+        <p className="text-2xl font-bold text-[var(--color-text)] mb-0.5 tracking-tight">{value}</p>
         <p className="text-sm text-[var(--color-text-secondary)]">{label}</p>
         {subValue && <p className="text-xs text-[var(--color-text-muted)] mt-1">{subValue}</p>}
       </div>
@@ -70,41 +71,37 @@ function RecentActivity({ tasks, plans }: { tasks: Task[]; plans: any[] }) {
 
   return (
     <Card>
-      <h3 className="text-base font-semibold text-white mb-4">Recently Created Tasks</h3>
+      <h3 className="text-base font-semibold text-[var(--color-text)] mb-4">Recently Created Tasks</h3>
       <div className="space-y-2 max-h-96 overflow-y-auto">
         {recentTasks.map((task) => (
           <div
             key={task.task_id}
-            className="flex items-start gap-3 p-3 rounded-lg bg-surface-overlay/50 hover:bg-surface-overlay cursor-pointer transition-colors duration-150"
+            className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-50 cursor-pointer transition-colors duration-150"
             onClick={() => handleTaskClick(task)}
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-white truncate">{task.description}</p>
+              <p className="text-sm text-[var(--color-text)] truncate">{task.description}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-md text-xs font-medium">
-                  P{task.plan_id}
-                </span>
-                <span className="px-2 py-0.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-md text-xs font-mono">
-                  #{task.task_id}
-                </span>
+                <span className="tonal-plan-id">P{task.plan_id}</span>
+                <span className="tonal-sky font-mono">#{task.task_id}</span>
                 {task.robot_id ? (
-                  <span className="px-2 py-0.5 bg-cyber-500/10 border border-cyber-500/20 text-cyber-400 rounded-md text-xs font-mono flex items-center gap-1">
+                  <span className="tonal-violet font-mono flex items-center gap-1">
                     <Bot className="w-3 h-3" />
                     {task.robot_id}
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 bg-surface-elevated border border-border text-[var(--color-text-muted)] rounded-md text-xs">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200/80 text-xs">
                     Unallocated
                   </span>
                 )}
               </div>
             </div>
             <span className={cn(
-              'shrink-0 px-2.5 py-1 border rounded-md text-xs font-medium flex items-center gap-1.5',
-              task.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-              task.status === 'in_progress' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
-              task.status === 'failed' ? 'bg-red-500/10 border-red-500/20 text-red-400' :
-              'bg-surface-elevated border-border text-[var(--color-text-muted)]'
+              'shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5',
+              task.status === 'completed' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80' :
+              task.status === 'in_progress' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200/80' :
+              task.status === 'failed' ? 'bg-red-50 text-red-800 ring-1 ring-red-200/80' :
+              'bg-slate-100 text-slate-600 ring-1 ring-slate-200/80'
             )}>
               {task.status === 'completed' ? <CheckCircle className="w-3 h-3" /> :
                task.status === 'in_progress' ? <Clock className="w-3 h-3" /> :
@@ -174,15 +171,14 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome */}
-      <div className="mb-2">
-        <h1 className="text-xl font-semibold text-white mb-1 tracking-tight">
-          Welcome to <span className="gradient-text">Mission Control</span>
-        </h1>
-        <p className="text-sm text-[var(--color-text-secondary)]">
-          Monitor and manage your robot fleet from one central dashboard.
-        </p>
-      </div>
+      <PageHeader
+        title={
+          <>
+            Welcome to <span className="gradient-text">Mission Control</span>
+          </>
+        }
+        description="Fleet status, task throughput, and recent activity in one place."
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

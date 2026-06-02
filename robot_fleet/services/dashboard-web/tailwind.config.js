@@ -21,15 +21,15 @@ export default {
           950: '#083344',
         },
         'surface': {
-          DEFAULT: '#111318',
-          raised: '#16181d',
-          overlay: '#1c1f26',
-          elevated: '#22252e',
+          DEFAULT: '#f8fafc',
+          raised: '#ffffff',
+          overlay: '#eef2f6',
+          elevated: '#e2e8f0',
         },
         'border': {
-          DEFAULT: '#2a2d37',
-          subtle: '#22252e',
-          strong: '#3a3d47',
+          DEFAULT: '#cbd5e1',
+          subtle: '#cbd5e1',
+          strong: '#94a3b8',
         },
       },
       fontFamily: {
@@ -48,8 +48,8 @@ export default {
       },
       keyframes: {
         glow: {
-          '0%': { boxShadow: '0 0 6px rgb(6 182 212 / 0.2), 0 0 12px rgb(6 182 212 / 0.1)' },
-          '100%': { boxShadow: '0 0 12px rgb(6 182 212 / 0.35), 0 0 24px rgb(6 182 212 / 0.15)' },
+          '0%': { boxShadow: '0 0 6px rgb(8 145 178 / 0.18), 0 0 12px rgb(8 145 178 / 0.08)' },
+          '100%': { boxShadow: '0 0 12px rgb(8 145 178 / 0.28), 0 0 24px rgb(8 145 178 / 0.12)' },
         },
         slideUp: {
           '0%': { transform: 'translateY(8px)', opacity: '0' },
@@ -65,9 +65,9 @@ export default {
         },
       },
       backgroundImage: {
-        'grid-pattern': `linear-gradient(to right, rgb(42 45 55 / 0.4) 1px, transparent 1px),
-                         linear-gradient(to bottom, rgb(42 45 55 / 0.4) 1px, transparent 1px)`,
-        'radial-glow': 'radial-gradient(ellipse at top, rgb(6 182 212 / 0.06) 0%, transparent 60%)',
+        'grid-pattern': `linear-gradient(to right, rgb(148 163 184 / 0.35) 1px, transparent 1px),
+                         linear-gradient(to bottom, rgb(148 163 184 / 0.35) 1px, transparent 1px)`,
+        'radial-glow': 'radial-gradient(ellipse at 50% 0%, rgb(8 145 178 / 0.1) 0%, transparent 50%)',
       },
       backgroundSize: {
         'grid': '24px 24px',
@@ -77,11 +77,11 @@ export default {
         '2xl': '1rem',
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3)',
-        'card-hover': '0 4px 16px -2px rgb(0 0 0 / 0.4), 0 2px 6px -2px rgb(0 0 0 / 0.3)',
-        'modal': '0 24px 64px -16px rgb(0 0 0 / 0.6), 0 8px 24px -8px rgb(0 0 0 / 0.4)',
-        'glow-sm': '0 0 8px -2px rgb(6 182 212 / 0.25)',
-        'glow-md': '0 0 16px -4px rgb(6 182 212 / 0.3)',
+        'card': '0 1px 2px 0 rgb(15 23 42 / 0.05), 0 1px 3px -1px rgb(15 23 42 / 0.08)',
+        'card-hover': '0 8px 24px -6px rgb(15 23 42 / 0.1), 0 4px 12px -4px rgb(15 23 42 / 0.06)',
+        'modal': '0 24px 48px -12px rgb(15 23 42 / 0.12), 0 12px 24px -8px rgb(15 23 42 / 0.08)',
+        'glow-sm': '0 0 8px -2px rgb(8 145 178 / 0.2)',
+        'glow-md': '0 0 16px -4px rgb(8 145 178 / 0.22)',
       },
     },
   },
