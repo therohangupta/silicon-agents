@@ -1,13 +1,13 @@
 # =============================================================================
 # Root requirements.txt — convenience pin list for local / CI installs.
 #
-# Prefer:  cd agent_fleet && pip install -e ".[dev]"
-# This file mirrors many agent_fleet/pyproject.toml deps plus a few test/tool
+# Prefer:  pip install -e ".[dev]"
+# This file mirrors many pyproject.toml deps plus a few test/tool
 # pins used outside the package metadata. Comments explain each line.
 # =============================================================================
 
 # Editable install of the package discovered from the *current* directory's
-# pyproject/setup. Prefer running pip from agent_fleet/ (see root pyproject.toml).
+# pyproject/setup. Prefer running pip from repo root (see root pyproject.toml).
 -e .
 
 # gRPC runtime used by fleet-server ↔ gateway and generated stubs.

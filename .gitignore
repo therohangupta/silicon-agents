@@ -86,7 +86,7 @@ package-lock.json
 .env
 
 # Rendered deployment manifests; config/platform.yaml is the authored source.
-agent_fleet/docker-compose.platform.generated.yml
+docker-compose.platform.generated.yml
 
 # Runtime data (Docker bind mounts)
 .data/

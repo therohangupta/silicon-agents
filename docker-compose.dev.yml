@@ -1,0 +1,79 @@
+# =============================================================================
+# docker-compose.dev.yml — development overlay on top of docker-compose.yml.
+#
+# Usage (from ):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# What this overlay changes:
+#   * Bind-mounts service source + packages/ into containers (live code on host).
+#   * Runs uvicorn with --reload for gateway and telemetry.
+#   * Re-states environment keys so the merged Compose file stays explicit.
+#
+# Frontend: always run on host (npm run dev / scripts/startup.sh) for UI live reload.
+# Agents: still come from docker-compose.agents.yml (generated), not this file.
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # gateway — replace image CMD with reloadable uvicorn; mount source read-only.
+  # ---------------------------------------------------------------------------
+  gateway:
+    build:
+      # Same context/dockerfile as the base file (required when overlay rebuilds).
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    volumes:
+      # Host gateway source → container path used by the Python package layout.
+      - ./services/gateway/src:/app/services/gateway/src:ro
+      # Shared packages (config, SDKs) so edits apply without image rebuild.
+      - ./packages:/app/packages:ro
+    command:
+      # --reload watches mounted source and restarts workers on change.
+      ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "${GATEWAY_CONTAINER_PORT:?config/platform.yaml}", "--reload"]
+    environment:
+      GRPC_SERVER_ADDRESS: ${GRPC_SERVER_ADDRESS:?config/platform.yaml}
+      DATABASE_URL: ${FLEET_DATABASE_URL:?config/platform.yaml}
+      TELEMETRY_URL: ${TELEMETRY_CONTAINER_URL:?config/platform.yaml}
+      NATS_URL: ${NATS_CONTAINER_URL:?config/platform.yaml}
+
+  # ---------------------------------------------------------------------------
+  # fleet-server — mount source/packages for edit-without-rebuild; keep env.
+  # (No --reload here: gRPC process is not run under uvicorn in this overlay.)
+  # ---------------------------------------------------------------------------
+  fleet-server:
+    volumes:
+      # Live fleet_server Python tree.
+      - ./services/fleet_server/src:/app/services/fleet_server/src:ro
+      # Live shared packages.
+      - ./packages:/app/packages:ro
+    environment:
+      DATABASE_URL: ${FLEET_DATABASE_URL:?config/platform.yaml}
+      GATEWAY_EVENT_URL: ${GATEWAY_EVENT_URL:?config/platform.yaml}
+      DEFAULT_AGENT_HOST: ${DEFAULT_AGENT_HOST:?config/platform.yaml}
+
+  # ---------------------------------------------------------------------------
+  # telemetry — reloadable uvicorn + bind mounts for src and packages.
+  # ---------------------------------------------------------------------------
+  telemetry:
+    build:
+      context: .
+      dockerfile: services/telemetry/Dockerfile
+    volumes:
+      - ./services/telemetry/src:/app/services/telemetry/src:ro
+      - ./packages:/app/packages:ro
+    command:
+      # Module path matches how the telemetry image lays out packages on PYTHONPATH.
+      ["uvicorn", "services.telemetry.src.main:app", "--host", "0.0.0.0", "--port", "${TELEMETRY_HTTP_PORT:?config/platform.yaml}", "--reload"]
+    environment:
+      GATEWAY_EVENT_URL: ${GATEWAY_EVENT_URL:?config/platform.yaml}
+      NATS_URL: ${NATS_CONTAINER_URL:?config/platform.yaml}
+
+  # ---------------------------------------------------------------------------
+  # storage-writer — bind-mount source/packages; keep NATS URL explicit.
+  # ---------------------------------------------------------------------------
+  storage-writer:
+    volumes:
+      - ./services/storage_writer/src:/app/services/storage_writer/src:ro
+      - ./packages:/app/packages:ro
+    environment:
+      NATS_URL: ${NATS_CONTAINER_URL:?config/platform.yaml}
