@@ -1,0 +1,691 @@
+# AgentFleet config for ``regression`` — regression manifest, sharding, and simulator-farm submission specialist.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``regression`` used across the verification plan graph.
+  name: regression
+  # Human-readable title shown in UIs and docs.
+  display_name: Regression Agent
+  # Responsibility brief for this verification specialist.
+  description: Select seeds, shard the workload, and run a reproducible regression.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Select seeds, shard the workload, and run a reproducible regression.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for regression: Write a test manifest
+  - Write a test manifest
+  # Boundary rule for regression: Submit a regression job
+  - Submit a regression job
+  # Boundary rule for regression: Read results including failing seeds
+  - Read results including failing seeds
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for regression: Drop a failing seed from the manifest
+  - Drop a failing seed from the manifest
+  # Boundary rule for regression: Edit RTL
+  - Edit RTL
+  # Boundary rule for regression: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for regression: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for regression: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8221 for the regression AgentService (must match Dockerfile EXPOSE).
+  port: 8221
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``read_prior_failures`` — must stay aligned with tools.py / plan references.
+- id: read_prior_failures
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Read seeds and tests that failed in the previous campaign.
+# Identifier ``read_uncovered_bins`` — must stay aligned with tools.py / plan references.
+- id: read_uncovered_bins
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Read bins that still need stimulus.
+# Identifier ``choose_regression_seeds`` — must stay aligned with tools.py / plan references.
+- id: choose_regression_seeds
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Choose seeds from prior failures and uncovered bins. Keep every seed that previously failed.
+# Identifier ``write_regression_manifest`` — must stay aligned with tools.py / plan references.
+- id: write_regression_manifest
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Write the test, seed, and plusarg manifest for this campaign.
+# Identifier ``shard_regression`` — must stay aligned with tools.py / plan references.
+- id: shard_regression
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Split the manifest into shards with stable shard ids.
+# Identifier ``submit_regression`` — must stay aligned with tools.py / plan references.
+- id: submit_regression
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Submit the regression manifest to the bound simulator.
+# Identifier ``rerun_failed_shard`` — must stay aligned with tools.py / plan references.
+- id: rerun_failed_shard
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Rerun one failed shard with the same idempotency key.
+# Identifier ``read_regression_results`` — must stay aligned with tools.py / plan references.
+- id: read_regression_results
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Read pass, fail, and infrastructure-error counts.
+# Identifier ``read_failing_seeds`` — must stay aligned with tools.py / plan references.
+- id: read_failing_seeds
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: List failing tests and seeds. Do not omit any.
+# Identifier ``compare_regression_to_baseline`` — must stay aligned with tools.py / plan references.
+- id: compare_regression_to_baseline
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Show tests that newly fail or newly pass versus the baseline campaign.
+# Identifier ``record_simulator_version`` — must stay aligned with tools.py / plan references.
+- id: record_simulator_version
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Record the simulator, version, and compile options.
+# Identifier ``flag_manifest_dropped_seed`` — must stay aligned with tools.py / plan references.
+- id: flag_manifest_dropped_seed
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Publish a manifest that omitted a previously failing seed.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``read_prior_failures`` — must stay aligned with tools.py / plan references.
+- id: read_prior_failures
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: read_prior_failures
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Read seeds and tests that failed in the previous campaign.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: report_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_uncovered_bins`` — must stay aligned with tools.py / plan references.
+- id: read_uncovered_bins
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: read_uncovered_bins
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Read bins that still need stimulus.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: report_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``choose_regression_seeds`` — must stay aligned with tools.py / plan references.
+- id: choose_regression_seeds
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: choose_regression_seeds
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Choose seeds from prior failures and uncovered bins. Keep every seed that previously failed.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: report_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``write_regression_manifest`` — must stay aligned with tools.py / plan references.
+- id: write_regression_manifest
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: write_regression_manifest
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Write the test, seed, and plusarg manifest for this campaign.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: The single change this edit is testing.
+# Identifier ``shard_regression`` — must stay aligned with tools.py / plan references.
+- id: shard_regression
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: shard_regression
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Split the manifest into shards with stable shard ids.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    hypothesis: ''
+    # YAML key ``shard_count`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    shard_count: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: shard_count
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Number of shards.
+# Identifier ``submit_regression`` — must stay aligned with tools.py / plan references.
+- id: submit_regression
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: submit_regression
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Submit the regression manifest to the bound simulator.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    recipe: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: recipe
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``rerun_failed_shard`` — must stay aligned with tools.py / plan references.
+- id: rerun_failed_shard
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: rerun_failed_shard
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Rerun one failed shard with the same idempotency key.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    recipe: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+    # YAML key ``shard_id`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    shard_id: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: recipe
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: shard_id
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Shard to rerun.
+# Identifier ``read_regression_results`` — must stay aligned with tools.py / plan references.
+- id: read_regression_results
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: read_regression_results
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Read pass, fail, and infrastructure-error counts.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: report_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_failing_seeds`` — must stay aligned with tools.py / plan references.
+- id: read_failing_seeds
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: read_failing_seeds
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: List failing tests and seeds. Do not omit any.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: report_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``compare_regression_to_baseline`` — must stay aligned with tools.py / plan references.
+- id: compare_regression_to_baseline
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: compare_regression_to_baseline
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Show tests that newly fail or newly pass versus the baseline campaign.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    corner: ''
+    # YAML key ``mode`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    mode: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: report_ref
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: corner
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: mode
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``record_simulator_version`` — must stay aligned with tools.py / plan references.
+- id: record_simulator_version
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: record_simulator_version
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Record the simulator, version, and compile options.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``summary`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: summary
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: severity
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``flag_manifest_dropped_seed`` — must stay aligned with tools.py / plan references.
+- id: flag_manifest_dropped_seed
+  # YAML key ``module`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  module: tools
+  # YAML key ``callable`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  callable: flag_manifest_dropped_seed
+  # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  description: Publish a manifest that omitted a previously failing seed.
+  # YAML key ``args_defaults`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  args_defaults:
+    # YAML key ``summary`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: summary
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: severity
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    - name: skill_calls
+      # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+      description: Tool invocations.
+    # YAML key ``name`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+    - name: artifacts
+      # YAML key ``description`` for the regression agent (regression manifest, sharding, and simulator-farm submission specialist).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/regression:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for regression.
+  - requirements
+  # include entry ``interface_contracts`` for regression.
+  - interface_contracts
+  # include entry ``canonical_source`` for regression.
+  - canonical_source
+  # include entry ``open_findings`` for regression.
+  - open_findings
+  # include entry ``experiments`` for regression.
+  - experiments
+  # include entry ``decisions`` for regression.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for regression.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for regression.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for regression.
+  - human-authored
+  # precedence entry ``validated`` for regression.
+  - validated
+  # precedence entry ``provisional`` for regression.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for regression.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

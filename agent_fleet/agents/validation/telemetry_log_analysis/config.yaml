@@ -1,0 +1,675 @@
+# Fleet manifest for the Telemetry / Log Analysis agent (telemetry_log_analysis).
+# Parsed by EdaAgent.read_spec / gateway YAML scanner. Comments are documentation only.
+
+# Fleet schema version for the agent manifest parser.
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for gateway YAML scanning.
+kind: Agent
+# Human- and machine-readable identity for dashboards and fleet select.
+metadata:
+  # Stable agent id used in delegates_to, tool agent_id, and routing.
+  name: telemetry_log_analysis
+  # UI label shown in the dashboard and logs.
+  display_name: Telemetry and Log-Analysis Agent
+  # One-paragraph charter for planners and operators.
+  description: Normalize, correlate, search, and summarize firmware logs, counters, traces, and instrument
+    captures while preserving links to the primary evidence.
+  # Stage and role for this agent.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: validation
+    # Role class: lead, specialist, or validator.
+    role: worker
+# Role class: lead, specialist, or validator.
+role: worker
+# Pipeline stage this agent owns or serves.
+stage: validation
+# Normative statement of what this agent owes the program.
+responsibility: Normalize, correlate, search, and summarize firmware logs, counters, traces, and instrument
+  captures while preserving links to the primary evidence.
+# Hard may / may_not envelope enforced in planning and reviews.
+boundary:
+  # Actions this agent is allowed to take on candidates and memory.
+  may:
+  # List entry consumed by the telemetry_log_analysis manifest: Read logs and captures
+  - Read logs and captures
+  # List entry consumed by the telemetry_log_analysis manifest: Publish a correlation with links to the primary evidence
+  - Publish a correlation with links to the primary evidence
+  # Forbidden actions (waivers, baseline promotion, self-signoff, etc.).
+  may_not:
+  # List entry consumed by the telemetry_log_analysis manifest: Drop a capture that contradicts the summary
+  - Drop a capture that contradicts the summary
+  # List entry consumed by the telemetry_log_analysis manifest: Edit firmware
+  - Edit firmware
+  # List entry consumed by the telemetry_log_analysis manifest: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # List entry consumed by the telemetry_log_analysis manifest: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # List entry consumed by the telemetry_log_analysis manifest: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows for.
+delegates_to: []
+# Independent gate agents that must grade this agent's output.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname from sibling containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port exposed by this agent's Dockerfile / server.
+  port: 8267
+  # HTTP paths the AgentService registers.
+  endpoints:
+    # Liveness probe path for orchestrators.
+    health: /health
+    # Task execution POST path used by the fleet server.
+    execute: /tasks/execute
+# EDA tool backend binding; none until a framework adapter is attached.
+backend:
+  # Backend adapter type (none means tool_observation returns not_run).
+  type: none
+# How tools are invoked inside the agent process.
+execution:
+  # Functional or test-mode filter for report reads.
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum simultaneous tasks for this specialist.
+    max_tasks: 1
+# Timeouts and retry policy for failed DFT/lab work.
+reliability:
+  # Wall-clock seconds before a task is abandoned.
+  task_timeout_secs: 120
+  # Automatic retries before on_failure policy applies.
+  max_retries: 1
+  # Planner reaction when the specialist fails (e.g. replan).
+  on_failure: replan
+# Advertised capability ids for planners (may mirror skills).
+capabilities:
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: normalize_firmware_logs
+  # One-paragraph charter for planners and operators.
+  description: Normalize firmware logs into a common record.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: normalize_instrument_metadata
+  # One-paragraph charter for planners and operators.
+  description: Normalize instrument captures and environmental metadata.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: read_hardware_counters
+  # One-paragraph charter for planners and operators.
+  description: Read hardware performance counters.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: read_trace_index
+  # One-paragraph charter for planners and operators.
+  description: Read the trace and capture index.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: search_logs
+  # One-paragraph charter for planners and operators.
+  description: Search normalized logs for one signature.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: correlate_traces
+  # One-paragraph charter for planners and operators.
+  description: Correlate counters, traces, and environment metadata.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: align_logs_to_captures
+  # One-paragraph charter for planners and operators.
+  description: Align firmware timestamps with instrument captures.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: summarize_session
+  # One-paragraph charter for planners and operators.
+  description: Summarize one lab session and link every claim to a primary capture.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: flag_contradictory_capture
+  # One-paragraph charter for planners and operators.
+  description: Publish a capture that contradicts the session summary.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: flag_unlinked_summary_claim
+  # One-paragraph charter for planners and operators.
+  description: Publish a summary sentence with no primary evidence.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: record_telemetry_sources
+  # One-paragraph charter for planners and operators.
+  description: Record the log, counter, and capture refs included in an analysis.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: publish_telemetry_correlation
+  # One-paragraph charter for planners and operators.
+  description: Publish the correlation and its evidence refs.
+# Concrete tool bindings: module, callable, action, params.
+skills:
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: normalize_firmware_logs
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: normalize_firmware_logs
+  # One-paragraph charter for planners and operators.
+  description: Normalize firmware logs into a common record.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: normalize_instrument_metadata
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: normalize_instrument_metadata
+  # One-paragraph charter for planners and operators.
+  description: Normalize instrument captures and environmental metadata.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: read_hardware_counters
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_hardware_counters
+  # One-paragraph charter for planners and operators.
+  description: Read hardware performance counters.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: read_trace_index
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_trace_index
+  # One-paragraph charter for planners and operators.
+  description: Read the trace and capture index.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: search_logs
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: search_logs
+  # One-paragraph charter for planners and operators.
+  description: Search normalized logs for one signature.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+    # Manifest field 'query' for telemetry_log_analysis (validation).
+    query: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: query
+    # One-paragraph charter for planners and operators.
+    description: Text or counter signature to find.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: correlate_traces
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: correlate_traces
+  # One-paragraph charter for planners and operators.
+  description: Correlate counters, traces, and environment metadata.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: align_logs_to_captures
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: align_logs_to_captures
+  # One-paragraph charter for planners and operators.
+  description: Align firmware timestamps with instrument captures.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: summarize_session
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: summarize_session
+  # One-paragraph charter for planners and operators.
+  description: Summarize one lab session and link every claim to a primary capture.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: flag_contradictory_capture
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_contradictory_capture
+  # One-paragraph charter for planners and operators.
+  description: Publish a capture that contradicts the session summary.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: flag_unlinked_summary_claim
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_unlinked_summary_claim
+  # One-paragraph charter for planners and operators.
+  description: Publish a summary sentence with no primary evidence.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: record_telemetry_sources
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: record_telemetry_sources
+  # One-paragraph charter for planners and operators.
+  description: Record the log, counter, and capture refs included in an analysis.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for telemetry_log_analysis (validation).
+- id: publish_telemetry_correlation
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: publish_telemetry_correlation
+  # One-paragraph charter for planners and operators.
+  description: Publish the correlation and its evidence refs.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for telemetry_log_analysis (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Local and shared engineering-memory configuration.
+memory:
+  # Named memory stores this agent may touch.
+  stores:
+  # Manifest field '- id' for telemetry_log_analysis (validation).
+  - id: journal
+    # One-paragraph charter for planners and operators.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none means tool_observation returns not_run).
+    type: list
+    # Where the store is kept (file vs ephemeral).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem root for silicon memory (env-substitutable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry stream configuration.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls and artifacts are ingested.
+  telemetry:
+    # Telemetry service base URL (TELEMETRY_URL).
+    endpoint: ${TELEMETRY_URL}
+    # Named high-level telemetry stream categories.
+    streams:
+    # Manifest field '- name' for telemetry_log_analysis (validation).
+    - name: skill_calls
+      # One-paragraph charter for planners and operators.
+      description: Tool invocations.
+    # Manifest field '- name' for telemetry_log_analysis (validation).
+    - name: artifacts
+      # One-paragraph charter for planners and operators.
+      description: Structured task results.
+# Container image and Dockerfile pointers for compose.
+deployment:
+  # Published image tag for this agent.
+  image: agentfleet/telemetry_log_analysis:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Env vars injected into the container.
+  environment:
+    # Optional bound EDA/lab framework adapter name.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory.
+context:
+  # Record kinds always preferred into the context package.
+  include:
+  # List entry consumed by the telemetry_log_analysis manifest: experiments
+  - experiments
+  # List entry consumed by the telemetry_log_analysis manifest: gates
+  - gates
+  # List entry consumed by the telemetry_log_analysis manifest: decisions
+  - decisions
+  # List entry consumed by the telemetry_log_analysis manifest: open_findings
+  - open_findings
+  # List entry consumed by the telemetry_log_analysis manifest: canonical_source
+  - canonical_source
+  # Record kinds filtered out before ranking.
+  exclude:
+  # List entry consumed by the telemetry_log_analysis manifest: stale_candidates
+  - stale_candidates
+  # Validation states removed before context ranking.
+  drop:
+  # List entry consumed by the telemetry_log_analysis manifest: rejected
+  - rejected
+  # Most-trusted authorship/validation states first.
+  precedence:
+  # List entry consumed by the telemetry_log_analysis manifest: validated
+  - validated
+  # List entry consumed by the telemetry_log_analysis manifest: provisional
+  - provisional
+  # States never dropped solely for token budget.
+  protect: []
+  # Approximate token cap for the assembled context package.
+  token_budget: 80000

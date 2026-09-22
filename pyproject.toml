@@ -1,3 +1,18 @@
-# This workspace uses robot_fleet/ as the canonical package.
-# Install from there: cd robot_fleet && pip install -e .
-# The robotctl CLI is registered in robot_fleet/pyproject.toml.
+# =============================================================================
+# Root pyproject.toml — workspace pointer only (no [project] package metadata).
+#
+# This repository's installable Python package lives under agent_fleet/.
+# Canonical metadata, dependencies, and the agentctl console script are defined
+# in agent_fleet/pyproject.toml.
+#
+# Typical install (from the package directory):
+#   cd agent_fleet && pip install -e .
+#
+# The root requirements.txt still lists "-e ." for historical/local workflows;
+# prefer installing from agent_fleet/ so setuptools package discovery matches
+# packages*, services*, cli*, agents*, and domains*.
+#
+# There are intentionally no [build-system], [project], or [tool.*] tables here
+# yet — adding them would duplicate agent_fleet/pyproject.toml. Keep this file
+# as a short pointer so tools that look for a root pyproject find guidance.
+# =============================================================================

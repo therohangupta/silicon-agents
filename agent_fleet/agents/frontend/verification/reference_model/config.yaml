@@ -1,0 +1,655 @@
+# AgentFleet config for ``reference_model`` — behavioral reference-model author for scoreboard checking.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``reference_model`` used across the verification plan graph.
+  name: reference_model
+  # Human-readable title shown in UIs and docs.
+  display_name: Reference Model Agent
+  # Responsibility brief for this verification specialist.
+  description: Produce an executable behavioral reference model from the specification.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Produce an executable behavioral reference model from the specification.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for reference_model: Read the specification
+  - Read the specification
+  # Boundary rule for reference_model: Write a reference model on an isolated branch
+  - Write a reference model on an isolated branch
+  # Boundary rule for reference_model: Run the model against its own directed checks
+  - Run the model against its own directed checks
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for reference_model: Copy unreviewed RTL into the reference
+  - Copy unreviewed RTL into the reference
+  # Boundary rule for reference_model: Change the spec to match the model
+  - Change the spec to match the model
+  # Boundary rule for reference_model: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for reference_model: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for reference_model: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8217 for the reference_model AgentService (must match Dockerfile EXPOSE).
+  port: 8217
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``generate_reference_model`` — must stay aligned with tools.py / plan references.
+- id: generate_reference_model
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write a behavioral model that encodes the specification.
+# Identifier ``write_model_ports`` — must stay aligned with tools.py / plan references.
+- id: write_model_ports
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write the model's ports from the interface contract.
+# Identifier ``write_model_transactions`` — must stay aligned with tools.py / plan references.
+- id: write_model_transactions
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write legal transaction types and their fields.
+# Identifier ``write_model_error_behavior`` — must stay aligned with tools.py / plan references.
+- id: write_model_error_behavior
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write how the model reports and recovers from illegal inputs.
+# Identifier ``write_model_latency_rule`` — must stay aligned with tools.py / plan references.
+- id: write_model_latency_rule
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write the latency or ordering rule the model must obey.
+# Identifier ``write_model_selfcheck`` — must stay aligned with tools.py / plan references.
+- id: write_model_selfcheck
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write directed checks that exercise the model without the DUT.
+# Identifier ``read_model_specification`` — must stay aligned with tools.py / plan references.
+- id: read_model_specification
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Read the specification clauses this model claims to encode.
+# Identifier ``diff_model_against_spec`` — must stay aligned with tools.py / plan references.
+- id: diff_model_against_spec
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: List specification clauses the model does not yet encode.
+# Identifier ``compile_reference_model`` — must stay aligned with tools.py / plan references.
+- id: compile_reference_model
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Compile the reference model.
+# Identifier ``run_model_selfcheck`` — must stay aligned with tools.py / plan references.
+- id: run_model_selfcheck
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Run the model's own checks and return mismatches.
+# Identifier ``flag_spec_hole_in_model`` — must stay aligned with tools.py / plan references.
+- id: flag_spec_hole_in_model
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Publish a specification clause that cannot be encoded because it is ambiguous.
+# Identifier ``record_reference_model_version`` — must stay aligned with tools.py / plan references.
+- id: record_reference_model_version
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Record the model source, spec revision, and language.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``generate_reference_model`` — must stay aligned with tools.py / plan references.
+- id: generate_reference_model
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: generate_reference_model
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write a behavioral model that encodes the specification.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    hypothesis: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: hypothesis
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: The single change this edit is testing.
+# Identifier ``write_model_ports`` — must stay aligned with tools.py / plan references.
+- id: write_model_ports
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: write_model_ports
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write the model's ports from the interface contract.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    hypothesis: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: hypothesis
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: The single change this edit is testing.
+# Identifier ``write_model_transactions`` — must stay aligned with tools.py / plan references.
+- id: write_model_transactions
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: write_model_transactions
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write legal transaction types and their fields.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    hypothesis: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: hypothesis
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: The single change this edit is testing.
+# Identifier ``write_model_error_behavior`` — must stay aligned with tools.py / plan references.
+- id: write_model_error_behavior
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: write_model_error_behavior
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write how the model reports and recovers from illegal inputs.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    hypothesis: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: hypothesis
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: The single change this edit is testing.
+# Identifier ``write_model_latency_rule`` — must stay aligned with tools.py / plan references.
+- id: write_model_latency_rule
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: write_model_latency_rule
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write the latency or ordering rule the model must obey.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    hypothesis: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: hypothesis
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: The single change this edit is testing.
+# Identifier ``write_model_selfcheck`` — must stay aligned with tools.py / plan references.
+- id: write_model_selfcheck
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: write_model_selfcheck
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Write directed checks that exercise the model without the DUT.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    hypothesis: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: hypothesis
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: The single change this edit is testing.
+# Identifier ``read_model_specification`` — must stay aligned with tools.py / plan references.
+- id: read_model_specification
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: read_model_specification
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Read the specification clauses this model claims to encode.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    report_ref: ''
+    # YAML key ``corner`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    corner: ''
+    # YAML key ``mode`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    mode: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: report_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: corner
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: mode
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``diff_model_against_spec`` — must stay aligned with tools.py / plan references.
+- id: diff_model_against_spec
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: diff_model_against_spec
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: List specification clauses the model does not yet encode.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    report_ref: ''
+    # YAML key ``corner`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    corner: ''
+    # YAML key ``mode`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    mode: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: report_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: corner
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: mode
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``compile_reference_model`` — must stay aligned with tools.py / plan references.
+- id: compile_reference_model
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: compile_reference_model
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Compile the reference model.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    recipe: ''
+    # YAML key ``corner`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    corner: ''
+    # YAML key ``mode`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    mode: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: recipe
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: corner
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: mode
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``run_model_selfcheck`` — must stay aligned with tools.py / plan references.
+- id: run_model_selfcheck
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: run_model_selfcheck
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Run the model's own checks and return mismatches.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    recipe: ''
+    # YAML key ``corner`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    corner: ''
+    # YAML key ``mode`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    mode: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: candidate_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: baseline_ref
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: recipe
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: corner
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: mode
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``flag_spec_hole_in_model`` — must stay aligned with tools.py / plan references.
+- id: flag_spec_hole_in_model
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: flag_spec_hole_in_model
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Publish a specification clause that cannot be encoded because it is ambiguous.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``summary`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    summary: ''
+    # YAML key ``evidence_refs`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    evidence_refs: ''
+    # YAML key ``severity`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    recommended_recipient: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: summary
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: One-sentence finding.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: evidence_refs
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: severity
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: recommended_recipient
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Agent id that should act on the finding.
+# Identifier ``record_reference_model_version`` — must stay aligned with tools.py / plan references.
+- id: record_reference_model_version
+  # YAML key ``module`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  module: tools
+  # YAML key ``callable`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  callable: record_reference_model_version
+  # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  description: Record the model source, spec revision, and language.
+  # YAML key ``args_defaults`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  args_defaults:
+    # YAML key ``summary`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    summary: ''
+    # YAML key ``evidence_refs`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    evidence_refs: ''
+    # YAML key ``severity`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    recommended_recipient: ''
+  # YAML key ``action`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: summary
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: One-sentence finding.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: evidence_refs
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: severity
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+  - name: recommended_recipient
+    # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    - name: skill_calls
+      # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+      description: Tool invocations.
+    # YAML key ``name`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+    - name: artifacts
+      # YAML key ``description`` for the reference_model agent (behavioral reference-model author for scoreboard checking).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/reference_model:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for reference_model.
+  - requirements
+  # include entry ``interface_contracts`` for reference_model.
+  - interface_contracts
+  # include entry ``canonical_source`` for reference_model.
+  - canonical_source
+  # include entry ``open_findings`` for reference_model.
+  - open_findings
+  # include entry ``experiments`` for reference_model.
+  - experiments
+  # include entry ``decisions`` for reference_model.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for reference_model.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for reference_model.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for reference_model.
+  - human-authored
+  # precedence entry ``validated`` for reference_model.
+  - validated
+  # precedence entry ``provisional`` for reference_model.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for reference_model.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

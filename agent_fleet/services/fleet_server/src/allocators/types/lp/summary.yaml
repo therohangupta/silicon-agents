@@ -1,0 +1,31 @@
+# =============================================================================
+# LP Allocator catalog summary (dashboard / docs metadata — not loaded as code)
+# =============================================================================
+
+# Numeric strategy/catalog id for this allocator entry.
+id: 1
+# Human-readable display name.
+name: Linear Programming Allocator
+
+# Describes PuLP ILP objective and constraints in operator language.
+description: >
+  Uses mathematical optimization to solve task allocation as an integer linear
+  programming problem. Minimizes maximum agent load while respecting capability
+  constraints and agent type requirements.
+
+# Pure algorithmic method (no LLM prompts).
+method_type: algorithmic
+
+# Prompt inventory — intentionally empty/none for LP.
+prompts:
+  # No prompt files; allocation is formulated as an ILP.
+  - type: none
+    description: This allocator uses mathematical optimization, not LLM prompts
+
+# Behavioral steps shown in strategy docs/UI.
+example_behavior: |
+  - Builds capability and agent type constraints
+  - Formulates as integer linear programming problem
+  - Uses PuLP solver to find optimal assignment
+  - Minimizes maximum tasks per agent (balanced workload)
+  - Returns optimal task-to-agent mapping

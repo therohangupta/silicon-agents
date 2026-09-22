@@ -1,0 +1,137 @@
+# Master configuration for this fleet's platform.
+# Python reads this file at runtime. scripts/startup.sh renders a complete
+# Compose manifest from it before container creation. The repository .env is
+# reserved for operator-owned secrets such as API keys.
+# Do not copy these values into Python, shell, or a second config file.
+
+process_host: 127.0.0.1
+http_scheme: http
+ws_scheme: ws
+nats_scheme: nats
+
+process:
+  memory_backend: file
+  memory_root: /tmp/silicon_memory
+  agent_base_port: 8001
+
+heartbeat:
+  health_check_timeout_seconds: 2.0
+  interval_seconds: 0.5
+  miss_tolerance: 3
+  scanner_interval_seconds: 0.5
+  slack_seconds: 0.5
+  max_per_agent: 20
+  agent_interval_seconds: 5.0
+
+storage:
+  workspace_backend: local
+  workspace_relative_root: data/plan_workspaces
+  blob_backend: local
+  blob_relative_root: data/blobs
+  parquet_relative_root: data/parquet
+  s3_bucket: ""
+  s3_region: us-east-1
+
+cors_extra_origins:
+  - http://127.0.0.1:3000
+
+startup:
+  platform_wait_timeout_seconds: 240
+  agent_health_timeout_seconds: 180
+  dashboard_port: 5173
+  dashboard_ready_attempts: 60
+
+postgres:
+  user: agent_user
+  password_env: AGENT_FLEET_POSTGRES_PASSWORD
+  database: agent_fleet
+  container_host: db
+  container_port: 5432
+  published_host_port: 5433
+  container_scheme: postgresql
+  process_scheme: postgresql+asyncpg
+
+nats:
+  container_host: nats
+  client_port: 4222
+  monitoring_port: 8222
+  published_client_port: 4222
+  published_monitoring_port: 8222
+
+cassandra:
+  container_host: cassandra
+  cluster_name: silicon
+  container_port: 9042
+  published_host_port: 9042
+
+minio:
+  container_host: minio
+  access_key: minio
+  secret_key_env: AGENT_FLEET_MINIO_ROOT_PASSWORD
+  bucket: silicon-artifacts
+  api_container_port: 9000
+  console_container_port: 9001
+  published_api_port: 9100
+  published_console_port: 9101
+
+clickhouse:
+  container_host: clickhouse
+  user: silicon
+  password_env: AGENT_FLEET_CLICKHOUSE_PASSWORD
+  database: silicon
+  container_port: 8123
+  published_host_port: 8123
+
+opensearch:
+  container_host: opensearch
+  container_port: 9200
+  published_host_port: 9200
+
+vault:
+  container_host: vault
+  token_env: AGENT_FLEET_VAULT_DEV_ROOT_TOKEN
+  container_port: 8200
+  published_host_port: 8200
+
+git:
+  container_dir: /tmp/memory-source/repo
+  host_relative_dir: .data/silicon-source/silicon
+  host_mount: ./.data/silicon-source
+  container_port: 9418
+  published_host_port: 9418
+
+gateway:
+  container_host: gateway
+  container_port: 8000
+  published_host_port: 8000
+  event_path: /internal/events
+
+fleet_server:
+  container_host: fleet-server
+  container_port: 50051
+  published_host_port: 50051
+  default_agent_host: host.docker.internal
+
+telemetry:
+  container_host: telemetry
+  http_port: 9000
+  grpc_port: 9001
+  published_http_port: 9000
+  published_grpc_port: 9001
+  blob_root: /data/blobs
+  parquet_root: /data/parquet
+
+agent_compose:
+  project: silicon-agents
+  image: agentfleet/silicon-agent:dev
+  dockerfile: services/silicon_agent/Dockerfile
+  build_context: .
+  command:
+    - python
+    - server.py
+  restart: unless-stopped
+  network: agent_fleet
+  external_network: agent_fleet_default
+  working_dir_prefix: /app/agents
+  memory_backend: plane
+  host_port_collision_offset: 10000

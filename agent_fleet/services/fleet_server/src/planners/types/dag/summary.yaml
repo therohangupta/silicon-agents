@@ -1,0 +1,43 @@
+# =============================================================================
+# DAG Planner catalog summary (dashboard / docs metadata — not loaded as code)
+# =============================================================================
+
+# Numeric strategy/catalog id for this planner entry in UI listings.
+id: 2
+# Human-readable display name shown in strategy pickers.
+name: DAG Planner
+
+# Multi-line description of behavior: per-goal DAGs, parallelism inside a goal,
+# isolation across goals (no cross-goal dependency edges).
+description: >
+  Generates a separate DAG (Directed Acyclic Graph) for each goal, then
+  combines them. Tasks within a goal can run in parallel if they don't
+  depend on each other. No cross-goal dependencies - goals are isolated.
+
+# How the planner produces output (LLM foundation model vs algorithmic).
+method_type: foundation model
+
+# Documents the JSON shape the LLM must emit before DAG→Plan conversion.
+output_format: >
+  JSON with 'nodes' array. Each node has: id (string like "goal1_node0"),
+  description, goal_id, depends_on (list of node IDs). The goal prefix
+  ensures unique IDs when DAGs are combined.
+
+# Lists co-located prompt files and their roles for operators.
+prompts:
+  # system.prompt — role + DAG rules + output schema.
+  - type: system
+    description: System prompt defining DAG planning principles
+  # user.prompt — per-goal template with prefix/agent context.
+  - type: user
+    description: Template with goal and agent context
+
+# Illustrative LLM output used in docs/UI examples (not executed).
+example_output: |
+  {
+    "nodes": [
+      {"id": "goal1_node0", "description": "Fetch item A", "goal_id": 1, "depends_on": []},
+      {"id": "goal1_node1", "description": "Fetch item B", "goal_id": 1, "depends_on": []},
+      {"id": "goal1_node2", "description": "Combine items", "goal_id": 1, "depends_on": ["goal1_node0", "goal1_node1"]}
+    ]
+  }

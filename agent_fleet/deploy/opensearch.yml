@@ -1,0 +1,28 @@
+# =============================================================================
+# deploy/opensearch.yml — OpenSearch config bind-mounted into the opensearch
+# service (see docker-compose.yml → opensearch.volumes).
+#
+# Mounted read-only at:
+#   /usr/share/opensearch/config/opensearch.yml
+#
+# Purpose: keep a single-node, security-disabled, disk-threshold-relaxed cluster
+# suitable for local memory-plane development — not a production topology.
+# =============================================================================
+
+# Logical cluster name (appears in _cluster/health and node metadata).
+cluster.name: silicon-memory
+
+# Human-readable node name for this single local instance.
+node.name: silicon-1
+
+# Bind HTTP/transport to all interfaces so other Compose services can connect.
+network.host: 0.0.0.0
+
+# Do not form a multi-node cluster; skip zen/seed hosts (laptop Compose).
+discovery.type: single-node
+
+# Turn off the security plugin so agents can use plain HTTP without TLS/certs.
+plugins.security.disabled: true
+
+# Disable disk watermark allocation blocks that often trip on small Docker disks.
+cluster.routing.allocation.disk.threshold_enabled: false

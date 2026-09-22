@@ -1,0 +1,693 @@
+# AgentFleet config for ``verification_validator`` — independent verification-contract gate grader.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``verification_validator`` used across the verification plan graph.
+  name: verification_validator
+  # Human-readable title shown in UIs and docs.
+  display_name: Verification Validator
+  # Responsibility brief for this verification specialist.
+  description: Independently decide whether the verification contract passes for one candidate.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: validator
+# Fleet role enum used for privilege and delegation policy.
+role: validator
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Independently decide whether the verification contract passes for one candidate.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for verification_validator: Read the pinned candidate and primary reports
+  - Read the pinned candidate and primary reports
+  # Boundary rule for verification_validator: Re-run critical checks
+  - Re-run critical checks
+  # Boundary rule for verification_validator: Emit a gate decision
+  - Emit a gate decision
+  # Boundary rule for verification_validator: Publish missing inputs or a disagreement with the producing summary
+  - Publish missing inputs or a disagreement with the producing summary
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for verification_validator: Edit the candidate
+  - Edit the candidate
+  # Boundary rule for verification_validator: Waive a failing property
+  - Waive a failing property
+  # Boundary rule for verification_validator: Accept the producing agent's summary in place of the report
+  - Accept the producing agent's summary in place of the report
+  # Boundary rule for verification_validator: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for verification_validator: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for verification_validator: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8224 for the verification_validator AgentService (must match Dockerfile EXPOSE).
+  port: 8224
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``read_pinned_verification_candidate`` — must stay aligned with tools.py / plan references.
+- id: read_pinned_verification_candidate
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Read the exact candidate revision being graded.
+# Identifier ``read_primary_verification_reports`` — must stay aligned with tools.py / plan references.
+- id: read_primary_verification_reports
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Read simulation, formal, and coverage reports from primary artifacts.
+# Identifier ``check_verification_provenance`` — must stay aligned with tools.py / plan references.
+- id: check_verification_provenance
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Check simulator, formal engine, and coverage-model versions against the frozen recipe.
+# Identifier ``reproduce_critical_simulation`` — must stay aligned with tools.py / plan references.
+- id: reproduce_critical_simulation
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Re-run the critical simulation checks.
+# Identifier ``reproduce_critical_formal`` — must stay aligned with tools.py / plan references.
+- id: reproduce_critical_formal
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Re-run the critical formal checks.
+# Identifier ``reproduce_coverage_merge`` — must stay aligned with tools.py / plan references.
+- id: reproduce_coverage_merge
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Re-merge coverage and compare it with the reported score.
+# Identifier ``compare_verification_summary`` — must stay aligned with tools.py / plan references.
+- id: compare_verification_summary
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Compare the producing agent's summary with the primary reports.
+# Identifier ``audit_verification_exclusions`` — must stay aligned with tools.py / plan references.
+- id: audit_verification_exclusions
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Check that every exclusion has an owner, scope, and rationale.
+# Identifier ``list_missing_verification_inputs`` — must stay aligned with tools.py / plan references.
+- id: list_missing_verification_inputs
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: List reports or recipe fields required for a gate that are absent.
+# Identifier ``emit_verification_gate`` — must stay aligned with tools.py / plan references.
+- id: emit_verification_gate
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Record whether the verification contract passed. A missing input fails the gate.
+# Identifier ``publish_verification_disagreement`` — must stay aligned with tools.py / plan references.
+- id: publish_verification_disagreement
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Publish a place where the summary and the primary report disagree.
+# Identifier ``publish_missing_verification_input`` — must stay aligned with tools.py / plan references.
+- id: publish_missing_verification_input
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Publish an input that blocks an independent grade.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``read_pinned_verification_candidate`` — must stay aligned with tools.py / plan references.
+- id: read_pinned_verification_candidate
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: read_pinned_verification_candidate
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Read the exact candidate revision being graded.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: report_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_primary_verification_reports`` — must stay aligned with tools.py / plan references.
+- id: read_primary_verification_reports
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: read_primary_verification_reports
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Read simulation, formal, and coverage reports from primary artifacts.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: report_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``check_verification_provenance`` — must stay aligned with tools.py / plan references.
+- id: check_verification_provenance
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: check_verification_provenance
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Check simulator, formal engine, and coverage-model versions against the frozen recipe.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: report_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``reproduce_critical_simulation`` — must stay aligned with tools.py / plan references.
+- id: reproduce_critical_simulation
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: reproduce_critical_simulation
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Re-run the critical simulation checks.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the verification_validator agent (independent verification-contract gate grader).
+    recipe: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: baseline_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: recipe
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``reproduce_critical_formal`` — must stay aligned with tools.py / plan references.
+- id: reproduce_critical_formal
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: reproduce_critical_formal
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Re-run the critical formal checks.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the verification_validator agent (independent verification-contract gate grader).
+    recipe: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: baseline_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: recipe
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``reproduce_coverage_merge`` — must stay aligned with tools.py / plan references.
+- id: reproduce_coverage_merge
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: reproduce_coverage_merge
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Re-merge coverage and compare it with the reported score.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the verification_validator agent (independent verification-contract gate grader).
+    recipe: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: baseline_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: recipe
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``compare_verification_summary`` — must stay aligned with tools.py / plan references.
+- id: compare_verification_summary
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: compare_verification_summary
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Compare the producing agent's summary with the primary reports.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: report_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``audit_verification_exclusions`` — must stay aligned with tools.py / plan references.
+- id: audit_verification_exclusions
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: audit_verification_exclusions
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Check that every exclusion has an owner, scope, and rationale.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: report_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``list_missing_verification_inputs`` — must stay aligned with tools.py / plan references.
+- id: list_missing_verification_inputs
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: list_missing_verification_inputs
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: List reports or recipe fields required for a gate that are absent.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_validator agent (independent verification-contract gate grader).
+    corner: ''
+    # YAML key ``mode`` for the verification_validator agent (independent verification-contract gate grader).
+    mode: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: report_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: corner
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: mode
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``emit_verification_gate`` — must stay aligned with tools.py / plan references.
+- id: emit_verification_gate
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: emit_verification_gate
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Record whether the verification contract passed. A missing input fails the gate.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_validator agent (independent verification-contract gate grader).
+    candidate_ref: ''
+    # YAML key ``gate_id`` for the verification_validator agent (independent verification-contract gate grader).
+    gate_id: ''
+    # YAML key ``check_refs`` for the verification_validator agent (independent verification-contract gate grader).
+    check_refs: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: emit_gate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Exact candidate being graded.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: gate_id
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Stable id for this gate decision.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: check_refs
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Comma-separated primary report URIs the decision is based on.
+# Identifier ``publish_verification_disagreement`` — must stay aligned with tools.py / plan references.
+- id: publish_verification_disagreement
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: publish_verification_disagreement
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Publish a place where the summary and the primary report disagree.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``summary`` for the verification_validator agent (independent verification-contract gate grader).
+    summary: ''
+    # YAML key ``evidence_refs`` for the verification_validator agent (independent verification-contract gate grader).
+    evidence_refs: ''
+    # YAML key ``severity`` for the verification_validator agent (independent verification-contract gate grader).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the verification_validator agent (independent verification-contract gate grader).
+    recommended_recipient: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: summary
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: One-sentence finding.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: severity
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: recommended_recipient
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Agent id that should act on the finding.
+# Identifier ``publish_missing_verification_input`` — must stay aligned with tools.py / plan references.
+- id: publish_missing_verification_input
+  # YAML key ``module`` for the verification_validator agent (independent verification-contract gate grader).
+  module: tools
+  # YAML key ``callable`` for the verification_validator agent (independent verification-contract gate grader).
+  callable: publish_missing_verification_input
+  # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+  description: Publish an input that blocks an independent grade.
+  # YAML key ``args_defaults`` for the verification_validator agent (independent verification-contract gate grader).
+  args_defaults:
+    # YAML key ``summary`` for the verification_validator agent (independent verification-contract gate grader).
+    summary: ''
+    # YAML key ``evidence_refs`` for the verification_validator agent (independent verification-contract gate grader).
+    evidence_refs: ''
+    # YAML key ``severity`` for the verification_validator agent (independent verification-contract gate grader).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the verification_validator agent (independent verification-contract gate grader).
+    recommended_recipient: ''
+  # YAML key ``action`` for the verification_validator agent (independent verification-contract gate grader).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: summary
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: One-sentence finding.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: severity
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+  - name: recommended_recipient
+    # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+    - name: skill_calls
+      # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+      description: Tool invocations.
+    # YAML key ``name`` for the verification_validator agent (independent verification-contract gate grader).
+    - name: artifacts
+      # YAML key ``description`` for the verification_validator agent (independent verification-contract gate grader).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/verification_validator:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for verification_validator.
+  - requirements
+  # include entry ``interface_contracts`` for verification_validator.
+  - interface_contracts
+  # include entry ``canonical_source`` for verification_validator.
+  - canonical_source
+  # include entry ``gates`` for verification_validator.
+  - gates
+  # include entry ``open_findings`` for verification_validator.
+  - open_findings
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for verification_validator.
+  - stale_candidates
+  # exclude entry ``unverified_agent_claims`` for verification_validator.
+  - unverified_agent_claims
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for verification_validator.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for verification_validator.
+  - human-authored
+  # precedence entry ``validated`` for verification_validator.
+  - validated
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for verification_validator.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

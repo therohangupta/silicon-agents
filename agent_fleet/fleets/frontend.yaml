@@ -1,0 +1,25 @@
+# Agents under agents/frontend/.
+agents:
+  - agents/frontend/architecture/architecture_lead
+  - agents/frontend/architecture/interface
+  - agents/frontend/architecture/performance_modeling
+  - agents/frontend/architecture/power_area_estimation
+  - agents/frontend/architecture/requirements
+  - agents/frontend/architecture/security_reliability
+  - agents/frontend/rtl/cdc_rdc
+  - agents/frontend/rtl/clock_reset
+  - agents/frontend/rtl/lint_quality
+  - agents/frontend/rtl/low_power
+  - agents/frontend/rtl/rtl_implementation
+  - agents/frontend/rtl/rtl_integration
+  - agents/frontend/rtl/rtl_lead
+  - agents/frontend/verification/assertion_formal
+  - agents/frontend/verification/coverage
+  - agents/frontend/verification/failure_triage
+  - agents/frontend/verification/reference_model
+  - agents/frontend/verification/regression
+  - agents/frontend/verification/reproduction
+  - agents/frontend/verification/stimulus
+  - agents/frontend/verification/uvm_environment
+  - agents/frontend/verification/verification_lead
+  - agents/frontend/verification/verification_validator

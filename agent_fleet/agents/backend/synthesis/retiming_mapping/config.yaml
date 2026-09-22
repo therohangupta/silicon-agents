@@ -1,0 +1,724 @@
+# Agent manifest for Retiming and Mapping (role=worker, stage=synthesis, port=8235).
+# EDA focus: State-preserving retiming, restructuring, resource sharing, and technology mapping.
+# Every mapping key and list entry has a comment; multi-line string values are untouched.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; Agent means a runnable chip-design agent service.
+kind: Agent
+# Human- and registry-facing identity for this agent.
+metadata:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  name: retiming_mapping
+  # UI-facing title for operators and dashboards.
+  display_name: Retiming and Mapping Agent
+  # One-paragraph responsibility statement shown in registries and UIs.
+  description: Explore state-preserving retiming, logic restructuring, resource sharing, and technology
+    mapping without violating architectural or verification contracts.
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent belongs to in the backend flow.
+    stage: synthesis
+    # lead orchestrates workers; worker executes specialist tools.
+    role: worker
+# lead orchestrates workers; worker executes specialist tools.
+role: worker
+# Pipeline stage this agent belongs to in the backend flow.
+stage: synthesis
+# Authoritative responsibility text mirrored from the design system.
+responsibility: Explore state-preserving retiming, logic restructuring, resource sharing, and technology
+  mapping without violating architectural or verification contracts.
+# Hard may / may_not rules the runtime enforces on tool actions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Entry under `may` for Retiming and Mapping: Submit a retiming or mapping experiment
+  - Submit a retiming or mapping experiment
+  # Entry under `may` for Retiming and Mapping: Write the experiment directive
+  - Write the experiment directive
+  # Entry under `may` for Retiming and Mapping: Publish the metric delta
+  - Publish the metric delta
+  # Actions this agent must never perform (promotion, waivers, etc.).
+  may_not:
+  # Entry under `may_not` for Retiming and Mapping: Retiming across a timing exception that changes observable latency
+  - Retiming across a timing exception that changes observable latency
+  # Entry under `may_not` for Retiming and Mapping: Skip equivalence
+  - Skip equivalence
+  # Entry under `may_not` for Retiming and Mapping: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Entry under `may_not` for Retiming and Mapping: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Entry under `may_not` for Retiming and Mapping: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows toward.
+delegates_to: []
+# Optional validator agent ids that must confirm outcomes.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname inside Docker networks (host.docker.internal for local).
+  host: host.docker.internal
+  # TCP port this agent's uvicorn server listens on.
+  port: 8235
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness/readiness path probed by the fleet.
+    health: /health
+    # Path that accepts AgentTaskRequest payloads.
+    execute: /tasks/execute
+# Tool-backend binding; type none means observations are not_run until bound.
+backend:
+  # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+  type: none
+# How the agent runs tools for a task.
+execution:
+  # direct_function invokes Python callables named in skills.
+  mode: direct_function
+  # Limits on parallel task handling inside one process.
+  concurrency:
+    # Maximum simultaneous tasks (1 keeps experiment isolation simple).
+    max_tasks: 1
+# Timeouts, retries, and failure policy for task handling.
+reliability:
+  # Wall-clock seconds before a task is considered failed.
+  task_timeout_secs: 120
+  # How many times the fleet may retry a failed task.
+  max_retries: 1
+  # Policy when tools fail (replan asks the lead to adjust the graph).
+  on_failure: replan
+# Declared capability ids surfaced to planners (mirrors skills).
+capabilities:
+# Stable identifier for this list entry.
+- id: write_retiming_directive
+  # Human-readable description for this manifest entry.
+  description: Write the state-preserving retiming directive and the registers it may move.
+# Stable identifier for this list entry.
+- id: write_mapping_directive
+  # Human-readable description for this manifest entry.
+  description: Write the technology-mapping objective and dont-use list.
+# Stable identifier for this list entry.
+- id: write_resource_sharing_directive
+  # Human-readable description for this manifest entry.
+  description: Write which operators may share a resource.
+# Stable identifier for this list entry.
+- id: explore_retiming
+  # Human-readable description for this manifest entry.
+  description: Run one state-preserving retiming experiment.
+# Stable identifier for this list entry.
+- id: explore_restructuring
+  # Human-readable description for this manifest entry.
+  description: Run one logic-restructuring experiment.
+# Stable identifier for this list entry.
+- id: explore_resource_sharing
+  # Human-readable description for this manifest entry.
+  description: Run one resource-sharing experiment.
+# Stable identifier for this list entry.
+- id: explore_mapping
+  # Human-readable description for this manifest entry.
+  description: Run one technology-mapping alternative.
+# Stable identifier for this list entry.
+- id: read_latency_contract
+  # Human-readable description for this manifest entry.
+  description: Read observable latency the retiming must preserve.
+# Stable identifier for this list entry.
+- id: read_retiming_delta
+  # Human-readable description for this manifest entry.
+  description: Read timing, area, and power deltas versus the parent netlist.
+# Stable identifier for this list entry.
+- id: check_observable_latency
+  # Human-readable description for this manifest entry.
+  description: Check that moved registers did not change an architectural latency.
+# Stable identifier for this list entry.
+- id: flag_latency_change
+  # Human-readable description for this manifest entry.
+  description: Publish a retiming that changes an observable latency.
+# Stable identifier for this list entry.
+- id: flag_missing_equivalence_for_retime
+  # Human-readable description for this manifest entry.
+  description: Publish a transformed netlist that has no equivalence job.
+# Stable identifier for this list entry.
+- id: record_retime_hypothesis
+  # Human-readable description for this manifest entry.
+  description: Record the hypothesis, directive, and parent netlist.
+# Concrete Python callables the agent may invoke.
+skills:
+# Stable identifier for this list entry.
+- id: write_retiming_directive
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_retiming_directive
+  # Human-readable description for this manifest entry.
+  description: Write the state-preserving retiming directive and the registers it may move.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_mapping_directive
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_mapping_directive
+  # Human-readable description for this manifest entry.
+  description: Write the technology-mapping objective and dont-use list.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_resource_sharing_directive
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_resource_sharing_directive
+  # Human-readable description for this manifest entry.
+  description: Write which operators may share a resource.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: explore_retiming
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: explore_retiming
+  # Human-readable description for this manifest entry.
+  description: Run one state-preserving retiming experiment.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: explore_restructuring
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: explore_restructuring
+  # Human-readable description for this manifest entry.
+  description: Run one logic-restructuring experiment.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: explore_resource_sharing
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: explore_resource_sharing
+  # Human-readable description for this manifest entry.
+  description: Run one resource-sharing experiment.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: explore_mapping
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: explore_mapping
+  # Human-readable description for this manifest entry.
+  description: Run one technology-mapping alternative.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Retiming and Mapping agent manifest (synthesis stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: read_latency_contract
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_latency_contract
+  # Human-readable description for this manifest entry.
+  description: Read observable latency the retiming must preserve.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_retiming_delta
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_retiming_delta
+  # Human-readable description for this manifest entry.
+  description: Read timing, area, and power deltas versus the parent netlist.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: check_observable_latency
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_observable_latency
+  # Human-readable description for this manifest entry.
+  description: Check that moved registers did not change an architectural latency.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: flag_latency_change
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_latency_change
+  # Human-readable description for this manifest entry.
+  description: Publish a retiming that changes an observable latency.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_missing_equivalence_for_retime
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_missing_equivalence_for_retime
+  # Human-readable description for this manifest entry.
+  description: Publish a transformed netlist that has no equivalence job.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: record_retime_hypothesis
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: record_retime_hypothesis
+  # Human-readable description for this manifest entry.
+  description: Record the hypothesis, directive, and parent netlist.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Local journal cache configuration for this agent process.
+memory:
+  # Named memory stores the agent may touch.
+  stores:
+  # Stable identifier for this list entry.
+  - id: journal
+    # Human-readable description for this manifest entry.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+    type: list
+    # Persistence medium (file-backed under SILICON_MEMORY_ROOT).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for the local journal cache.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where structured telemetry streams are POSTed.
+  telemetry:
+    # Telemetry collector URL (TELEMETRY_URL override).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: skill_calls
+      # Human-readable description for this manifest entry.
+      description: Tool invocations.
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: artifacts
+      # Human-readable description for this manifest entry.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Docker image tag published for this agent.
+  image: agentfleet/retiming_mapping:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty keeps tools not_run.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-assembly policy for engineering memory records.
+context:
+  # Record kinds always pulled into the task context package.
+  include:
+  # Entry under `include` for Retiming and Mapping: canonical_source
+  - canonical_source
+  # Entry under `include` for Retiming and Mapping: open_findings
+  - open_findings
+  # Entry under `include` for Retiming and Mapping: experiments
+  - experiments
+  # Entry under `include` for Retiming and Mapping: gates
+  - gates
+  # Entry under `include` for Retiming and Mapping: decisions
+  - decisions
+  # Record kinds omitted from context even if present.
+  exclude:
+  # Entry under `exclude` for Retiming and Mapping: stale_candidates
+  - stale_candidates
+  # Validation states stripped from context (e.g. rejected).
+  drop:
+  # Entry under `drop` for Retiming and Mapping: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Entry under `precedence` for Retiming and Mapping: human-authored
+  - human-authored
+  # Entry under `precedence` for Retiming and Mapping: validated
+  - validated
+  # Entry under `precedence` for Retiming and Mapping: provisional
+  - provisional
+  # Record authorship classes that must not be overwritten lightly.
+  protect:
+  # Entry under `protect` for Retiming and Mapping: human-authored
+  - human-authored
+  # Approximate token budget for assembled context sent to the model.
+  token_budget: 80000

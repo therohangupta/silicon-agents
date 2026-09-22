@@ -1,0 +1,688 @@
+# Agent manifest for Early Congestion and Timing Evaluator (role=worker, stage=floorplan, port=8242).
+# EDA focus: Trial global place/route estimates of congestion and early timing; not signoff STA.
+# Every mapping key and list entry has a comment; multi-line string values are untouched.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; Agent means a runnable chip-design agent service.
+kind: Agent
+# Human- and registry-facing identity for this agent.
+metadata:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  name: early_congestion_timing
+  # UI-facing title for operators and dashboards.
+  display_name: Early Congestion and Timing Evaluator
+  # One-paragraph responsibility statement shown in registries and UIs.
+  description: 'Estimate routability and timing before detailed placement and identify likely hotspots.
+    Adapter targets: OpenROAD global placement, global route, and early timing reports.'
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent belongs to in the backend flow.
+    stage: floorplan
+    # lead orchestrates workers; worker executes specialist tools.
+    role: worker
+# lead orchestrates workers; worker executes specialist tools.
+role: worker
+# Pipeline stage this agent belongs to in the backend flow.
+stage: floorplan
+# Authoritative responsibility text mirrored from the design system.
+responsibility: 'Estimate routability and timing before detailed placement and identify likely hotspots.
+  Adapter targets: OpenROAD global placement, global route, and early timing reports.'
+# Hard may / may_not rules the runtime enforces on tool actions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Entry under `may` for Early Congestion and Timing Evaluator: Submit trial placement and global route
+  - Submit trial placement and global route
+  # Entry under `may` for Early Congestion and Timing Evaluator: Read the floorplan candidate
+  - Read the floorplan candidate
+  # Entry under `may` for Early Congestion and Timing Evaluator: Publish hotspot evidence
+  - Publish hotspot evidence
+  # Actions this agent must never perform (promotion, waivers, etc.).
+  may_not:
+  # Entry under `may_not` for Early Congestion and Timing Evaluator: Treat the estimate as signoff timing
+  - Treat the estimate as signoff timing
+  # Entry under `may_not` for Early Congestion and Timing Evaluator: Edit the floorplan it is scoring
+  - Edit the floorplan it is scoring
+  # Entry under `may_not` for Early Congestion and Timing Evaluator: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Entry under `may_not` for Early Congestion and Timing Evaluator: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Entry under `may_not` for Early Congestion and Timing Evaluator: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows toward.
+delegates_to: []
+# Optional validator agent ids that must confirm outcomes.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname inside Docker networks (host.docker.internal for local).
+  host: host.docker.internal
+  # TCP port this agent's uvicorn server listens on.
+  port: 8242
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness/readiness path probed by the fleet.
+    health: /health
+    # Path that accepts AgentTaskRequest payloads.
+    execute: /tasks/execute
+# Tool-backend binding; type none means observations are not_run until bound.
+backend:
+  # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+  type: none
+# How the agent runs tools for a task.
+execution:
+  # direct_function invokes Python callables named in skills.
+  mode: direct_function
+  # Limits on parallel task handling inside one process.
+  concurrency:
+    # Maximum simultaneous tasks (1 keeps experiment isolation simple).
+    max_tasks: 1
+# Timeouts, retries, and failure policy for task handling.
+reliability:
+  # Wall-clock seconds before a task is considered failed.
+  task_timeout_secs: 120
+  # How many times the fleet may retry a failed task.
+  max_retries: 1
+  # Policy when tools fail (replan asks the lead to adjust the graph).
+  on_failure: replan
+# Declared capability ids surfaced to planners (mirrors skills).
+capabilities:
+# Stable identifier for this list entry.
+- id: run_trial_global_placement
+  # Human-readable description for this manifest entry.
+  description: 'Run a trial global placement. Adapter target: OpenROAD global_placement.'
+# Stable identifier for this list entry.
+- id: run_trial_global_route
+  # Human-readable description for this manifest entry.
+  description: 'Run a trial global route. Adapter target: OpenROAD global_route.'
+# Stable identifier for this list entry.
+- id: estimate_routability
+  # Human-readable description for this manifest entry.
+  description: Report congestion from the trial global route.
+# Stable identifier for this list entry.
+- id: estimate_early_timing
+  # Human-readable description for this manifest entry.
+  description: Report early timing and the interfaces that dominate it. This is not signoff STA.
+# Stable identifier for this list entry.
+- id: read_congestion_map
+  # Human-readable description for this manifest entry.
+  description: Read congestion by layer and region.
+# Stable identifier for this list entry.
+- id: read_early_wns_tns
+  # Human-readable description for this manifest entry.
+  description: Read early WNS and TNS by path group.
+# Stable identifier for this list entry.
+- id: identify_congestion_hotspots
+  # Human-readable description for this manifest entry.
+  description: List regions over the congestion threshold.
+# Stable identifier for this list entry.
+- id: identify_critical_interfaces
+  # Human-readable description for this manifest entry.
+  description: List interfaces that dominate early timing.
+# Stable identifier for this list entry.
+- id: compare_early_metrics
+  # Human-readable description for this manifest entry.
+  description: Compare congestion and early timing across floorplan candidates.
+# Stable identifier for this list entry.
+- id: publish_routability_evidence
+  # Human-readable description for this manifest entry.
+  description: Publish congestion and timing evidence that should guide a floorplan change.
+# Stable identifier for this list entry.
+- id: flag_early_timing_hotspot
+  # Human-readable description for this manifest entry.
+  description: Publish a path group that is already late before detailed placement.
+# Stable identifier for this list entry.
+- id: record_early_estimate_provenance
+  # Human-readable description for this manifest entry.
+  description: Record the floorplan ref, recipe, and that these numbers are estimates.
+# Concrete Python callables the agent may invoke.
+skills:
+# Stable identifier for this list entry.
+- id: run_trial_global_placement
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: run_trial_global_placement
+  # Human-readable description for this manifest entry.
+  description: 'Run a trial global placement. Adapter target: OpenROAD global_placement.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Early Congestion and Timing Evaluator agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Early Congestion and Timing Evaluator agent manifest (floorplan stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: run_trial_global_route
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: run_trial_global_route
+  # Human-readable description for this manifest entry.
+  description: 'Run a trial global route. Adapter target: OpenROAD global_route.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Early Congestion and Timing Evaluator agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Early Congestion and Timing Evaluator agent manifest (floorplan stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: estimate_routability
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: estimate_routability
+  # Human-readable description for this manifest entry.
+  description: Report congestion from the trial global route.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: estimate_early_timing
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: estimate_early_timing
+  # Human-readable description for this manifest entry.
+  description: Report early timing and the interfaces that dominate it. This is not signoff STA.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_congestion_map
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_congestion_map
+  # Human-readable description for this manifest entry.
+  description: Read congestion by layer and region.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_early_wns_tns
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_early_wns_tns
+  # Human-readable description for this manifest entry.
+  description: Read early WNS and TNS by path group.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: identify_congestion_hotspots
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: identify_congestion_hotspots
+  # Human-readable description for this manifest entry.
+  description: List regions over the congestion threshold.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: identify_critical_interfaces
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: identify_critical_interfaces
+  # Human-readable description for this manifest entry.
+  description: List interfaces that dominate early timing.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: compare_early_metrics
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: compare_early_metrics
+  # Human-readable description for this manifest entry.
+  description: Compare congestion and early timing across floorplan candidates.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: publish_routability_evidence
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: publish_routability_evidence
+  # Human-readable description for this manifest entry.
+  description: Publish congestion and timing evidence that should guide a floorplan change.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_early_timing_hotspot
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_early_timing_hotspot
+  # Human-readable description for this manifest entry.
+  description: Publish a path group that is already late before detailed placement.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: record_early_estimate_provenance
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: record_early_estimate_provenance
+  # Human-readable description for this manifest entry.
+  description: Record the floorplan ref, recipe, and that these numbers are estimates.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Local journal cache configuration for this agent process.
+memory:
+  # Named memory stores the agent may touch.
+  stores:
+  # Stable identifier for this list entry.
+  - id: journal
+    # Human-readable description for this manifest entry.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+    type: list
+    # Persistence medium (file-backed under SILICON_MEMORY_ROOT).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for the local journal cache.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where structured telemetry streams are POSTed.
+  telemetry:
+    # Telemetry collector URL (TELEMETRY_URL override).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: skill_calls
+      # Human-readable description for this manifest entry.
+      description: Tool invocations.
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: artifacts
+      # Human-readable description for this manifest entry.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Docker image tag published for this agent.
+  image: agentfleet/early_congestion_timing:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty keeps tools not_run.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-assembly policy for engineering memory records.
+context:
+  # Record kinds always pulled into the task context package.
+  include:
+  # Entry under `include` for Early Congestion and Timing Evaluator: canonical_source
+  - canonical_source
+  # Entry under `include` for Early Congestion and Timing Evaluator: open_findings
+  - open_findings
+  # Entry under `include` for Early Congestion and Timing Evaluator: experiments
+  - experiments
+  # Entry under `include` for Early Congestion and Timing Evaluator: gates
+  - gates
+  # Entry under `include` for Early Congestion and Timing Evaluator: decisions
+  - decisions
+  # Record kinds omitted from context even if present.
+  exclude:
+  # Entry under `exclude` for Early Congestion and Timing Evaluator: stale_candidates
+  - stale_candidates
+  # Validation states stripped from context (e.g. rejected).
+  drop:
+  # Entry under `drop` for Early Congestion and Timing Evaluator: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Entry under `precedence` for Early Congestion and Timing Evaluator: human-authored
+  - human-authored
+  # Entry under `precedence` for Early Congestion and Timing Evaluator: validated
+  - validated
+  # Entry under `precedence` for Early Congestion and Timing Evaluator: provisional
+  - provisional
+  # Record authorship classes that must not be overwritten lightly.
+  protect:
+  # Entry under `protect` for Early Congestion and Timing Evaluator: human-authored
+  - human-authored
+  # Approximate token budget for assembled context sent to the model.
+  token_budget: 80000

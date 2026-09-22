@@ -1,0 +1,833 @@
+# Fleet manifest for the Instrument Control agent (instrument_control).
+# Parsed by EdaAgent.read_spec / gateway YAML scanner. Comments are documentation only.
+
+# Fleet schema version for the agent manifest parser.
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for gateway YAML scanning.
+kind: Agent
+# Human- and machine-readable identity for dashboards and fleet select.
+metadata:
+  # Stable agent id used in delegates_to, tool agent_id, and routing.
+  name: instrument_control
+  # UI label shown in the dashboard and logs.
+  display_name: Instrument-Control Agent
+  # One-paragraph charter for planners and operators.
+  description: Operate approved instruments through a typed safety-enforcing adapter and record every
+    command and measurement.
+  # Stage and role for this agent.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: validation
+    # Role class: lead, specialist, or validator.
+    role: worker
+# Role class: lead, specialist, or validator.
+role: worker
+# Pipeline stage this agent owns or serves.
+stage: validation
+# Normative statement of what this agent owes the program.
+responsibility: Operate approved instruments through a typed safety-enforcing adapter and record every
+  command and measurement.
+# Hard may / may_not envelope enforced in planning and reviews.
+boundary:
+  # Actions this agent is allowed to take on candidates and memory.
+  may:
+  # List entry consumed by the instrument_control manifest: Submit an approved procedure inside its safe bounds
+  - Submit an approved procedure inside its safe bounds
+  # List entry consumed by the instrument_control manifest: Record measurements
+  - Record measurements
+  # Forbidden actions (waivers, baseline promotion, self-signoff, etc.).
+  may_not:
+  # List entry consumed by the instrument_control manifest: Exceed a configured limit
+  - Exceed a configured limit
+  # List entry consumed by the instrument_control manifest: Run a procedure that has no approval-point record
+  - Run a procedure that has no approval-point record
+  # List entry consumed by the instrument_control manifest: Widen a limit
+  - Widen a limit
+  # List entry consumed by the instrument_control manifest: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # List entry consumed by the instrument_control manifest: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # List entry consumed by the instrument_control manifest: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows for.
+delegates_to: []
+# Independent gate agents that must grade this agent's output.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname from sibling containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port exposed by this agent's Dockerfile / server.
+  port: 8265
+  # HTTP paths the AgentService registers.
+  endpoints:
+    # Liveness probe path for orchestrators.
+    health: /health
+    # Task execution POST path used by the fleet server.
+    execute: /tasks/execute
+# EDA tool backend binding; none until a framework adapter is attached.
+backend:
+  # Backend adapter type (none means tool_observation returns not_run).
+  type: none
+# How tools are invoked inside the agent process.
+execution:
+  # Functional or test-mode filter for report reads.
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum simultaneous tasks for this specialist.
+    max_tasks: 1
+# Timeouts and retry policy for failed DFT/lab work.
+reliability:
+  # Wall-clock seconds before a task is abandoned.
+  task_timeout_secs: 120
+  # Automatic retries before on_failure policy applies.
+  max_retries: 1
+  # Planner reaction when the specialist fails (e.g. replan).
+  on_failure: replan
+# Advertised capability ids for planners (may mirror skills).
+capabilities:
+# Manifest field '- id' for instrument_control (validation).
+- id: run_instrument_procedure
+  # One-paragraph charter for planners and operators.
+  description: Execute one approved procedure through the lab adapter.
+# Manifest field '- id' for instrument_control (validation).
+- id: arm_power_supply
+  # One-paragraph charter for planners and operators.
+  description: Set a power supply inside the approved voltage and current limits.
+# Manifest field '- id' for instrument_control (validation).
+- id: capture_oscilloscope
+  # One-paragraph charter for planners and operators.
+  description: Capture one oscilloscope waveform inside the approved setup.
+# Manifest field '- id' for instrument_control (validation).
+- id: capture_logic_analyzer
+  # One-paragraph charter for planners and operators.
+  description: Capture one logic-analyzer trace.
+# Manifest field '- id' for instrument_control (validation).
+- id: set_thermal_setpoint
+  # One-paragraph charter for planners and operators.
+  description: Set a thermal chamber or plate inside the approved temperature limit.
+# Manifest field '- id' for instrument_control (validation).
+- id: read_instrument_state
+  # One-paragraph charter for planners and operators.
+  description: Read the live state of one instrument.
+# Manifest field '- id' for instrument_control (validation).
+- id: read_procedure_approval
+  # One-paragraph charter for planners and operators.
+  description: Read the approval record required before this procedure runs.
+# Manifest field '- id' for instrument_control (validation).
+- id: check_command_against_bounds
+  # One-paragraph charter for planners and operators.
+  description: Check a command against the approved voltage, current, and temperature limits.
+# Manifest field '- id' for instrument_control (validation).
+- id: record_instrument_command
+  # One-paragraph charter for planners and operators.
+  description: Record the command, instrument, limits, and operator approval ref.
+# Manifest field '- id' for instrument_control (validation).
+- id: record_measurement
+  # One-paragraph charter for planners and operators.
+  description: Store the measurement with board, voltage, temperature, and instrument state.
+# Manifest field '- id' for instrument_control (validation).
+- id: flag_command_over_limit
+  # One-paragraph charter for planners and operators.
+  description: Publish a command that would exceed a configured limit. The adapter must not run it.
+# Manifest field '- id' for instrument_control (validation).
+- id: flag_unapproved_procedure
+  # One-paragraph charter for planners and operators.
+  description: Publish a run requested without an approval-point record.
+# Manifest field '- id' for instrument_control (validation).
+- id: record_instrument_session
+  # One-paragraph charter for planners and operators.
+  description: Record every command and measurement in this session.
+# Concrete tool bindings: module, callable, action, params.
+skills:
+# Manifest field '- id' for instrument_control (validation).
+- id: run_instrument_procedure
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: run_instrument_procedure
+  # One-paragraph charter for planners and operators.
+  description: Execute one approved procedure through the lab adapter.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for instrument_control (validation).
+    baseline_ref: ''
+    # Manifest field 'recipe' for instrument_control (validation).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+    # Manifest field 'procedure_ref' for instrument_control (validation).
+    procedure_ref: ''
+    # Manifest field 'instrument' for instrument_control (validation).
+    instrument: ''
+    # Manifest field 'command' for instrument_control (validation).
+    command: ''
+    # Manifest field 'voltage_limit' for instrument_control (validation).
+    voltage_limit: ''
+    # Manifest field 'current_limit' for instrument_control (validation).
+    current_limit: ''
+    # Manifest field 'temperature_limit' for instrument_control (validation).
+    temperature_limit: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: submit_tool_job
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate the job reads.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Baseline used when the job compares against a known result.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recipe
+    # One-paragraph charter for planners and operators.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: procedure_ref
+    # One-paragraph charter for planners and operators.
+    description: Approved procedure revision.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: instrument
+    # One-paragraph charter for planners and operators.
+    description: Instrument id.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: command
+    # One-paragraph charter for planners and operators.
+    description: Typed command the adapter may run.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: voltage_limit
+    # One-paragraph charter for planners and operators.
+    description: Maximum voltage in volts.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: current_limit
+    # One-paragraph charter for planners and operators.
+    description: Maximum current in amperes.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: temperature_limit
+    # One-paragraph charter for planners and operators.
+    description: Maximum temperature in Celsius.
+# Manifest field '- id' for instrument_control (validation).
+- id: arm_power_supply
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: arm_power_supply
+  # One-paragraph charter for planners and operators.
+  description: Set a power supply inside the approved voltage and current limits.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for instrument_control (validation).
+    baseline_ref: ''
+    # Manifest field 'recipe' for instrument_control (validation).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+    # Manifest field 'instrument' for instrument_control (validation).
+    instrument: ''
+    # Manifest field 'voltage_limit' for instrument_control (validation).
+    voltage_limit: ''
+    # Manifest field 'current_limit' for instrument_control (validation).
+    current_limit: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: submit_tool_job
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate the job reads.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Baseline used when the job compares against a known result.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recipe
+    # One-paragraph charter for planners and operators.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: instrument
+    # One-paragraph charter for planners and operators.
+    description: Supply id.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: voltage_limit
+    # One-paragraph charter for planners and operators.
+    description: Maximum voltage.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: current_limit
+    # One-paragraph charter for planners and operators.
+    description: Maximum current.
+# Manifest field '- id' for instrument_control (validation).
+- id: capture_oscilloscope
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: capture_oscilloscope
+  # One-paragraph charter for planners and operators.
+  description: Capture one oscilloscope waveform inside the approved setup.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for instrument_control (validation).
+    baseline_ref: ''
+    # Manifest field 'recipe' for instrument_control (validation).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+    # Manifest field 'instrument' for instrument_control (validation).
+    instrument: ''
+    # Manifest field 'channel' for instrument_control (validation).
+    channel: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: submit_tool_job
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate the job reads.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Baseline used when the job compares against a known result.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recipe
+    # One-paragraph charter for planners and operators.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: instrument
+    # One-paragraph charter for planners and operators.
+    description: Scope id.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: channel
+    # One-paragraph charter for planners and operators.
+    description: Channel to capture.
+# Manifest field '- id' for instrument_control (validation).
+- id: capture_logic_analyzer
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: capture_logic_analyzer
+  # One-paragraph charter for planners and operators.
+  description: Capture one logic-analyzer trace.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for instrument_control (validation).
+    baseline_ref: ''
+    # Manifest field 'recipe' for instrument_control (validation).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+    # Manifest field 'instrument' for instrument_control (validation).
+    instrument: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: submit_tool_job
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate the job reads.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Baseline used when the job compares against a known result.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recipe
+    # One-paragraph charter for planners and operators.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: instrument
+    # One-paragraph charter for planners and operators.
+    description: Analyzer id.
+# Manifest field '- id' for instrument_control (validation).
+- id: set_thermal_setpoint
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: set_thermal_setpoint
+  # One-paragraph charter for planners and operators.
+  description: Set a thermal chamber or plate inside the approved temperature limit.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for instrument_control (validation).
+    baseline_ref: ''
+    # Manifest field 'recipe' for instrument_control (validation).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+    # Manifest field 'instrument' for instrument_control (validation).
+    instrument: ''
+    # Manifest field 'temperature_limit' for instrument_control (validation).
+    temperature_limit: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: submit_tool_job
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate the job reads.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Baseline used when the job compares against a known result.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recipe
+    # One-paragraph charter for planners and operators.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: instrument
+    # One-paragraph charter for planners and operators.
+    description: Thermal instrument id.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: temperature_limit
+    # One-paragraph charter for planners and operators.
+    description: Maximum temperature in Celsius.
+# Manifest field '- id' for instrument_control (validation).
+- id: read_instrument_state
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_instrument_state
+  # One-paragraph charter for planners and operators.
+  description: Read the live state of one instrument.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+    # Manifest field 'instrument' for instrument_control (validation).
+    instrument: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: instrument
+    # One-paragraph charter for planners and operators.
+    description: Instrument id.
+# Manifest field '- id' for instrument_control (validation).
+- id: read_procedure_approval
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_procedure_approval
+  # One-paragraph charter for planners and operators.
+  description: Read the approval record required before this procedure runs.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for instrument_control (validation).
+- id: check_command_against_bounds
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: check_command_against_bounds
+  # One-paragraph charter for planners and operators.
+  description: Check a command against the approved voltage, current, and temperature limits.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for instrument_control (validation).
+- id: record_instrument_command
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: record_instrument_command
+  # One-paragraph charter for planners and operators.
+  description: Record the command, instrument, limits, and operator approval ref.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for instrument_control (validation).
+- id: record_measurement
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: record_measurement
+  # One-paragraph charter for planners and operators.
+  description: Store the measurement with board, voltage, temperature, and instrument state.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for instrument_control (validation).
+- id: flag_command_over_limit
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_command_over_limit
+  # One-paragraph charter for planners and operators.
+  description: Publish a command that would exceed a configured limit. The adapter must not run it.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for instrument_control (validation).
+- id: flag_unapproved_procedure
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_unapproved_procedure
+  # One-paragraph charter for planners and operators.
+  description: Publish a run requested without an approval-point record.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for instrument_control (validation).
+- id: record_instrument_session
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: record_instrument_session
+  # One-paragraph charter for planners and operators.
+  description: Record every command and measurement in this session.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for instrument_control (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for instrument_control (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Local and shared engineering-memory configuration.
+memory:
+  # Named memory stores this agent may touch.
+  stores:
+  # Manifest field '- id' for instrument_control (validation).
+  - id: journal
+    # One-paragraph charter for planners and operators.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none means tool_observation returns not_run).
+    type: list
+    # Where the store is kept (file vs ephemeral).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem root for silicon memory (env-substitutable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry stream configuration.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls and artifacts are ingested.
+  telemetry:
+    # Telemetry service base URL (TELEMETRY_URL).
+    endpoint: ${TELEMETRY_URL}
+    # Named high-level telemetry stream categories.
+    streams:
+    # Manifest field '- name' for instrument_control (validation).
+    - name: skill_calls
+      # One-paragraph charter for planners and operators.
+      description: Tool invocations.
+    # Manifest field '- name' for instrument_control (validation).
+    - name: artifacts
+      # One-paragraph charter for planners and operators.
+      description: Structured task results.
+# Container image and Dockerfile pointers for compose.
+deployment:
+  # Published image tag for this agent.
+  image: agentfleet/instrument_control:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Env vars injected into the container.
+  environment:
+    # Optional bound EDA/lab framework adapter name.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory.
+context:
+  # Record kinds always preferred into the context package.
+  include:
+  # List entry consumed by the instrument_control manifest: experiments
+  - experiments
+  # List entry consumed by the instrument_control manifest: gates
+  - gates
+  # List entry consumed by the instrument_control manifest: decisions
+  - decisions
+  # List entry consumed by the instrument_control manifest: open_findings
+  - open_findings
+  # List entry consumed by the instrument_control manifest: canonical_source
+  - canonical_source
+  # Record kinds filtered out before ranking.
+  exclude:
+  # List entry consumed by the instrument_control manifest: stale_candidates
+  - stale_candidates
+  # Validation states removed before context ranking.
+  drop:
+  # List entry consumed by the instrument_control manifest: rejected
+  - rejected
+  # Most-trusted authorship/validation states first.
+  precedence:
+  # List entry consumed by the instrument_control manifest: validated
+  - validated
+  # List entry consumed by the instrument_control manifest: provisional
+  - provisional
+  # States never dropped solely for token budget.
+  protect: []
+  # Approximate token cap for the assembled context package.
+  token_budget: 80000

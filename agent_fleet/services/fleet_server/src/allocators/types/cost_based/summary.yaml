@@ -1,0 +1,38 @@
+# =============================================================================
+# Cost-Based Allocator catalog summary (dashboard / docs metadata — not loaded as code)
+# =============================================================================
+
+# Numeric strategy/catalog id for this allocator entry.
+id: 3
+# Human-readable display name.
+name: Cost-Based Iterative Allocator
+
+# Iterative frontier + switching-cost description.
+description: >
+  Uses iterative assignment with LLM reasoning to minimize task switching
+  costs while respecting dependencies. Considers agent state history and
+  optimizes for reduced context switching between tasks.
+
+# Hybrid: algorithmic frontier walk + LLM per round.
+method_type: hybrid
+
+# Per-round JSON mapping shape (agent_id → task_id).
+output_format: >
+  JSON mapping agent IDs to task IDs, processed iteratively round by round.
+
+# Co-located prompt inventory.
+prompts:
+  # system.prompt — iterative cost-aware role.
+  - type: system
+    description: System prompt for iterative allocation reasoning
+  # user.prompt — frontier tasks + agent previous_task_id.
+  - type: user
+    description: Template for agent state, available tasks, and cost optimization
+
+# Behavioral steps for docs/UI.
+example_behavior: |
+  - Builds task dependency graph
+  - Iteratively assigns tasks to agents in dependency order
+  - Uses LLM to minimize switching costs between tasks
+  - Considers agent previous assignments and capabilities
+  - Continues until all tasks are assigned

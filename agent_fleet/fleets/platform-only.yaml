@@ -1,0 +1,4 @@
+# Platform containers and the dashboard, with no agent containers.
+# Top-level selector key: explicit agent id list. Empty list is valid and
+# tells scripts/startup.sh to skip (or tear down) the silicon-agents Compose project.
+agents: []

@@ -1,0 +1,8 @@
+# FastAPI: ASGI web framework hosting AgentService HTTP routes for IR/EM Agent.
+fastapi
+# Uvicorn with standard extras (websockets, httptools) to serve the FastAPI app in Docker.
+uvicorn[standard]
+# Pydantic: request/response and config models used by AgentService and tool payloads.
+pydantic
+# PyYAML: parse this agent's config.yaml manifest (skills, boundaries, deployment).
+PyYAML

@@ -1,0 +1,1015 @@
+# AgentFleet config for ``verification_lead`` — lead that owns verification closure for one pinned RTL revision.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``verification_lead`` used across the verification plan graph.
+  name: verification_lead
+  # Human-readable title shown in UIs and docs.
+  display_name: Verification Lead
+  # Responsibility brief for this verification specialist.
+  description: Own the verification plan and closure workflow for one pinned RTL revision. Do not personally
+    write every test or inspect every waveform.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: lead
+# Fleet role enum used for privilege and delegation policy.
+role: lead
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Own the verification plan and closure workflow for one pinned RTL revision. Do not personally
+  write every test or inspect every waveform.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for verification_lead: Read the specification, RTL candidate, and prior findings
+  - Read the specification, RTL candidate, and prior findings
+  # Boundary rule for verification_lead: Publish a verification workflow and coverage-closure tasks
+  - Publish a verification workflow and coverage-closure tasks
+  # Boundary rule for verification_lead: Return UPSTREAM_CHANGE_REQUIRED when behavior is ambiguous
+  - Return UPSTREAM_CHANGE_REQUIRED when behavior is ambiguous
+  # Boundary rule for verification_lead: Request a human decision for an exclusion or waiver
+  - Request a human decision for an exclusion or waiver
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for verification_lead: Modify canonical RTL
+  - Modify canonical RTL
+  # Boundary rule for verification_lead: Waive a requirement
+  - Waive a requirement
+  # Boundary rule for verification_lead: Grade its own closure
+  - Grade its own closure
+  # Boundary rule for verification_lead: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for verification_lead: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for verification_lead: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to:
+# delegates_to entry ``uvm_environment`` for verification_lead.
+- uvm_environment
+# delegates_to entry ``reference_model`` for verification_lead.
+- reference_model
+# delegates_to entry ``assertion_formal`` for verification_lead.
+- assertion_formal
+# delegates_to entry ``stimulus`` for verification_lead.
+- stimulus
+# delegates_to entry ``regression`` for verification_lead.
+- regression
+# delegates_to entry ``coverage`` for verification_lead.
+- coverage
+# delegates_to entry ``failure_triage`` for verification_lead.
+- failure_triage
+# delegates_to entry ``reproduction`` for verification_lead.
+- reproduction
+# delegates_to entry ``verification_validator`` for verification_lead.
+- verification_validator
+# Independent graders that must pass before promotion/signoff.
+validators:
+# validators entry ``verification_validator`` for verification_lead.
+- verification_validator
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8215 for the verification_lead AgentService (must match Dockerfile EXPOSE).
+  port: 8215
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``build_verification_plan`` — must stay aligned with tools.py / plan references.
+- id: build_verification_plan
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Emit the closure workflow for this RTL revision.
+# Identifier ``request_uvm_environment`` — must stay aligned with tools.py / plan references.
+- id: request_uvm_environment
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a task to build or update the UVM environment.
+# Identifier ``request_reference_model`` — must stay aligned with tools.py / plan references.
+- id: request_reference_model
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a task to build the behavioral reference model.
+# Identifier ``request_formal_campaign`` — must stay aligned with tools.py / plan references.
+- id: request_formal_campaign
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a formal proof task for the named properties.
+# Identifier ``request_stimulus_for_holes`` — must stay aligned with tools.py / plan references.
+- id: request_stimulus_for_holes
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open stimulus work aimed at the listed coverage holes.
+# Identifier ``request_regression_campaign`` — must stay aligned with tools.py / plan references.
+- id: request_regression_campaign
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a regression for the current test manifest.
+# Identifier ``request_failure_reproduction`` — must stay aligned with tools.py / plan references.
+- id: request_failure_reproduction
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open minimization for one failure cluster.
+# Identifier ``request_independent_verification_gate`` — must stay aligned with tools.py / plan references.
+- id: request_independent_verification_gate
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Hand the pinned candidate to the verification validator.
+# Identifier ``read_verification_contract`` — must stay aligned with tools.py / plan references.
+- id: read_verification_contract
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read the requirements, exclusions, and required checks for this candidate.
+# Identifier ``read_coverage_summary`` — must stay aligned with tools.py / plan references.
+- id: read_coverage_summary
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read code, functional, and assertion coverage for the current regression.
+# Identifier ``read_failure_clusters`` — must stay aligned with tools.py / plan references.
+- id: read_failure_clusters
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read clustered failures and their likely owners.
+# Identifier ``read_regression_status`` — must stay aligned with tools.py / plan references.
+- id: read_regression_status
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read pass, fail, and infrastructure-error counts for the campaign.
+# Identifier ``publish_coverage_closure_gap`` — must stay aligned with tools.py / plan references.
+- id: publish_coverage_closure_gap
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Publish holes that the current strategy has not closed.
+# Identifier ``escalate_spec_ambiguity`` — must stay aligned with tools.py / plan references.
+- id: escalate_spec_ambiguity
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Publish a finding when RTL and specification disagree.
+# Identifier ``request_rtl_fix`` — must stay aligned with tools.py / plan references.
+- id: request_rtl_fix
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Route a reproduced functional defect back to the RTL lead.
+# Identifier ``record_verification_strategy_change`` — must stay aligned with tools.py / plan references.
+- id: record_verification_strategy_change
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Record a change in how closure is searched after a plateau.
+# Identifier ``request_verification_waiver`` — must stay aligned with tools.py / plan references.
+- id: request_verification_waiver
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Ask a human to approve or reject a verification exclusion. This agent cannot approve it.
+# Identifier ``request_exclusion_decision`` — must stay aligned with tools.py / plan references.
+- id: request_exclusion_decision
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Ask a human whether an unreachable coverpoint may be excluded.
+# Identifier ``delegate_tasks`` — must stay aligned with tools.py / plan references.
+- id: delegate_tasks
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Propose a dependency graph for the agents in this scope. Do not execute their tools.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``build_verification_plan`` — must stay aligned with tools.py / plan references.
+- id: build_verification_plan
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: build_verification_plan
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Emit the closure workflow for this RTL revision.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+# Identifier ``request_uvm_environment`` — must stay aligned with tools.py / plan references.
+- id: request_uvm_environment
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_uvm_environment
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a task to build or update the UVM environment.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+# Identifier ``request_reference_model`` — must stay aligned with tools.py / plan references.
+- id: request_reference_model
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_reference_model
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a task to build the behavioral reference model.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+# Identifier ``request_formal_campaign`` — must stay aligned with tools.py / plan references.
+- id: request_formal_campaign
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_formal_campaign
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a formal proof task for the named properties.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+# Identifier ``request_stimulus_for_holes`` — must stay aligned with tools.py / plan references.
+- id: request_stimulus_for_holes
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_stimulus_for_holes
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open stimulus work aimed at the listed coverage holes.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+    # YAML key ``hole_ids`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    hole_ids: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: hole_ids
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated coverage hole ids.
+# Identifier ``request_regression_campaign`` — must stay aligned with tools.py / plan references.
+- id: request_regression_campaign
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_regression_campaign
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open a regression for the current test manifest.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+# Identifier ``request_failure_reproduction`` — must stay aligned with tools.py / plan references.
+- id: request_failure_reproduction
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_failure_reproduction
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Open minimization for one failure cluster.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+    # YAML key ``cluster_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    cluster_id: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: cluster_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Failure cluster to minimize.
+# Identifier ``request_independent_verification_gate`` — must stay aligned with tools.py / plan references.
+- id: request_independent_verification_gate
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_independent_verification_gate
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Hand the pinned candidate to the verification validator.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    objective: ''
+    # YAML key ``parent_task_id`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    parent_task_id: ''
+    # YAML key ``scope_block`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    scope_block: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: create_workflow
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: objective
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Outcome the child workflow must achieve.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: parent_task_id
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Task that owns this workflow.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: scope_block
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Block the workflow applies to. Empty means the task's current block.
+# Identifier ``read_verification_contract`` — must stay aligned with tools.py / plan references.
+- id: read_verification_contract
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: read_verification_contract
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read the requirements, exclusions, and required checks for this candidate.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    corner: ''
+    # YAML key ``mode`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    mode: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: report_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: corner
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: mode
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_coverage_summary`` — must stay aligned with tools.py / plan references.
+- id: read_coverage_summary
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: read_coverage_summary
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read code, functional, and assertion coverage for the current regression.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    corner: ''
+    # YAML key ``mode`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    mode: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: report_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: corner
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: mode
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_failure_clusters`` — must stay aligned with tools.py / plan references.
+- id: read_failure_clusters
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: read_failure_clusters
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read clustered failures and their likely owners.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    corner: ''
+    # YAML key ``mode`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    mode: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: report_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: corner
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: mode
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_regression_status`` — must stay aligned with tools.py / plan references.
+- id: read_regression_status
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: read_regression_status
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Read pass, fail, and infrastructure-error counts for the campaign.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    report_ref: ''
+    # YAML key ``corner`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    corner: ''
+    # YAML key ``mode`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    mode: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: candidate_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: report_ref
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: corner
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: mode
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``publish_coverage_closure_gap`` — must stay aligned with tools.py / plan references.
+- id: publish_coverage_closure_gap
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: publish_coverage_closure_gap
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Publish holes that the current strategy has not closed.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``summary`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    summary: ''
+    # YAML key ``evidence_refs`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    evidence_refs: ''
+    # YAML key ``severity`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    recommended_recipient: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: summary
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: One-sentence finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: severity
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: recommended_recipient
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Agent id that should act on the finding.
+# Identifier ``escalate_spec_ambiguity`` — must stay aligned with tools.py / plan references.
+- id: escalate_spec_ambiguity
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: escalate_spec_ambiguity
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Publish a finding when RTL and specification disagree.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``summary`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    summary: ''
+    # YAML key ``evidence_refs`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    evidence_refs: ''
+    # YAML key ``severity`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    recommended_recipient: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: summary
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: One-sentence finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: severity
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: recommended_recipient
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Agent id that should act on the finding.
+# Identifier ``request_rtl_fix`` — must stay aligned with tools.py / plan references.
+- id: request_rtl_fix
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_rtl_fix
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Route a reproduced functional defect back to the RTL lead.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``summary`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    summary: ''
+    # YAML key ``evidence_refs`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    evidence_refs: ''
+    # YAML key ``severity`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    recommended_recipient: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: summary
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: One-sentence finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: severity
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: recommended_recipient
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Agent id that should act on the finding.
+# Identifier ``record_verification_strategy_change`` — must stay aligned with tools.py / plan references.
+- id: record_verification_strategy_change
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: record_verification_strategy_change
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Record a change in how closure is searched after a plateau.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``summary`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    summary: ''
+    # YAML key ``evidence_refs`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    evidence_refs: ''
+    # YAML key ``severity`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    recommended_recipient: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: summary
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: One-sentence finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: severity
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: recommended_recipient
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Agent id that should act on the finding.
+# Identifier ``request_verification_waiver`` — must stay aligned with tools.py / plan references.
+- id: request_verification_waiver
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_verification_waiver
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Ask a human to approve or reject a verification exclusion. This agent cannot approve it.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``decision`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    decision: ''
+    # YAML key ``options`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    options: ''
+    # YAML key ``evidence_refs`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    evidence_refs: ''
+    # YAML key ``deadline`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    deadline: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: request_human_decision
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: decision
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: The choice a human must make.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: options
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated feasible options.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated artifact URIs for the tradeoff.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: deadline
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: ISO-8601 time after which the decision blocks the schedule.
+# Identifier ``request_exclusion_decision`` — must stay aligned with tools.py / plan references.
+- id: request_exclusion_decision
+  # YAML key ``module`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  module: tools
+  # YAML key ``callable`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  callable: request_exclusion_decision
+  # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  description: Ask a human whether an unreachable coverpoint may be excluded.
+  # YAML key ``args_defaults`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  args_defaults:
+    # YAML key ``decision`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    decision: ''
+    # YAML key ``options`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    options: ''
+    # YAML key ``evidence_refs`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    evidence_refs: ''
+    # YAML key ``deadline`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    deadline: ''
+  # YAML key ``action`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  action: request_human_decision
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: decision
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: The choice a human must make.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: options
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated feasible options.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: evidence_refs
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: Comma-separated artifact URIs for the tradeoff.
+  # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  - name: deadline
+    # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    description: ISO-8601 time after which the decision blocks the schedule.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    - name: skill_calls
+      # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+      description: Tool invocations.
+    # YAML key ``name`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+    - name: artifacts
+      # YAML key ``description`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/verification_lead:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Default child-plan graph for lead agents (workers may omit or empty).
+plan:
+# Identifier ``uvm_environment`` — must stay aligned with tools.py / plan references.
+- id: uvm_environment
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: uvm_environment
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on: []
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Build the UVM environment
+# Identifier ``reference_model`` — must stay aligned with tools.py / plan references.
+- id: reference_model
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: reference_model
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on: []
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Build the reference model
+# Identifier ``assertion_formal`` — must stay aligned with tools.py / plan references.
+- id: assertion_formal
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: assertion_formal
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on: []
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Write properties and run formal
+# Identifier ``stimulus`` — must stay aligned with tools.py / plan references.
+- id: stimulus
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: stimulus
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on:
+  # depends_on entry ``uvm_environment`` for verification_lead.
+  - uvm_environment
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Create directed and random tests
+# Identifier ``regression`` — must stay aligned with tools.py / plan references.
+- id: regression
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: regression
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on:
+  # depends_on entry ``uvm_environment`` for verification_lead.
+  - uvm_environment
+  # depends_on entry ``stimulus`` for verification_lead.
+  - stimulus
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Run the regression
+# Identifier ``coverage`` — must stay aligned with tools.py / plan references.
+- id: coverage
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: coverage
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on:
+  # depends_on entry ``regression`` for verification_lead.
+  - regression
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Measure coverage
+# Identifier ``failure_triage`` — must stay aligned with tools.py / plan references.
+- id: failure_triage
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: failure_triage
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on:
+  # depends_on entry ``regression`` for verification_lead.
+  - regression
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Cluster failures
+# Identifier ``reproduction`` — must stay aligned with tools.py / plan references.
+- id: reproduction
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: reproduction
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on:
+  # depends_on entry ``failure_triage`` for verification_lead.
+  - failure_triage
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Minimize a reproduction
+# Identifier ``verification_validator`` — must stay aligned with tools.py / plan references.
+- id: verification_validator
+  # YAML key ``agent`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  agent: verification_validator
+  # YAML key ``depends_on`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  depends_on:
+  # depends_on entry ``coverage`` for verification_lead.
+  - coverage
+  # depends_on entry ``reproduction`` for verification_lead.
+  - reproduction
+  # depends_on entry ``assertion_formal`` for verification_lead.
+  - assertion_formal
+  # YAML key ``objective`` for the verification_lead agent (lead that owns verification closure for one pinned RTL revision).
+  objective: Independent verification gate
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``gates`` for verification_lead.
+  - gates
+  # include entry ``workflows`` for verification_lead.
+  - workflows
+  # include entry ``open_findings`` for verification_lead.
+  - open_findings
+  # include entry ``decisions`` for verification_lead.
+  - decisions
+  # include entry ``experiments`` for verification_lead.
+  - experiments
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for verification_lead.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for verification_lead.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for verification_lead.
+  - human-authored
+  # precedence entry ``validated`` for verification_lead.
+  - validated
+  # precedence entry ``provisional`` for verification_lead.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for verification_lead.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

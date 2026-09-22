@@ -1,0 +1,229 @@
+/**
+ * Global stylesheet for Mission Control.
+ *
+ * Layer order:
+ * 1. Tailwind base / components / utilities (generated from scanned class names).
+ * 2. Custom `@layer components` tonal chips + mission-panel frosted surfaces.
+ * 3. CSS custom properties (design tokens) on `:root`.
+ * 4. Base element resets (box-sizing, body typography).
+ * 5. Scrollbar, selection, and focus-visible polish.
+ * 6. Utility classes (glow-border, status-dot, card-hover, gradient-text).
+ * 7. React Flow node/edge overrides for DAG embeds that use that library.
+ */
+
+/* Inject Tailwind’s base resets (Preflight). */
+@tailwind base;
+/* Inject Tailwind component classes (and our @layer components below). */
+@tailwind components;
+/* Inject utility classes used throughout TSX (`flex`, `p-4`, …). */
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Sleek tinted chips — frosted-glass pill w/ colored tint             */
+/* ------------------------------------------------------------------ */
+@layer components {
+  /* Success / completed tonal pill (emerald). */
+  .tonal-emerald {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/80;
+  }
+  /* Informational / sky-cyan tonal pill (task counts, planner chips). */
+  .tonal-sky {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200/80;
+  }
+  /* Warning / in-progress tonal pill (amber). */
+  .tonal-amber {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-amber-50 text-amber-800 ring-1 ring-amber-200/80;
+  }
+  /* Softer caution tonal pill (yellow). */
+  .tonal-yellow {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-yellow-50 text-yellow-800 ring-1 ring-yellow-200/80;
+  }
+  /* Elevated warning tonal pill (orange — algorithmic method type). */
+  .tonal-orange {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-orange-50 text-orange-800 ring-1 ring-orange-200/80;
+  }
+  /* Agent / violet accent tonal pill. */
+  .tonal-violet {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-violet-50 text-violet-800 ring-1 ring-violet-200/80;
+  }
+  /* Alternate purple tonal pill for secondary agent tags. */
+  .tonal-purple {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-purple-50 text-purple-800 ring-1 ring-purple-200/80;
+  }
+  /* Error / failed tonal pill (red). */
+  .tonal-red {
+    @apply inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full
+           bg-red-50 text-red-800 ring-1 ring-red-200/80;
+  }
+  /* High-emphasis plan id chip (gradient cyan, mono digits). */
+  .tonal-plan-id {
+    @apply inline-flex items-center font-mono text-xs font-bold tracking-wider px-2.5 py-1 rounded-full
+           bg-gradient-to-r from-cyan-600 to-cyan-500 text-white shadow-sm;
+  }
+  /* High-emphasis goal id chip (gradient violet, mono digits). */
+  .tonal-goal-id {
+    @apply inline-flex items-center font-mono text-xs font-bold tracking-wider px-2.5 py-1 rounded-full
+           bg-gradient-to-r from-violet-600 to-violet-500 text-white shadow-sm;
+  }
+  /* Frosted white panel used for banners and inset mission chrome. */
+  .mission-panel {
+    @apply bg-white/80 backdrop-blur-sm border border-slate-200/70 rounded-xl shadow-sm;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Design tokens                                                       */
+/* ------------------------------------------------------------------ */
+:root {
+  /* Primary cyan accent (CTAs, focus rings, React Flow edges). */
+  --color-accent: #0891b2;
+  /* Darker accent for muted / pressed states. */
+  --color-accent-muted: #0e7490;
+  /* Translucent accent wash for subtle backgrounds. */
+  --color-accent-subtle: rgba(8, 145, 178, 0.1);
+  /* Secondary violet brand accent (gradients, goal chips). */
+  --color-violet: #6d28d9;
+  /* App shell background (cool gray-blue). */
+  --color-bg: #eef1f5;
+  /* Default surface fill for panels. */
+  --color-surface: #f8fafc;
+  /* Raised white surface (cards sitting above bg). */
+  --color-surface-raised: #ffffff;
+  /* Overlay / recessed surface for nested regions. */
+  --color-surface-overlay: #f1f5f9;
+  /* Default border color. */
+  --color-border: #c8d1dd;
+  /* Softer border for subtle separators. */
+  --color-border-subtle: #dde3ec;
+  /* Primary body text (near-black slate). */
+  --color-text: #0f172a;
+  /* Secondary text for labels and supporting copy. */
+  --color-text-secondary: #475569;
+  /* Muted / placeholder / meta text. */
+  --color-text-muted: #64748b;
+  /* Shared corner radius token (documented for future CSS usage). */
+  --radius-default: 0.625rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+/* Include padding/border in width calculations for predictable layouts. */
+* { box-sizing: border-box; }
+
+/* Document body: Inter stack, token colors, full-height shell. */
+body {
+  /* Remove UA default body margin. */
+  margin: 0;
+  /* Remove UA default body padding. */
+  padding: 0;
+  /* Prefer Inter (loaded in index.html), then system fallbacks. */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Paint the shell with the design-token background. */
+  background-color: var(--color-bg);
+  /* Default text color for unstyled content. */
+  color: var(--color-text);
+  /* Ensure short pages still fill the viewport. */
+  min-height: 100vh;
+  /* Smooth glyphs on WebKit/Blink. */
+  -webkit-font-smoothing: antialiased;
+  /* Smooth glyphs on Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+  /* Enable Inter character variants for denser, clearer UI text. */
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* ------------------------------------------------------------------ */
+/* Scrollbar                                                           */
+/* ------------------------------------------------------------------ */
+/* Thin scrollbar track dimensions for WebKit browsers. */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+/* Make the track invisible so only the thumb shows. */
+::-webkit-scrollbar-track { background: transparent; }
+/* Subtle thumb matching the border token. */
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+/* Darken thumb on hover for discoverability. */
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }
+/* Firefox thin scrollbar using the same colors. */
+* { scrollbar-width: thin; scrollbar-color: var(--color-border) transparent; }
+
+/* Selection highlight tinted with the accent cyan. */
+::selection {
+  background: rgba(8, 145, 178, 0.22);
+  color: var(--color-text);
+}
+
+/* Accessible keyboard focus ring using the accent token. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Utility classes                                                     */
+/* ------------------------------------------------------------------ */
+/* Host for an animated gradient border pseudo-element on hover. */
+.glow-border { position: relative; }
+/* Absolute gradient frame sitting one pixel outside the host. */
+.glow-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(135deg, var(--color-accent), var(--color-violet));
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  z-index: -1;
+}
+/* Reveal the gradient frame on hover. */
+.glow-border:hover::before { opacity: 0.35; }
+
+/* Compact circular status indicator base. */
+.status-dot { width: 7px; height: 7px; border-radius: 50%; }
+/* Online / healthy — emerald with soft halo. */
+.status-dot.online  { background-color: #059669; box-shadow: 0 0 0 2px rgba(5,150,105,.2); }
+/* Offline / unknown — muted slate. */
+.status-dot.offline { background-color: #94a3b8; }
+/* Busy / deploying — amber with soft halo. */
+.status-dot.busy    { background-color: #d97706; box-shadow: 0 0 0 2px rgba(217,119,6,.2); }
+/* Error — red with soft halo. */
+.status-dot.error   { background-color: #dc2626; box-shadow: 0 0 0 2px rgba(220,38,38,.2); }
+
+/* Smooth lift transition for interactive cards. */
+.card-hover {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+/* Lift and deepen shadow on hover. */
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px -8px rgba(15,23,42,0.10), 0 4px 12px -4px rgba(15,23,42,0.06);
+}
+
+/* Cyan→violet clipped gradient text (page titles / brand moments). */
+.gradient-text {
+  background: linear-gradient(135deg, #0891b2, #6d28d9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Explicit shell background helper used by Layout. */
+.mission-shell-bg {
+  background-color: var(--color-bg);
+}
+
+/* ------------------------------------------------------------------ */
+/* React Flow overrides                                                */
+/* ------------------------------------------------------------------ */
+/* Monospace node labels when React Flow is embedded. */
+.react-flow__node { font-family: 'JetBrains Mono', monospace; }
+/* Accent-colored edges with readable stroke weight. */
+.react-flow__edge-path { stroke: var(--color-accent); stroke-width: 2; }

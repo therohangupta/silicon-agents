@@ -1,0 +1,682 @@
+# Agent manifest for Netlist Quality (role=worker, stage=synthesis, port=8237).
+# EDA focus: Structural netlist audit: loops, fanout, unmapped/dont-use cells, DFT survival, QoR regressions.
+# Every mapping key and list entry has a comment; multi-line string values are untouched.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; Agent means a runnable chip-design agent service.
+kind: Agent
+# Human- and registry-facing identity for this agent.
+metadata:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  name: netlist_quality
+  # UI-facing title for operators and dashboards.
+  display_name: Netlist Quality Agent
+  # One-paragraph responsibility statement shown in registries and UIs.
+  description: Inspect a netlist for structural defects, high fanout, loops, poor mappings, congestion
+    risks, DFT incompatibilities, and suspicious QoR regressions.
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent belongs to in the backend flow.
+    stage: synthesis
+    # lead orchestrates workers; worker executes specialist tools.
+    role: worker
+# lead orchestrates workers; worker executes specialist tools.
+role: worker
+# Pipeline stage this agent belongs to in the backend flow.
+stage: synthesis
+# Authoritative responsibility text mirrored from the design system.
+responsibility: Inspect a netlist for structural defects, high fanout, loops, poor mappings, congestion
+  risks, DFT incompatibilities, and suspicious QoR regressions.
+# Hard may / may_not rules the runtime enforces on tool actions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Entry under `may` for Netlist Quality: Read the netlist and QoR report
+  - Read the netlist and QoR report
+  # Entry under `may` for Netlist Quality: Submit structural checks
+  - Submit structural checks
+  # Entry under `may` for Netlist Quality: Publish structural findings
+  - Publish structural findings
+  # Actions this agent must never perform (promotion, waivers, etc.).
+  may_not:
+  # Entry under `may_not` for Netlist Quality: Edit the netlist
+  - Edit the netlist
+  # Entry under `may_not` for Netlist Quality: Ignore a combinational loop
+  - Ignore a combinational loop
+  # Entry under `may_not` for Netlist Quality: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Entry under `may_not` for Netlist Quality: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Entry under `may_not` for Netlist Quality: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows toward.
+delegates_to: []
+# Optional validator agent ids that must confirm outcomes.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname inside Docker networks (host.docker.internal for local).
+  host: host.docker.internal
+  # TCP port this agent's uvicorn server listens on.
+  port: 8237
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness/readiness path probed by the fleet.
+    health: /health
+    # Path that accepts AgentTaskRequest payloads.
+    execute: /tasks/execute
+# Tool-backend binding; type none means observations are not_run until bound.
+backend:
+  # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+  type: none
+# How the agent runs tools for a task.
+execution:
+  # direct_function invokes Python callables named in skills.
+  mode: direct_function
+  # Limits on parallel task handling inside one process.
+  concurrency:
+    # Maximum simultaneous tasks (1 keeps experiment isolation simple).
+    max_tasks: 1
+# Timeouts, retries, and failure policy for task handling.
+reliability:
+  # Wall-clock seconds before a task is considered failed.
+  task_timeout_secs: 120
+  # How many times the fleet may retry a failed task.
+  max_retries: 1
+  # Policy when tools fail (replan asks the lead to adjust the graph).
+  on_failure: replan
+# Declared capability ids surfaced to planners (mirrors skills).
+capabilities:
+# Stable identifier for this list entry.
+- id: inspect_netlist_structure
+  # Human-readable description for this manifest entry.
+  description: Check loops, undriven logic, high fanout, and unmapped cells.
+# Stable identifier for this list entry.
+- id: check_high_fanout_nets
+  # Human-readable description for this manifest entry.
+  description: List nets over the fanout limit.
+# Stable identifier for this list entry.
+- id: check_undriven_and_unused
+  # Human-readable description for this manifest entry.
+  description: List undriven, unused, and multiply driven nets.
+# Stable identifier for this list entry.
+- id: check_unmapped_cells
+  # Human-readable description for this manifest entry.
+  description: List cells with no library mapping.
+# Stable identifier for this list entry.
+- id: check_dont_use_violations
+  # Human-readable description for this manifest entry.
+  description: List cells the library contract marks dont-use.
+# Stable identifier for this list entry.
+- id: check_dft_scan_compatibility
+  # Human-readable description for this manifest entry.
+  description: Check that scan cells and test clocks survived synthesis.
+# Stable identifier for this list entry.
+- id: check_congestion_risk_cells
+  # Human-readable description for this manifest entry.
+  description: List mappings that are likely to congest placement.
+# Stable identifier for this list entry.
+- id: read_qor_baseline
+  # Human-readable description for this manifest entry.
+  description: Read the baseline QoR this netlist is compared with.
+# Stable identifier for this list entry.
+- id: flag_qor_regressions
+  # Human-readable description for this manifest entry.
+  description: Publish QoR regressions against the recorded baseline.
+# Stable identifier for this list entry.
+- id: flag_combinational_loop_in_netlist
+  # Human-readable description for this manifest entry.
+  description: Publish a combinational loop.
+# Stable identifier for this list entry.
+- id: flag_dft_incompatible_netlist
+  # Human-readable description for this manifest entry.
+  description: Publish a netlist that dropped scan or test clocks.
+# Stable identifier for this list entry.
+- id: record_netlist_quality_evidence
+  # Human-readable description for this manifest entry.
+  description: Record the netlist ref and the checks that ran.
+# Concrete Python callables the agent may invoke.
+skills:
+# Stable identifier for this list entry.
+- id: inspect_netlist_structure
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: inspect_netlist_structure
+  # Human-readable description for this manifest entry.
+  description: Check loops, undriven logic, high fanout, and unmapped cells.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Netlist Quality agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Netlist Quality agent manifest (synthesis stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: check_high_fanout_nets
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_high_fanout_nets
+  # Human-readable description for this manifest entry.
+  description: List nets over the fanout limit.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: check_undriven_and_unused
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_undriven_and_unused
+  # Human-readable description for this manifest entry.
+  description: List undriven, unused, and multiply driven nets.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: check_unmapped_cells
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_unmapped_cells
+  # Human-readable description for this manifest entry.
+  description: List cells with no library mapping.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: check_dont_use_violations
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_dont_use_violations
+  # Human-readable description for this manifest entry.
+  description: List cells the library contract marks dont-use.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: check_dft_scan_compatibility
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_dft_scan_compatibility
+  # Human-readable description for this manifest entry.
+  description: Check that scan cells and test clocks survived synthesis.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: check_congestion_risk_cells
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_congestion_risk_cells
+  # Human-readable description for this manifest entry.
+  description: List mappings that are likely to congest placement.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_qor_baseline
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_qor_baseline
+  # Human-readable description for this manifest entry.
+  description: Read the baseline QoR this netlist is compared with.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: flag_qor_regressions
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_qor_regressions
+  # Human-readable description for this manifest entry.
+  description: Publish QoR regressions against the recorded baseline.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_combinational_loop_in_netlist
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_combinational_loop_in_netlist
+  # Human-readable description for this manifest entry.
+  description: Publish a combinational loop.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_dft_incompatible_netlist
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_dft_incompatible_netlist
+  # Human-readable description for this manifest entry.
+  description: Publish a netlist that dropped scan or test clocks.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: record_netlist_quality_evidence
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: record_netlist_quality_evidence
+  # Human-readable description for this manifest entry.
+  description: Record the netlist ref and the checks that ran.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Local journal cache configuration for this agent process.
+memory:
+  # Named memory stores the agent may touch.
+  stores:
+  # Stable identifier for this list entry.
+  - id: journal
+    # Human-readable description for this manifest entry.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+    type: list
+    # Persistence medium (file-backed under SILICON_MEMORY_ROOT).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for the local journal cache.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where structured telemetry streams are POSTed.
+  telemetry:
+    # Telemetry collector URL (TELEMETRY_URL override).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: skill_calls
+      # Human-readable description for this manifest entry.
+      description: Tool invocations.
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: artifacts
+      # Human-readable description for this manifest entry.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Docker image tag published for this agent.
+  image: agentfleet/netlist_quality:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty keeps tools not_run.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-assembly policy for engineering memory records.
+context:
+  # Record kinds always pulled into the task context package.
+  include:
+  # Entry under `include` for Netlist Quality: canonical_source
+  - canonical_source
+  # Entry under `include` for Netlist Quality: open_findings
+  - open_findings
+  # Entry under `include` for Netlist Quality: experiments
+  - experiments
+  # Entry under `include` for Netlist Quality: gates
+  - gates
+  # Entry under `include` for Netlist Quality: decisions
+  - decisions
+  # Record kinds omitted from context even if present.
+  exclude:
+  # Entry under `exclude` for Netlist Quality: stale_candidates
+  - stale_candidates
+  # Validation states stripped from context (e.g. rejected).
+  drop:
+  # Entry under `drop` for Netlist Quality: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Entry under `precedence` for Netlist Quality: human-authored
+  - human-authored
+  # Entry under `precedence` for Netlist Quality: validated
+  - validated
+  # Entry under `precedence` for Netlist Quality: provisional
+  - provisional
+  # Record authorship classes that must not be overwritten lightly.
+  protect:
+  # Entry under `protect` for Netlist Quality: human-authored
+  - human-authored
+  # Approximate token budget for assembled context sent to the model.
+  token_budget: 80000

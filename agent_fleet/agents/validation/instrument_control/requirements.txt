@@ -1,0 +1,14 @@
+# Python dependencies for the Instrument Control agent HTTP process (instrument_control).
+# These support AgentService / FastAPI serving; EDA or lab tool adapters are separate.
+
+# ASGI web framework used by AgentService to expose /health and /tasks/execute.
+fastapi
+
+# Production ASGI server (standard extras: websockets, watchfiles helpers).
+uvicorn[standard]
+
+# Request/response and AgentSpec models shared with the agent SDK.
+pydantic
+
+# Parses this agent's config.yaml fleet manifest at process start.
+PyYAML

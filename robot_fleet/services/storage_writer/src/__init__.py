@@ -1,1 +1,0 @@
-# Storage writer service source

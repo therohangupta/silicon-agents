@@ -1,21 +1,71 @@
+# =============================================================================
+# Root requirements.txt — convenience pin list for local / CI installs.
+#
+# Prefer:  cd agent_fleet && pip install -e ".[dev]"
+# This file mirrors many agent_fleet/pyproject.toml deps plus a few test/tool
+# pins used outside the package metadata. Comments explain each line.
+# =============================================================================
+
+# Editable install of the package discovered from the *current* directory's
+# pyproject/setup. Prefer running pip from agent_fleet/ (see root pyproject.toml).
 -e .
+
+# gRPC runtime used by fleet-server ↔ gateway and generated stubs.
 grpcio==1.71.0
+
+# protoc plugin / code generation helpers for packages/proto stubs.
 grpcio-tools==1.71.0
+
+# Async fixtures and markers for pytest when testing asyncio services.
 pytest-asyncio==0.21.1
+
+# Docker Engine API client (scripts that inspect/build/run containers).
 docker==6.1.3
+
+# Async HTTP client/server primitives (older agent/tool code paths).
 aiohttp==3.8.5
+
+# Fleet YAML parse/render (fleets/, fleet_select.py, agent config).
 PyYAML==6.0.1
+
+# Unit/integration test runner.
 pytest==7.4.2
+
+# JSON Schema validation (agent YAML / API contract checks).
 jsonschema==4.17.3
+
+# Async PostgreSQL driver used with SQLAlchemy async engines.
 asyncpg
+
+# Load .env into process environment for local bare-metal runs.
 python-dotenv
+
+# ORM / DB models (packages/fleet_sdk and services).
 sqlalchemy
+
+# OpenAI Python SDK (LLM planners/allocators when that provider is used).
 openai
+
+# SQLAlchemy async greenlet dependency on some platforms.
 greenlet
+
+# Async SQLite driver for lightweight/local DB experiments.
 aiosqlite
+
+# Gateway and telemetry HTTP APIs (FastAPI application framework).
 fastapi>=0.100.0
+
+# ASGI server that runs FastAPI apps (gateway, telemetry); [standard] extras.
 uvicorn[standard]==0.22.0
+
+# Linear programming solver used by LP-style allocators.
 pulp
+
+# Pydantic v2 models for request/response and domain schemas.
 pydantic>=2.0
+
+# Pretty tabular CLI output (agentctl printer helpers).
 tabulate
+
+# Modern HTTP client (gateway client SDK, health checks, event POSTs).
 httpx>=0.27.0

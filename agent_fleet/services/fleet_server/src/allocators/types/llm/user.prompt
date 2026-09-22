@@ -1,0 +1,23 @@
+# =============================================================================
+# DOCUMENTATION HEADER — LLM Allocator — user prompt template
+# =============================================================================
+# This header is documentation for maintainers. The runtime loader reads the
+# entire file (including these lines) into the LLM prompt string. Keep the
+# original instructional sections below unchanged in meaning and order.
+#
+# SECTION: Placeholders
+#   {task_descriptions} and {agent_descriptions} JSON blobs from LLMAllocator.allocate().
+#
+# SECTION: Instruction
+#   Assign each task to a fitting agent.
+#
+# SECTION: Response shape
+#   Historically says task_id→agent_id map; runtime parses Allocation.allocations via response_format.
+#
+# =============================================================================
+Given the following tasks and agents, assign each task to the agent whose capabilities fit it.
+
+Tasks: {task_descriptions}
+Agents: {agent_descriptions}
+
+Respond with a JSON object: {{task_id: agent_id, ...}}

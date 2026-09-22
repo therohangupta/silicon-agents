@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<!--
+  Root HTML shell for the Agent Fleet Mission Control SPA.
+  Vite injects the bundled JS/CSS during `vite build`; in dev, the module
+  script below loads `src/main.tsx` directly with native ESM + HMR.
+-->
+<html lang="en">
+  <head>
+    <!-- Declare UTF-8 so agent IDs and Unicode in goals render correctly. -->
+    <meta charset="UTF-8" />
+    <!-- Favicon served from /public (Vite copies public/ to dist root). -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- Ensure responsive layout scales correctly on laptop and tablet widths. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Browser tab title shown while the React app boots. -->
+    <title>Robot Fleet | Mission Control</title>
+    <!-- Warm up connection to Google Fonts before stylesheet fetch. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- Cross-origin preconnect for font file hosts (required with CORS fonts). -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!--
+      Load Inter (UI body/headings) and JetBrains Mono (IDs, logs, DAG labels).
+      These families are referenced in index.css and tailwind.config.js.
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <!-- React mounts here via ReactDOM.createRoot in src/main.tsx. -->
+    <div id="root"></div>
+    <!-- Vite entry: TypeScript/React module that bootstraps the application. -->
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

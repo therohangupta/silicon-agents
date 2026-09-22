@@ -1,0 +1,749 @@
+# AgentFleet config for ``coverage`` — functional/code/assertion coverage model and hole analysis specialist.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``coverage`` used across the verification plan graph.
+  name: coverage
+  # Human-readable title shown in UIs and docs.
+  display_name: Coverage Agent
+  # Responsibility brief for this verification specialist.
+  description: Write the coverage model from requirements, then analyze code, functional, and assertion
+    coverage and list meaningful holes.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Write the coverage model from requirements, then analyze code, functional, and assertion
+  coverage and list meaningful holes.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for coverage: Write the coverage model on an isolated branch
+  - Write the coverage model on an isolated branch
+  # Boundary rule for coverage: Read coverage databases
+  - Read coverage databases
+  # Boundary rule for coverage: Publish holes and suspected unreachable items
+  - Publish holes and suspected unreachable items
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for coverage: Delete a coverpoint to raise a score
+  - Delete a coverpoint to raise a score
+  # Boundary rule for coverage: Edit RTL
+  - Edit RTL
+  # Boundary rule for coverage: Mark an item unreachable without evidence
+  - Mark an item unreachable without evidence
+  # Boundary rule for coverage: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for coverage: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for coverage: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8220 for the coverage AgentService (must match Dockerfile EXPOSE).
+  port: 8220
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``write_functional_coverage_model`` — must stay aligned with tools.py / plan references.
+- id: write_functional_coverage_model
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Write covergroups and bins from the requirements and interface contract.
+# Identifier ``write_assertion_coverage_model`` — must stay aligned with tools.py / plan references.
+- id: write_assertion_coverage_model
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Write assertion-coverage tracking for the property set.
+# Identifier ``write_code_coverage_config`` — must stay aligned with tools.py / plan references.
+- id: write_code_coverage_config
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Write the code-coverage configuration for this block.
+# Identifier ``bind_covergroups`` — must stay aligned with tools.py / plan references.
+- id: bind_covergroups
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Bind covergroups to the monitors in the isolated branch.
+# Identifier ``read_coverage_database`` — must stay aligned with tools.py / plan references.
+- id: read_coverage_database
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Read the merged coverage database for one regression.
+# Identifier ``merge_coverage_databases`` — must stay aligned with tools.py / plan references.
+- id: merge_coverage_databases
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Merge coverage databases and return the combined score.
+# Identifier ``analyze_code_coverage`` — must stay aligned with tools.py / plan references.
+- id: analyze_code_coverage
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Summarize line, toggle, and branch coverage.
+# Identifier ``analyze_functional_coverage`` — must stay aligned with tools.py / plan references.
+- id: analyze_functional_coverage
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Summarize covergroup and bin coverage.
+# Identifier ``analyze_assertion_coverage`` — must stay aligned with tools.py / plan references.
+- id: analyze_assertion_coverage
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Summarize which assertions fired.
+# Identifier ``list_coverage_holes`` — must stay aligned with tools.py / plan references.
+- id: list_coverage_holes
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: List uncovered items with their requirement ids.
+# Identifier ``list_suspected_unreachable`` — must stay aligned with tools.py / plan references.
+- id: list_suspected_unreachable
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: List items that look unreachable, with the evidence, without excluding them.
+# Identifier ``diff_coverage_against_requirements`` — must stay aligned with tools.py / plan references.
+- id: diff_coverage_against_requirements
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: List requirements that have no coverpoint.
+# Identifier ``flag_coverage_exclusion`` — must stay aligned with tools.py / plan references.
+- id: flag_coverage_exclusion
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Publish an exclusion that raises the score without a reviewed rationale.
+# Identifier ``record_coverage_model_version`` — must stay aligned with tools.py / plan references.
+- id: record_coverage_model_version
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Record the coverage model revision and the regression it was graded on.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``write_functional_coverage_model`` — must stay aligned with tools.py / plan references.
+- id: write_functional_coverage_model
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: write_functional_coverage_model
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Write covergroups and bins from the requirements and interface contract.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: The single change this edit is testing.
+# Identifier ``write_assertion_coverage_model`` — must stay aligned with tools.py / plan references.
+- id: write_assertion_coverage_model
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: write_assertion_coverage_model
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Write assertion-coverage tracking for the property set.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: The single change this edit is testing.
+# Identifier ``write_code_coverage_config`` — must stay aligned with tools.py / plan references.
+- id: write_code_coverage_config
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: write_code_coverage_config
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Write the code-coverage configuration for this block.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: The single change this edit is testing.
+# Identifier ``bind_covergroups`` — must stay aligned with tools.py / plan references.
+- id: bind_covergroups
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: bind_covergroups
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Bind covergroups to the monitors in the isolated branch.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: The single change this edit is testing.
+# Identifier ``read_coverage_database`` — must stay aligned with tools.py / plan references.
+- id: read_coverage_database
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: read_coverage_database
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Read the merged coverage database for one regression.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    corner: ''
+    # YAML key ``mode`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    mode: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: report_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: corner
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: mode
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``merge_coverage_databases`` — must stay aligned with tools.py / plan references.
+- id: merge_coverage_databases
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: merge_coverage_databases
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Merge coverage databases and return the combined score.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    recipe: ''
+    # YAML key ``corner`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    corner: ''
+    # YAML key ``mode`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    mode: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: recipe
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: corner
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: mode
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``analyze_code_coverage`` — must stay aligned with tools.py / plan references.
+- id: analyze_code_coverage
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: analyze_code_coverage
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Summarize line, toggle, and branch coverage.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    corner: ''
+    # YAML key ``mode`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    mode: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: report_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: corner
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: mode
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``analyze_functional_coverage`` — must stay aligned with tools.py / plan references.
+- id: analyze_functional_coverage
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: analyze_functional_coverage
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Summarize covergroup and bin coverage.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    corner: ''
+    # YAML key ``mode`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    mode: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: report_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: corner
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: mode
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``analyze_assertion_coverage`` — must stay aligned with tools.py / plan references.
+- id: analyze_assertion_coverage
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: analyze_assertion_coverage
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Summarize which assertions fired.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    corner: ''
+    # YAML key ``mode`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    mode: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: report_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: corner
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: mode
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``list_coverage_holes`` — must stay aligned with tools.py / plan references.
+- id: list_coverage_holes
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: list_coverage_holes
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: List uncovered items with their requirement ids.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``summary`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: summary
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: severity
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``list_suspected_unreachable`` — must stay aligned with tools.py / plan references.
+- id: list_suspected_unreachable
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: list_suspected_unreachable
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: List items that look unreachable, with the evidence, without excluding them.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``summary`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: summary
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: severity
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``diff_coverage_against_requirements`` — must stay aligned with tools.py / plan references.
+- id: diff_coverage_against_requirements
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: diff_coverage_against_requirements
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: List requirements that have no coverpoint.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    corner: ''
+    # YAML key ``mode`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    mode: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: report_ref
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: corner
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: mode
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``flag_coverage_exclusion`` — must stay aligned with tools.py / plan references.
+- id: flag_coverage_exclusion
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: flag_coverage_exclusion
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Publish an exclusion that raises the score without a reviewed rationale.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``summary`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: summary
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: severity
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``record_coverage_model_version`` — must stay aligned with tools.py / plan references.
+- id: record_coverage_model_version
+  # YAML key ``module`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  module: tools
+  # YAML key ``callable`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  callable: record_coverage_model_version
+  # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  description: Record the coverage model revision and the regression it was graded on.
+  # YAML key ``args_defaults`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  args_defaults:
+    # YAML key ``summary`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: summary
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: severity
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    - name: skill_calls
+      # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+      description: Tool invocations.
+    # YAML key ``name`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+    - name: artifacts
+      # YAML key ``description`` for the coverage agent (functional/code/assertion coverage model and hole analysis specialist).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/coverage:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for coverage.
+  - requirements
+  # include entry ``interface_contracts`` for coverage.
+  - interface_contracts
+  # include entry ``canonical_source`` for coverage.
+  - canonical_source
+  # include entry ``open_findings`` for coverage.
+  - open_findings
+  # include entry ``experiments`` for coverage.
+  - experiments
+  # include entry ``decisions`` for coverage.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for coverage.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for coverage.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for coverage.
+  - human-authored
+  # precedence entry ``validated`` for coverage.
+  - validated
+  # precedence entry ``provisional`` for coverage.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for coverage.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

@@ -1,0 +1,8 @@
+# Agents under agents/frontend/architecture/.
+agents:
+  - agents/frontend/architecture/architecture_lead
+  - agents/frontend/architecture/interface
+  - agents/frontend/architecture/performance_modeling
+  - agents/frontend/architecture/power_area_estimation
+  - agents/frontend/architecture/requirements
+  - agents/frontend/architecture/security_reliability

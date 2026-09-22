@@ -1,0 +1,689 @@
+# AgentFleet config for ``assertion_formal`` — SVA/formal property and proof campaign specialist.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``assertion_formal`` used across the verification plan graph.
+  name: assertion_formal
+  # Human-readable title shown in UIs and docs.
+  display_name: Assertion/Formal Agent
+  # Responsibility brief for this verification specialist.
+  description: Create properties and assumptions, and submit formal proof tasks.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Create properties and assumptions, and submit formal proof tasks.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for assertion_formal: Write assertions on an isolated branch
+  - Write assertions on an isolated branch
+  # Boundary rule for assertion_formal: Submit a formal job
+  - Submit a formal job
+  # Boundary rule for assertion_formal: Classify counterexamples
+  - Classify counterexamples
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for assertion_formal: Add an assumption that hides a failure
+  - Add an assumption that hides a failure
+  # Boundary rule for assertion_formal: Edit RTL
+  - Edit RTL
+  # Boundary rule for assertion_formal: Approve a waiver
+  - Approve a waiver
+  # Boundary rule for assertion_formal: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for assertion_formal: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for assertion_formal: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8218 for the assertion_formal AgentService (must match Dockerfile EXPOSE).
+  port: 8218
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``generate_assertions`` — must stay aligned with tools.py / plan references.
+- id: generate_assertions
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write properties for the named requirements.
+# Identifier ``write_formal_assumptions`` — must stay aligned with tools.py / plan references.
+- id: write_formal_assumptions
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write environment assumptions. Each assumption cites the contract clause that justifies
+    it.
+# Identifier ``write_cover_properties`` — must stay aligned with tools.py / plan references.
+- id: write_cover_properties
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write cover properties for the legal scenarios the proof must reach.
+# Identifier ``write_assertion_bind`` — must stay aligned with tools.py / plan references.
+- id: write_assertion_bind
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write the bind file that attaches properties to the candidate.
+# Identifier ``read_formal_requirements`` — must stay aligned with tools.py / plan references.
+- id: read_formal_requirements
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Read the requirements this proof is responsible for.
+# Identifier ``submit_formal`` — must stay aligned with tools.py / plan references.
+- id: submit_formal
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Submit the property manifest to the bound formal engine.
+# Identifier ``read_formal_results`` — must stay aligned with tools.py / plan references.
+- id: read_formal_results
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Read proven, cex, vacuous, and undetermined properties.
+# Identifier ``classify_counterexample`` — must stay aligned with tools.py / plan references.
+- id: classify_counterexample
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Classify one counterexample as a design bug, a missing constraint, or an overconstraint.
+# Identifier ``minimize_counterexample`` — must stay aligned with tools.py / plan references.
+- id: minimize_counterexample
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Ask the formal engine for a shorter counterexample.
+# Identifier ``flag_vacuous_property`` — must stay aligned with tools.py / plan references.
+- id: flag_vacuous_property
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Publish a property that passes only because its antecedent is unreachable.
+# Identifier ``flag_overconstraint`` — must stay aligned with tools.py / plan references.
+- id: flag_overconstraint
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Publish an assumption that removes legal stimulus.
+# Identifier ``record_formal_engine_version`` — must stay aligned with tools.py / plan references.
+- id: record_formal_engine_version
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Record the formal engine, version, and proof settings.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``generate_assertions`` — must stay aligned with tools.py / plan references.
+- id: generate_assertions
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: generate_assertions
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write properties for the named requirements.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    hypothesis: ''
+    # YAML key ``requirement_ids`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    requirement_ids: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: requirement_ids
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Comma-separated requirement ids.
+# Identifier ``write_formal_assumptions`` — must stay aligned with tools.py / plan references.
+- id: write_formal_assumptions
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: write_formal_assumptions
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write environment assumptions. Each assumption cites the contract clause that justifies
+    it.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: The single change this edit is testing.
+# Identifier ``write_cover_properties`` — must stay aligned with tools.py / plan references.
+- id: write_cover_properties
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: write_cover_properties
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write cover properties for the legal scenarios the proof must reach.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: The single change this edit is testing.
+# Identifier ``write_assertion_bind`` — must stay aligned with tools.py / plan references.
+- id: write_assertion_bind
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: write_assertion_bind
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Write the bind file that attaches properties to the candidate.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: The single change this edit is testing.
+# Identifier ``read_formal_requirements`` — must stay aligned with tools.py / plan references.
+- id: read_formal_requirements
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: read_formal_requirements
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Read the requirements this proof is responsible for.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    corner: ''
+    # YAML key ``mode`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    mode: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: report_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: corner
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: mode
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``submit_formal`` — must stay aligned with tools.py / plan references.
+- id: submit_formal
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: submit_formal
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Submit the property manifest to the bound formal engine.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    recipe: ''
+    # YAML key ``corner`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    corner: ''
+    # YAML key ``mode`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    mode: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: recipe
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: corner
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: mode
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``read_formal_results`` — must stay aligned with tools.py / plan references.
+- id: read_formal_results
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: read_formal_results
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Read proven, cex, vacuous, and undetermined properties.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    corner: ''
+    # YAML key ``mode`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    mode: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: report_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: corner
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: mode
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``classify_counterexample`` — must stay aligned with tools.py / plan references.
+- id: classify_counterexample
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: classify_counterexample
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Classify one counterexample as a design bug, a missing constraint, or an overconstraint.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    corner: ''
+    # YAML key ``mode`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    mode: ''
+    # YAML key ``property_id`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    property_id: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: report_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: corner
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: mode
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Mode filter. Empty reads every available mode.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: property_id
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Property that failed.
+# Identifier ``minimize_counterexample`` — must stay aligned with tools.py / plan references.
+- id: minimize_counterexample
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: minimize_counterexample
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Ask the formal engine for a shorter counterexample.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    recipe: ''
+    # YAML key ``corner`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    corner: ''
+    # YAML key ``mode`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    mode: ''
+    # YAML key ``property_id`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    property_id: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: recipe
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: corner
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: mode
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: property_id
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Property to minimize.
+# Identifier ``flag_vacuous_property`` — must stay aligned with tools.py / plan references.
+- id: flag_vacuous_property
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: flag_vacuous_property
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Publish a property that passes only because its antecedent is unreachable.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``summary`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: summary
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: severity
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``flag_overconstraint`` — must stay aligned with tools.py / plan references.
+- id: flag_overconstraint
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: flag_overconstraint
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Publish an assumption that removes legal stimulus.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``summary`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: summary
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: severity
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``record_formal_engine_version`` — must stay aligned with tools.py / plan references.
+- id: record_formal_engine_version
+  # YAML key ``module`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  module: tools
+  # YAML key ``callable`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  callable: record_formal_engine_version
+  # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  description: Record the formal engine, version, and proof settings.
+  # YAML key ``args_defaults`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  args_defaults:
+    # YAML key ``summary`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: summary
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: severity
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    - name: skill_calls
+      # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+      description: Tool invocations.
+    # YAML key ``name`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+    - name: artifacts
+      # YAML key ``description`` for the assertion_formal agent (SVA/formal property and proof campaign specialist).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/assertion_formal:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for assertion_formal.
+  - requirements
+  # include entry ``interface_contracts`` for assertion_formal.
+  - interface_contracts
+  # include entry ``canonical_source`` for assertion_formal.
+  - canonical_source
+  # include entry ``open_findings`` for assertion_formal.
+  - open_findings
+  # include entry ``experiments`` for assertion_formal.
+  - experiments
+  # include entry ``decisions`` for assertion_formal.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for assertion_formal.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for assertion_formal.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for assertion_formal.
+  - human-authored
+  # precedence entry ``validated`` for assertion_formal.
+  - validated
+  # precedence entry ``provisional`` for assertion_formal.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for assertion_formal.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

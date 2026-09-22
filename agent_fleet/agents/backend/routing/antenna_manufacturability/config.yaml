@@ -1,0 +1,775 @@
+# Agent manifest for Antenna and Manufacturability Agent (id=antenna_manufacturability, port=8253).
+# EDA role: Process antenna rules limit charge collected on metal during etch that can damage gate oxide. Also covers via reliability, metal density, and patterning risks. Fixes include diodes, jumpers, and layer hops (OpenROAD repair_antennas).
+# Loaded by EdaAgent.read_spec / AgentService.from_agent; skills map to tools.py.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for worker/lead physical-design agents.
+kind: Agent
+# Identity and labels used by the fleet registry and dashboards.
+metadata:
+  # Stable agent id ``antenna_manufacturability`` used in telemetry and tool_observation.
+  name: antenna_manufacturability
+  # Human-readable title shown in UIs and READMEs.
+  display_name: Antenna and Manufacturability Agent
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Detect antenna, via-reliability, density, and patterning risks, apply a fix on an isolated
+    candidate, and check electrical side effects. Adapter target: OpenROAD repair_antennas.'
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: routing
+    # Fleet role: lead orchestrates; worker executes; validator independently checks.
+    role: worker
+# Fleet role ``worker`` (lead orchestrates; worker executes).
+role: worker
+# Physical-design stage ``routing`` for planning and context filters.
+stage: routing
+# Authoritative responsibility string mirrored from description.
+responsibility: 'Detect antenna, via-reliability, density, and patterning risks, apply a fix on an isolated
+  candidate, and check electrical side effects. Adapter target: OpenROAD repair_antennas.'
+# Hard may / may_not contract enforced conceptually by planning and permissions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Allowed action: Read physical-verification markers
+  - Read physical-verification markers
+  # Allowed action: Apply a diode, jumper, layer, or via fix on an isolated candidate
+  - Apply a diode, jumper, layer, or via fix on an isolated candidate
+  # Allowed action: Submit an antenna check and a side-effect report
+  - Submit an antenna check and a side-effect report
+  # Forbidden actions (no silent promotion, no self-signoff, etc.).
+  may_not:
+  # Forbidden: Delete a marker
+  - Delete a marker
+  # Forbidden: Claim a fix is closed without an electrical side-effect check
+  - Claim a fix is closed without an electrical side-effect check
+  # Forbidden: Edit the canonical layout
+  - Edit the canonical layout
+  # Forbidden: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Forbidden: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Forbidden: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids a lead may schedule.
+delegates_to: []
+# Optional independent validator agent ids.
+validators: []
+# HTTP reachability for AgentService inside Docker/compose.
+connection:
+  # Hostname peers use to reach this container (host.docker.internal for local).
+  host: host.docker.internal
+  # HTTP port 8253 for Antenna and Manufacturability Agent AgentService endpoints.
+  port: 8253
+  # Path map for health and execute routes.
+  endpoints:
+    # Liveness/readiness HTTP path.
+    health: /health
+    # Task submission HTTP path.
+    execute: /tasks/execute
+# EDA framework backend binding (none until OpenROAD adapter configured).
+backend:
+  # Backend type discriminator (none means observations stay not_run).
+  type: none
+# How skills are invoked by the agent runtime.
+execution:
+  # Mode parameter (overloaded key; YAML context distinguishes).
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum concurrent tasks for this agent process.
+    max_tasks: 1
+# Timeouts, retries, and failure policy for tasks.
+reliability:
+  # Wall-clock timeout for one task attempt.
+  task_timeout_secs: 120
+  # How many times to retry a failed task before replan/give-up.
+  max_retries: 1
+  # Planner hint when the task fails (e.g. replan).
+  on_failure: replan
+# Capability index mirroring skills for UIs and planners.
+capabilities:
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_antenna_report
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read antenna markers.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_antenna_violations
+  # One-paragraph responsibility for this physical-design stage.
+  description: List antenna violations by net and gate.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_via_reliability_risks
+  # One-paragraph responsibility for this physical-design stage.
+  description: List vias that fail the reliability rule.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_density_violations
+  # One-paragraph responsibility for this physical-design stage.
+  description: List density windows that fail.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_patterning_risks
+  # One-paragraph responsibility for this physical-design stage.
+  description: List patterning and manufacturability markers.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_diode_insertion
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a diode insertion and the electrical load it adds.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_antenna_jumper
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a jumper and the layer it uses.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_antenna_layer_hop
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a layer hop for one antenna net.
+# Stable id for a capability, skill, memory store, or stream.
+- id: apply_antenna_fix
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Apply one diode, jumper, layer, or via fix on an isolated candidate. Adapter target: OpenROAD
+    repair_antennas.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_antenna_check
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Re-run the antenna check. Adapter target: OpenROAD check_antennas.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: verify_antenna_electrical_impact
+  # One-paragraph responsibility for this physical-design stage.
+  description: Check input capacitance, delay, and noise after the fix.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_antenna_timing_side_effect
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report the timing change caused by the fix.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_unchecked_antenna_fix
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a fix that has no electrical side-effect check.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_antenna_rule_deck
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record the antenna rule deck and the candidate it graded.
+# Callable skills bound to tools.py functions.
+skills:
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_antenna_report
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: read_antenna_report
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read antenna markers.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_antenna_violations
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: list_antenna_violations
+  # One-paragraph responsibility for this physical-design stage.
+  description: List antenna violations by net and gate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_via_reliability_risks
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: list_via_reliability_risks
+  # One-paragraph responsibility for this physical-design stage.
+  description: List vias that fail the reliability rule.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_density_violations
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: list_density_violations
+  # One-paragraph responsibility for this physical-design stage.
+  description: List density windows that fail.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_patterning_risks
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: list_patterning_risks
+  # One-paragraph responsibility for this physical-design stage.
+  description: List patterning and manufacturability markers.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_diode_insertion
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: propose_diode_insertion
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a diode insertion and the electrical load it adds.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_antenna_jumper
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: propose_antenna_jumper
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a jumper and the layer it uses.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_antenna_layer_hop
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: propose_antenna_layer_hop
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a layer hop for one antenna net.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: apply_antenna_fix
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: apply_antenna_fix
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Apply one diode, jumper, layer, or via fix on an isolated candidate. Adapter target: OpenROAD
+    repair_antennas.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Single-change hypothesis parameter.
+    hypothesis: ''
+    net: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: hypothesis
+    # One-paragraph responsibility for this physical-design stage.
+    description: The single change this edit is testing.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: net
+    # One-paragraph responsibility for this physical-design stage.
+    description: Net to fix.
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_antenna_check
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: run_antenna_check
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Re-run the antenna check. Adapter target: OpenROAD check_antennas.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: verify_antenna_electrical_impact
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: verify_antenna_electrical_impact
+  # One-paragraph responsibility for this physical-design stage.
+  description: Check input capacitance, delay, and noise after the fix.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_antenna_timing_side_effect
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: report_antenna_timing_side_effect
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report the timing change caused by the fix.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_unchecked_antenna_fix
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: flag_unchecked_antenna_fix
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a fix that has no electrical side-effect check.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_antenna_rule_deck
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: record_antenna_rule_deck
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record the antenna rule deck and the candidate it graded.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Engineering-memory configuration for this agent.
+memory:
+  # Named local memory stores (journal cache, etc.).
+  stores:
+  # Stable id for a capability, skill, memory store, or stream.
+  - id: journal
+    # One-paragraph responsibility for this physical-design stage.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend type discriminator (none means observations stay not_run).
+    type: list
+    # Persistence medium (file, ...).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path template for file-backed memory.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry export settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls/artifacts streams are shipped.
+  telemetry:
+    # Telemetry service URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: skill_calls
+      # One-paragraph responsibility for this physical-design stage.
+      description: Tool invocations.
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: artifacts
+      # One-paragraph responsibility for this physical-design stage.
+      description: Structured task results.
+# Container image and environment for compose/k8s.
+deployment:
+  # Container image name:tag for this agent.
+  image: agentfleet/antenna_manufacturability:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework selector for adapters (empty = unbound).
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory records.
+context:
+  # Record categories always considered for the prompt/context package.
+  include:
+  # Context include category: canonical_source
+  - canonical_source
+  # Context include category: open_findings
+  - open_findings
+  # Context include category: experiments
+  - experiments
+  # Context include category: gates
+  - gates
+  # Context include category: decisions
+  - decisions
+  # Record categories omitted from context.
+  exclude:
+  # Context exclude category: stale_candidates
+  - stale_candidates
+  # Statuses that cause records to be dropped.
+  drop:
+  # Drop records with status: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Context precedence preference: human-authored
+  - human-authored
+  # Context precedence preference: validated
+  - validated
+  # Context precedence preference: provisional
+  - provisional
+  # Record classes that must not be auto-dropped.
+  protect:
+  # Protected record class: human-authored
+  - human-authored
+  # Approximate token budget for assembled context.
+  token_budget: 80000

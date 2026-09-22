@@ -1,0 +1,42 @@
+# =============================================================================
+# Monolithic Planner catalog summary (dashboard / docs metadata — not loaded as code)
+# =============================================================================
+
+# Numeric strategy/catalog id for this planner entry.
+id: 1
+# Human-readable display name.
+name: Monolithic Planner
+
+# Sequential-only planning description and suitability notes.
+description: >
+  Generates a strictly sequential task list where each task depends on
+  the previous one. No parallel execution - all tasks run one after another.
+  Good for simple, linear workflows or when task ordering is critical.
+
+# LLM-backed planning method.
+method_type: foundation model
+
+# Unified Plan schema using index-based dependency_task_ids.
+output_format: >
+  JSON with 'tasks' array. Each task has: description, goal_id,
+  dependency_task_ids (indices into the array, e.g., [0,1] means
+  depends on tasks at positions 0 and 1).
+
+# Co-located prompt inventory.
+prompts:
+  # system.prompt — sequential role definition.
+  - type: system
+    description: System prompt defining the sequential planning role
+  # user.prompt — goals + agents + no-parallelism instructions.
+  - type: user
+    description: Template with goals and agent context
+
+# Example sequential Plan JSON (docs only).
+example_output: |
+  {
+    "tasks": [
+      {"description": "Pick up item A", "goal_id": 1, "dependency_task_ids": []},
+      {"description": "Navigate to location B", "goal_id": 1, "dependency_task_ids": [0]},
+      {"description": "Place item A at location B", "goal_id": 1, "dependency_task_ids": [1]}
+    ]
+  }

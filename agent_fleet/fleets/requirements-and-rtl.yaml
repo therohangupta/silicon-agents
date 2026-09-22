@@ -1,0 +1,4 @@
+# Two agents, used to prove one container can call the other.
+agents:
+  - agents/frontend/architecture/requirements
+  - agents/frontend/rtl/rtl_implementation

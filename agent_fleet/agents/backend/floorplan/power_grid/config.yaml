@@ -1,0 +1,734 @@
+# Agent manifest for Power-Grid (role=worker, stage=floorplan, port=8241).
+# EDA focus: PDN rings, straps, rails, vias, macro power; IR/EM proxies and routing-resource tradeoffs.
+# Every mapping key and list entry has a comment; multi-line string values are untouched.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; Agent means a runnable chip-design agent service.
+kind: Agent
+# Human- and registry-facing identity for this agent.
+metadata:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  name: power_grid
+  # UI-facing title for operators and dashboards.
+  display_name: Power-Grid Agent
+  # One-paragraph responsibility statement shown in registries and UIs.
+  description: 'Design rings, straps, rails, vias, and macro connections against IR, electromigration,
+    and routing-resource limits. Adapter target: OpenROAD PDN generation.'
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent belongs to in the backend flow.
+    stage: floorplan
+    # lead orchestrates workers; worker executes specialist tools.
+    role: worker
+# lead orchestrates workers; worker executes specialist tools.
+role: worker
+# Pipeline stage this agent belongs to in the backend flow.
+stage: floorplan
+# Authoritative responsibility text mirrored from the design system.
+responsibility: 'Design rings, straps, rails, vias, and macro connections against IR, electromigration,
+  and routing-resource limits. Adapter target: OpenROAD PDN generation.'
+# Hard may / may_not rules the runtime enforces on tool actions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Entry under `may` for Power-Grid: Write a power-grid candidate
+  - Write a power-grid candidate
+  # Entry under `may` for Power-Grid: Submit an early IR check
+  - Submit an early IR check
+  # Actions this agent must never perform (promotion, waivers, etc.).
+  may_not:
+  # Entry under `may_not` for Power-Grid: Remove straps to clear congestion without publishing the IR impact
+  - Remove straps to clear congestion without publishing the IR impact
+  # Entry under `may_not` for Power-Grid: Edit the package
+  - Edit the package
+  # Entry under `may_not` for Power-Grid: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Entry under `may_not` for Power-Grid: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Entry under `may_not` for Power-Grid: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows toward.
+delegates_to: []
+# Optional validator agent ids that must confirm outcomes.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname inside Docker networks (host.docker.internal for local).
+  host: host.docker.internal
+  # TCP port this agent's uvicorn server listens on.
+  port: 8241
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness/readiness path probed by the fleet.
+    health: /health
+    # Path that accepts AgentTaskRequest payloads.
+    execute: /tasks/execute
+# Tool-backend binding; type none means observations are not_run until bound.
+backend:
+  # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+  type: none
+# How the agent runs tools for a task.
+execution:
+  # direct_function invokes Python callables named in skills.
+  mode: direct_function
+  # Limits on parallel task handling inside one process.
+  concurrency:
+    # Maximum simultaneous tasks (1 keeps experiment isolation simple).
+    max_tasks: 1
+# Timeouts, retries, and failure policy for task handling.
+reliability:
+  # Wall-clock seconds before a task is considered failed.
+  task_timeout_secs: 120
+  # How many times the fleet may retry a failed task.
+  max_retries: 1
+  # Policy when tools fail (replan asks the lead to adjust the graph).
+  on_failure: replan
+# Declared capability ids surfaced to planners (mirrors skills).
+capabilities:
+# Stable identifier for this list entry.
+- id: read_power_domains
+  # Human-readable description for this manifest entry.
+  description: Read domains, supplies, and macro power pins.
+# Stable identifier for this list entry.
+- id: read_current_budget
+  # Human-readable description for this manifest entry.
+  description: Read the activity assumption and current budget.
+# Stable identifier for this list entry.
+- id: write_pdn_spec
+  # Human-readable description for this manifest entry.
+  description: Write the power-grid specification for rings, straps, rails, and vias.
+# Stable identifier for this list entry.
+- id: propose_power_grid
+  # Human-readable description for this manifest entry.
+  description: 'Build rings, straps, rails, and macro connections. Adapter target: OpenROAD pdngen.'
+# Stable identifier for this list entry.
+- id: add_power_ring
+  # Human-readable description for this manifest entry.
+  description: Add a core or domain ring.
+# Stable identifier for this list entry.
+- id: add_power_straps
+  # Human-readable description for this manifest entry.
+  description: Add straps on a named layer and pitch.
+# Stable identifier for this list entry.
+- id: add_rails
+  # Human-readable description for this manifest entry.
+  description: Add standard-cell rails.
+# Stable identifier for this list entry.
+- id: connect_macro_power
+  # Human-readable description for this manifest entry.
+  description: Connect macro power pins to the grid.
+# Stable identifier for this list entry.
+- id: write_pdn_def
+  # Human-readable description for this manifest entry.
+  description: Write the power-grid geometry into the candidate.
+# Stable identifier for this list entry.
+- id: evaluate_ir_em_proxy
+  # Human-readable description for this manifest entry.
+  description: Estimate IR drop and electromigration against the activity assumption.
+# Stable identifier for this list entry.
+- id: estimate_grid_routing_resource
+  # Human-readable description for this manifest entry.
+  description: Estimate the tracks the grid consumes.
+# Stable identifier for this list entry.
+- id: flag_ir_over_budget
+  # Human-readable description for this manifest entry.
+  description: Publish a region whose IR proxy exceeds the budget.
+# Stable identifier for this list entry.
+- id: flag_strap_congestion_tradeoff
+  # Human-readable description for this manifest entry.
+  description: Publish a strap removal and the IR impact that must be accepted with it.
+# Stable identifier for this list entry.
+- id: record_pdn_recipe
+  # Human-readable description for this manifest entry.
+  description: Record the PDN spec, pitch, and activity file.
+# Concrete Python callables the agent may invoke.
+skills:
+# Stable identifier for this list entry.
+- id: read_power_domains
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_power_domains
+  # Human-readable description for this manifest entry.
+  description: Read domains, supplies, and macro power pins.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_current_budget
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_current_budget
+  # Human-readable description for this manifest entry.
+  description: Read the activity assumption and current budget.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: write_pdn_spec
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_pdn_spec
+  # Human-readable description for this manifest entry.
+  description: Write the power-grid specification for rings, straps, rails, and vias.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: propose_power_grid
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: propose_power_grid
+  # Human-readable description for this manifest entry.
+  description: 'Build rings, straps, rails, and macro connections. Adapter target: OpenROAD pdngen.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: add_power_ring
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: add_power_ring
+  # Human-readable description for this manifest entry.
+  description: Add a core or domain ring.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: add_power_straps
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: add_power_straps
+  # Human-readable description for this manifest entry.
+  description: Add straps on a named layer and pitch.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+    # Field `layer` in the Power-Grid agent manifest (floorplan stage, role worker).
+    layer: ''
+    # Field `pitch_microns` in the Power-Grid agent manifest (floorplan stage, role worker).
+    pitch_microns: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: layer
+    # Human-readable description for this manifest entry.
+    description: Strap layer.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: pitch_microns
+    # Human-readable description for this manifest entry.
+    description: Strap pitch in microns.
+# Stable identifier for this list entry.
+- id: add_rails
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: add_rails
+  # Human-readable description for this manifest entry.
+  description: Add standard-cell rails.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: connect_macro_power
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: connect_macro_power
+  # Human-readable description for this manifest entry.
+  description: Connect macro power pins to the grid.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_pdn_def
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_pdn_def
+  # Human-readable description for this manifest entry.
+  description: Write the power-grid geometry into the candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: evaluate_ir_em_proxy
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: evaluate_ir_em_proxy
+  # Human-readable description for this manifest entry.
+  description: Estimate IR drop and electromigration against the activity assumption.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Power-Grid agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Power-Grid agent manifest (floorplan stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: estimate_grid_routing_resource
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: estimate_grid_routing_resource
+  # Human-readable description for this manifest entry.
+  description: Estimate the tracks the grid consumes.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: flag_ir_over_budget
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_ir_over_budget
+  # Human-readable description for this manifest entry.
+  description: Publish a region whose IR proxy exceeds the budget.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_strap_congestion_tradeoff
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_strap_congestion_tradeoff
+  # Human-readable description for this manifest entry.
+  description: Publish a strap removal and the IR impact that must be accepted with it.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: record_pdn_recipe
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: record_pdn_recipe
+  # Human-readable description for this manifest entry.
+  description: Record the PDN spec, pitch, and activity file.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Local journal cache configuration for this agent process.
+memory:
+  # Named memory stores the agent may touch.
+  stores:
+  # Stable identifier for this list entry.
+  - id: journal
+    # Human-readable description for this manifest entry.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+    type: list
+    # Persistence medium (file-backed under SILICON_MEMORY_ROOT).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for the local journal cache.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where structured telemetry streams are POSTed.
+  telemetry:
+    # Telemetry collector URL (TELEMETRY_URL override).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: skill_calls
+      # Human-readable description for this manifest entry.
+      description: Tool invocations.
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: artifacts
+      # Human-readable description for this manifest entry.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Docker image tag published for this agent.
+  image: agentfleet/power_grid:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty keeps tools not_run.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-assembly policy for engineering memory records.
+context:
+  # Record kinds always pulled into the task context package.
+  include:
+  # Entry under `include` for Power-Grid: canonical_source
+  - canonical_source
+  # Entry under `include` for Power-Grid: open_findings
+  - open_findings
+  # Entry under `include` for Power-Grid: experiments
+  - experiments
+  # Entry under `include` for Power-Grid: gates
+  - gates
+  # Entry under `include` for Power-Grid: decisions
+  - decisions
+  # Record kinds omitted from context even if present.
+  exclude:
+  # Entry under `exclude` for Power-Grid: stale_candidates
+  - stale_candidates
+  # Validation states stripped from context (e.g. rejected).
+  drop:
+  # Entry under `drop` for Power-Grid: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Entry under `precedence` for Power-Grid: human-authored
+  - human-authored
+  # Entry under `precedence` for Power-Grid: validated
+  - validated
+  # Entry under `precedence` for Power-Grid: provisional
+  - provisional
+  # Record authorship classes that must not be overwritten lightly.
+  protect:
+  # Entry under `protect` for Power-Grid: human-authored
+  - human-authored
+  # Approximate token budget for assembled context sent to the model.
+  token_budget: 80000

@@ -1,0 +1,334 @@
+syntax = "proto3";
+
+// =============================================================================
+// telemetry.proto — Canonical telemetry ingest contract for agent fleets
+// =============================================================================
+//
+// Agents emit typed TelemetryEvents conforming to this contract. The schema
+// is middleware-agnostic: each agent abstracts its own middleware (ROS,
+// proprietary, etc.) and produces these messages. The TelemetryIngestion
+// service (HTTP + gRPC) persists envelopes, blobs, and Parquet trajectories.
+//
+// Agent-side publishers: packages/agent_sdk/src/telemetry/
+// Client-side viewers:   packages/client_sdk/.../realtime/telemetryClient*
+// Generated Python:      telemetry_pb2.py / telemetry_pb2_grpc.py
+// (generated files are not line-commented; document the schema here).
+//
+// ═══════════════════════════════════════════════════════════════════
+// ORDERING CONTRACT
+// ═══════════════════════════════════════════════════════════════════
+//
+// Events within a task episode are ordered by the composite key:
+//
+//   (step_index, sequence_id)
+//
+// step_index  — PRIMARY alignment key. Monotonically increasing per
+//               (agent_id, task_id).  Shared across ALL modalities and
+//               streams within the same episode.  One control tick = one
+//               step_index.  This is the "t" axis in ML datasets.
+//
+// sequence_id — SECONDARY ordering key.  Strictly increasing per
+//               (agent_id, task_id, modality, stream_name).  Provides
+//               gap detection and deduplication within a single stream.
+//               Multiple events may share a step_index but differ in
+//               sequence_id when a step produces several stream updates.
+//
+// Consumers reconstruct trajectories by: ORDER BY step_index, sequence_id.
+//
+// ═══════════════════════════════════════════════════════════════════
+// STREAM NAME STABILITY
+// ═══════════════════════════════════════════════════════════════════
+//
+// stream_name is a stable identifier for a logical data channel
+// (e.g. "joint_states", "front_camera").  Within a single agent_type,
+// stream names MUST be consistent across tasks and sessions.  Downstream
+// consumers (Parquet partitions, dashboard panels, ML pipelines) bind to
+// stream names, so renaming a stream is a breaking change.
+//
+// ═══════════════════════════════════════════════════════════════════
+
+package agent_fleet.telemetry;
+
+// ---------------------------------------------------------------------------
+// Envelope
+// ---------------------------------------------------------------------------
+
+// Completeness indicates whether an event carries a full snapshot or a delta.
+enum Completeness {
+  // Complete snapshot — all signal values for the stream are present.
+  FULL  = 0;
+  // Partial update — only changed signals are included.
+  DELTA = 1;
+}
+
+// Top-level telemetry envelope. Every ingest path wraps payload variants
+// in this message so ordering, identity, and modality metadata are uniform.
+message TelemetryEvent {
+  // Unique event id (ULID or UUID) for dedup and rejected_event_ids acks.
+  string event_id       = 1;
+  // Source timestamp in UTC nanoseconds (producer clock).
+  int64  event_time_ns  = 2;
+  // Ingest-assigned receipt timestamp in UTC nanoseconds.
+  int64  ingest_time_ns = 3;
+
+  // Agent instance that produced the event.
+  string agent_id       = 4;
+  // Logical agent type / name, e.g. "requirements".
+  string agent_type     = 5;
+  // Planner-assigned episode / task id this event belongs to.
+  string task_id        = 6;
+
+  // Strictly increasing per (agent_id, task_id, modality, stream_name).
+  // Secondary ordering key — see ORDERING CONTRACT above.
+  uint64 sequence_id    = 7;
+
+  // Schema version string for payload evolution, e.g. "v1".
+  string schema_version = 8;
+
+  // Which payload oneof branch is semantically active.
+  Modality modality     = 9;
+
+  // Stable identifier for a logical data channel — see STREAM NAME STABILITY.
+  string   stream_name  = 10;
+
+  // Distributed-trace id for correlating with logs / other systems.
+  string trace_id              = 11;
+  // Free-form string tags for filtering and dashboard facets.
+  map<string, string> tags     = 12;
+
+  // Primary alignment key across all modalities and streams within the same
+  // episode.  Monotonically increasing per (agent_id, task_id).
+  // One control tick = one step_index.  This is the "t" axis in ML datasets:
+  //   observation[t], action[t], done[t]
+  // See ORDERING CONTRACT for how step_index relates to sequence_id.
+  uint64 step_index     = 13;
+
+  // Producer identity — disambiguates when multiple processes or adapters
+  // publish for the same agent (e.g. "requirements:journal").
+  string source_id      = 14;
+
+  // Whether this event is a full snapshot or a delta/partial update.
+  // Field 15 kept for wire compatibility (bool → enum is safe in proto3
+  // because both encode as a varint; FULL=0 maps to the old false default).
+  Completeness completeness = 15;
+
+  // True on the last step of an episode/task. Consumers use this to finalize
+  // trajectory files, flush Parquet partitions, and mark datasets as complete.
+  bool   done           = 16;
+
+  // Intra-step grouping tag.  Use this ONLY when multiple events within the
+  // same step_index need to be associated (e.g. a stereo pair from two cameras
+  // captured at the same hardware trigger).  For cross-stream alignment at the
+  // same control tick, use step_index instead.
+  string sync_group     = 17;
+
+  // Exactly one payload variant is set per event.
+  oneof payload {
+    // State observation (joints, base, sensors, …).
+    StatePayload  state  = 20;
+    // Action command (joint targets, base twist, discrete, …).
+    ActionPayload action = 21;
+    // Vision / blob-backed frames.
+    VisionPayload vision = 22;
+    // Discrete event (collision, task_failed, …).
+    EventPayload  event  = 23;
+  }
+}
+
+// High-level modality classification for routing and Parquet partitions.
+enum Modality {
+  // Unspecified modality.
+  MODALITY_UNSPECIFIED = 0;
+  // State observation stream.
+  STATE               = 1;
+  // Action / command stream.
+  ACTION              = 2;
+  // Vision / camera stream.
+  VISION              = 3;
+  // Discrete event stream.
+  EVENT               = 4;
+  // Skill/tool invocation telemetry.
+  SKILL_CALL          = 5;
+  // Artifact production telemetry.
+  ARTIFACT            = 6;
+  // Free-form log lines.
+  LOG                 = 7;
+  // Token / LLM stream chunks.
+  TOKEN_STREAM        = 8;
+}
+
+// ---------------------------------------------------------------------------
+// Payload messages
+// ---------------------------------------------------------------------------
+
+// A named array of doubles with semantic labels and units.
+// Fundamental building block for both state observations and action commands.
+//
+// LABEL CONSISTENCY: within a given (agent_type, stream_name), the set of
+// VectorSignal names and labels MUST be stable across events.  Adding or
+// removing signals is a schema migration — downstream Parquet writers and ML
+// pipelines rely on consistent column sets per stream.  If the label set
+// genuinely changes, bump schema_version in the envelope.
+message VectorSignal {
+  // Signal name, e.g. "joint_1", "pose", "temperature".
+  string          name   = 1;
+  // One label per value (same length as values).
+  repeated string labels = 2;
+  // Numeric samples for this signal.
+  repeated double values = 3;
+  // Unit string, e.g. "rad", "m", "unitless".
+  string          unit   = 4;
+  // Optional coordinate frame name.
+  string          frame  = 5;
+}
+
+// State observation payload.
+message StatePayload {
+  // Kind of state being reported.
+  enum StateType {
+    // Unspecified state type.
+    STATE_UNSPECIFIED = 0;
+    // Joint angles, velocities, torques.
+    JOINT             = 1;
+    // Mobile base pose / odometry.
+    BASE              = 2;
+    // 6-DOF tracked rigid body (object, end-effector).
+    RIGID_BODY        = 3;
+    // IMU, force/torque, proximity, temperature, etc.
+    SENSOR            = 4;
+  }
+  // Which StateType this payload represents.
+  StateType                   state_type = 1;
+  // Named vector signals comprising the observation.
+  repeated VectorSignal       signals    = 2;
+  // Extra string attributes for this state sample.
+  map<string, string>         attributes = 3;
+}
+
+// Action / command payload.
+message ActionPayload {
+  // Kind of action being commanded.
+  enum ActionType {
+    // Unspecified action type.
+    ACTION_UNSPECIFIED  = 0;
+    // Target joint positions (rad).
+    JOINT_POSITION      = 1;
+    // Target joint velocities (rad/s).
+    JOINT_VELOCITY      = 2;
+    // Target joint torques (N·m).
+    JOINT_TORQUE        = 3;
+    // Mobile base twist (vx, vy, omega).
+    BASE_VELOCITY       = 4;
+    // Cartesian / SE(3) pose target.
+    RIGID_BODY_TARGET   = 5;
+    // Discrete action index (grasp, release, etc.).
+    DISCRETE            = 6;
+  }
+  // Which ActionType this payload represents.
+  ActionType                  action_type = 1;
+  // Named vector signals comprising the command.
+  repeated VectorSignal       signals     = 2;
+  // Extra string attributes for this action sample.
+  map<string, string>         attributes  = 3;
+}
+
+// Reference to an out-of-band blob (image, point cloud, …) stored separately.
+message BlobRef {
+  // Storage URI, e.g. s3://bucket/key or /blobs/agent/frame.jpg.
+  string uri          = 1;
+  // MIME type, e.g. "image/jpeg".
+  string mime_type    = 2;
+  // Encoding hint, e.g. "rgb8", "jpeg".
+  string encoding     = 3;
+  // Frame width in pixels (when applicable).
+  int32  width        = 4;
+  // Frame height in pixels (when applicable).
+  int32  height       = 5;
+  // Nominal frame rate for the stream.
+  double frame_rate_hz = 6;
+  // Monotonic frame index within the stream.
+  uint64 frame_index  = 7;
+  // Byte length of the blob.
+  int64  byte_length  = 8;
+  // Content hash for integrity / dedup.
+  string sha256       = 9;
+  // Extra attributes for the blob.
+  map<string, string> attributes = 10;
+  // Compression codec, e.g. "zstd", "lz4", "none".
+  string compression  = 11;
+}
+
+// Vision payload referencing one or more blobs.
+message VisionPayload {
+  // Blob references for this vision sample (e.g. stereo pair).
+  repeated BlobRef      blobs       = 1;
+  // Camera name matching a stable stream channel.
+  string                camera_name = 2;
+  // Extra attributes for the vision sample.
+  map<string, string>   attributes  = 3;
+}
+
+// Discrete event payload (faults, milestones, …).
+message EventPayload {
+  // Event type string, e.g. "collision", "task_failed".
+  string event_type = 1;
+  // Severity classification.
+  Severity severity = 2;
+  // Human-readable message.
+  string message    = 3;
+  // Extra attributes for the event.
+  map<string, string> attributes = 4;
+}
+
+// Severity levels for EventPayload.
+enum Severity {
+  // Informational.
+  SEVERITY_INFO     = 0;
+  // Warning — degraded but continuing.
+  SEVERITY_WARN     = 1;
+  // Error — operation failed.
+  SEVERITY_ERROR    = 2;
+  // Critical — safety / system-level failure.
+  SEVERITY_CRITICAL = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Batching & acknowledgement
+// ---------------------------------------------------------------------------
+
+// Unary batch of events for IngestBatch.
+message TelemetryBatch {
+  // Events to ingest in one RPC.
+  repeated TelemetryEvent events = 1;
+}
+
+// Ack returned by streaming and batch ingest RPCs.
+message IngestAck {
+  // True when the batch (or stream window) was fully accepted.
+  bool   ok      = 1;
+  // Empty on success; last error message on partial failure.
+  string error   = 2;
+  // Number of events accepted.
+  int32  accepted = 3;
+  // Number of events rejected.
+  int32  rejected = 4;
+
+  // IDs of events that were rejected. Enables producers to selectively retry
+  // only the failed events rather than resending the entire batch.
+  repeated string rejected_event_ids = 5;
+}
+
+// ---------------------------------------------------------------------------
+// gRPC service
+// ---------------------------------------------------------------------------
+
+// Telemetry ingest service implemented by the telemetry microservice.
+service TelemetryIngestion {
+  // Bidirectional streaming: agent sends events, server sends acks.
+  // Preferred for high-frequency agent publishers.
+  rpc StreamTelemetry (stream TelemetryEvent) returns (stream IngestAck);
+
+  // Unary batch ingest (HTTP-friendly via gRPC-gateway or transcoding).
+  // Preferred for low-frequency / bursty publishers and tests.
+  rpc IngestBatch (TelemetryBatch) returns (IngestAck);
+}

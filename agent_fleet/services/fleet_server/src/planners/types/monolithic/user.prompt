@@ -1,0 +1,31 @@
+# =============================================================================
+# DOCUMENTATION HEADER — Monolithic Planner — user prompt template
+# =============================================================================
+# This header is documentation for maintainers. The runtime loader reads the
+# entire file (including these lines) into the LLM prompt string. Keep the
+# original instructional sections below unchanged in meaning and order.
+#
+# SECTION: Placeholders
+#   {goals_context} and {agent_context} filled by MonolithicPlanner.plan().
+#
+# SECTION: Sequencing rules
+#   No parallelism; first task empty deps; later tasks use zero-based indices.
+#
+# SECTION: Index note
+#   dependency_task_ids are planner-local indices remapped by save_plan_to_db.
+#
+# =============================================================================
+{goals_context}
+
+{agent_context}
+
+Generate a sequential plan that addresses all the goals above.
+Tasks from different goals can be interleaved, but NO parallelism is allowed.
+Each task should depend on the previous task(s).
+
+For the first task, use an empty dependency_task_ids list.
+For subsequent tasks, make each depend on relevant previous tasks.
+
+Important: Since task IDs will be assigned by the database, in your dependency_task_ids,
+use zero-based indices that represent the position of the task in your tasks array
+(e.g., task at index 1 depends on task at index 0, so dependency_task_ids = [0]). 

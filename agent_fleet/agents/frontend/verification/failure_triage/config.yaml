@@ -1,0 +1,695 @@
+# AgentFleet config for ``failure_triage`` — failure clustering and likely-owner assignment specialist.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``failure_triage`` used across the verification plan graph.
+  name: failure_triage
+  # Human-readable title shown in UIs and docs.
+  display_name: Failure-Triage Agent
+  # Responsibility brief for this verification specialist.
+  description: Cluster failures and assign a likely owner with confidence and evidence.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Cluster failures and assign a likely owner with confidence and evidence.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for failure_triage: Read logs and waveform indexes
+  - Read logs and waveform indexes
+  # Boundary rule for failure_triage: Publish a failure cluster
+  - Publish a failure cluster
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for failure_triage: Close an issue
+  - Close an issue
+  # Boundary rule for failure_triage: Edit RTL or the test that failed
+  - Edit RTL or the test that failed
+  # Boundary rule for failure_triage: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for failure_triage: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for failure_triage: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8222 for the failure_triage AgentService (must match Dockerfile EXPOSE).
+  port: 8222
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``read_failure_logs`` — must stay aligned with tools.py / plan references.
+- id: read_failure_logs
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Read failing simulation logs for this campaign.
+# Identifier ``read_waveform_index`` — must stay aligned with tools.py / plan references.
+- id: read_waveform_index
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Read the waveform index for failing tests.
+# Identifier ``cluster_failures`` — must stay aligned with tools.py / plan references.
+- id: cluster_failures
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Group failures that share a signature.
+# Identifier ``extract_failure_signature`` — must stay aligned with tools.py / plan references.
+- id: extract_failure_signature
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Extract the first error, time, and hierarchy for one failure.
+# Identifier ``separate_infrastructure_failures`` — must stay aligned with tools.py / plan references.
+- id: separate_infrastructure_failures
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Separate license, timeout, and compile failures from functional failures.
+# Identifier ``assign_likely_owner`` — must stay aligned with tools.py / plan references.
+- id: assign_likely_owner
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Name the likely owner, confidence, and evidence for a cluster.
+# Identifier ``rank_clusters_by_frequency`` — must stay aligned with tools.py / plan references.
+- id: rank_clusters_by_frequency
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Rank clusters by how many seeds they cover.
+# Identifier ``read_cluster_evidence`` — must stay aligned with tools.py / plan references.
+- id: read_cluster_evidence
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Read the logs and waves attached to one cluster.
+# Identifier ``flag_unowned_cluster`` — must stay aligned with tools.py / plan references.
+- id: flag_unowned_cluster
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Publish a cluster that has evidence but no likely owner.
+# Identifier ``flag_mixed_signature_cluster`` — must stay aligned with tools.py / plan references.
+- id: flag_mixed_signature_cluster
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Publish a cluster whose members do not share a signature.
+# Identifier ``record_triage_confidence`` — must stay aligned with tools.py / plan references.
+- id: record_triage_confidence
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Record the confidence and the evidence refs for a cluster assignment.
+# Identifier ``publish_failure_cluster`` — must stay aligned with tools.py / plan references.
+- id: publish_failure_cluster
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Publish the cluster id, signature, seeds, and likely owner.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``read_failure_logs`` — must stay aligned with tools.py / plan references.
+- id: read_failure_logs
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: read_failure_logs
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Read failing simulation logs for this campaign.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    corner: ''
+    # YAML key ``mode`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    mode: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: report_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: corner
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: mode
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_waveform_index`` — must stay aligned with tools.py / plan references.
+- id: read_waveform_index
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: read_waveform_index
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Read the waveform index for failing tests.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    corner: ''
+    # YAML key ``mode`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    mode: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: report_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: corner
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: mode
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``cluster_failures`` — must stay aligned with tools.py / plan references.
+- id: cluster_failures
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: cluster_failures
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Group failures that share a signature.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    corner: ''
+    # YAML key ``mode`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    mode: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: report_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: corner
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: mode
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``extract_failure_signature`` — must stay aligned with tools.py / plan references.
+- id: extract_failure_signature
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: extract_failure_signature
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Extract the first error, time, and hierarchy for one failure.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    corner: ''
+    # YAML key ``mode`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    mode: ''
+    # YAML key ``test_id`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    test_id: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: report_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: corner
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: mode
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Mode filter. Empty reads every available mode.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: test_id
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Failing test.
+# Identifier ``separate_infrastructure_failures`` — must stay aligned with tools.py / plan references.
+- id: separate_infrastructure_failures
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: separate_infrastructure_failures
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Separate license, timeout, and compile failures from functional failures.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    corner: ''
+    # YAML key ``mode`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    mode: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: report_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: corner
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: mode
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``assign_likely_owner`` — must stay aligned with tools.py / plan references.
+- id: assign_likely_owner
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: assign_likely_owner
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Name the likely owner, confidence, and evidence for a cluster.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``summary`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    recommended_recipient: ''
+    # YAML key ``cluster_id`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    cluster_id: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: summary
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: severity
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Agent id that should act on the finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: cluster_id
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Cluster being assigned.
+# Identifier ``rank_clusters_by_frequency`` — must stay aligned with tools.py / plan references.
+- id: rank_clusters_by_frequency
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: rank_clusters_by_frequency
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Rank clusters by how many seeds they cover.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    corner: ''
+    # YAML key ``mode`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    mode: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: report_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: corner
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: mode
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_cluster_evidence`` — must stay aligned with tools.py / plan references.
+- id: read_cluster_evidence
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: read_cluster_evidence
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Read the logs and waves attached to one cluster.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    corner: ''
+    # YAML key ``mode`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    mode: ''
+    # YAML key ``cluster_id`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    cluster_id: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: report_ref
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: corner
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: mode
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Mode filter. Empty reads every available mode.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: cluster_id
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Cluster to read.
+# Identifier ``flag_unowned_cluster`` — must stay aligned with tools.py / plan references.
+- id: flag_unowned_cluster
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: flag_unowned_cluster
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Publish a cluster that has evidence but no likely owner.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``summary`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: summary
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: severity
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``flag_mixed_signature_cluster`` — must stay aligned with tools.py / plan references.
+- id: flag_mixed_signature_cluster
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: flag_mixed_signature_cluster
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Publish a cluster whose members do not share a signature.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``summary`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: summary
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: severity
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``record_triage_confidence`` — must stay aligned with tools.py / plan references.
+- id: record_triage_confidence
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: record_triage_confidence
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Record the confidence and the evidence refs for a cluster assignment.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``summary`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: summary
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: severity
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``publish_failure_cluster`` — must stay aligned with tools.py / plan references.
+- id: publish_failure_cluster
+  # YAML key ``module`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  module: tools
+  # YAML key ``callable`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  callable: publish_failure_cluster
+  # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  description: Publish the cluster id, signature, seeds, and likely owner.
+  # YAML key ``args_defaults`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  args_defaults:
+    # YAML key ``summary`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: summary
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: severity
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    - name: skill_calls
+      # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+      description: Tool invocations.
+    # YAML key ``name`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+    - name: artifacts
+      # YAML key ``description`` for the failure_triage agent (failure clustering and likely-owner assignment specialist).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/failure_triage:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for failure_triage.
+  - requirements
+  # include entry ``interface_contracts`` for failure_triage.
+  - interface_contracts
+  # include entry ``canonical_source`` for failure_triage.
+  - canonical_source
+  # include entry ``open_findings`` for failure_triage.
+  - open_findings
+  # include entry ``experiments`` for failure_triage.
+  - experiments
+  # include entry ``decisions`` for failure_triage.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for failure_triage.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for failure_triage.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for failure_triage.
+  - human-authored
+  # precedence entry ``validated`` for failure_triage.
+  - validated
+  # precedence entry ``provisional`` for failure_triage.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for failure_triage.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

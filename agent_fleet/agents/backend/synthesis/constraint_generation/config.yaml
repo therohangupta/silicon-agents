@@ -1,0 +1,814 @@
+# Agent manifest for Constraint Generation and Validation (role=worker, stage=synthesis, port=8233).
+# EDA focus: SDC authorship and audit: clocks, I/O delays, uncertainty, exceptions, and case analysis.
+# Every mapping key and list entry has a comment; multi-line string values are untouched.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; Agent means a runnable chip-design agent service.
+kind: Agent
+# Human- and registry-facing identity for this agent.
+metadata:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  name: constraint_generation
+  # UI-facing title for operators and dashboards.
+  display_name: Constraint Generation and Validation Agent
+  # One-paragraph responsibility statement shown in registries and UIs.
+  description: Create and audit clocks, generated clocks, I/O delays, uncertainties, exceptions, operating
+    modes, and environment assumptions.
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent belongs to in the backend flow.
+    stage: synthesis
+    # lead orchestrates workers; worker executes specialist tools.
+    role: worker
+# lead orchestrates workers; worker executes specialist tools.
+role: worker
+# Pipeline stage this agent belongs to in the backend flow.
+stage: synthesis
+# Authoritative responsibility text mirrored from the design system.
+responsibility: Create and audit clocks, generated clocks, I/O delays, uncertainties, exceptions, operating
+  modes, and environment assumptions.
+# Hard may / may_not rules the runtime enforces on tool actions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Entry under `may` for Constraint Generation and Validation: Write constraints on an isolated candidate
+  - Write constraints on an isolated candidate
+  # Entry under `may` for Constraint Generation and Validation: Audit exceptions
+  - Audit exceptions
+  # Entry under `may` for Constraint Generation and Validation: Submit a constraint check
+  - Submit a constraint check
+  # Actions this agent must never perform (promotion, waivers, etc.).
+  may_not:
+  # Entry under `may_not` for Constraint Generation and Validation: Add a false path to hide a violation
+  - Add a false path to hide a violation
+  # Entry under `may_not` for Constraint Generation and Validation: Edit RTL
+  - Edit RTL
+  # Entry under `may_not` for Constraint Generation and Validation: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Entry under `may_not` for Constraint Generation and Validation: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Entry under `may_not` for Constraint Generation and Validation: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows toward.
+delegates_to: []
+# Optional validator agent ids that must confirm outcomes.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname inside Docker networks (host.docker.internal for local).
+  host: host.docker.internal
+  # TCP port this agent's uvicorn server listens on.
+  port: 8233
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness/readiness path probed by the fleet.
+    health: /health
+    # Path that accepts AgentTaskRequest payloads.
+    execute: /tasks/execute
+# Tool-backend binding; type none means observations are not_run until bound.
+backend:
+  # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+  type: none
+# How the agent runs tools for a task.
+execution:
+  # direct_function invokes Python callables named in skills.
+  mode: direct_function
+  # Limits on parallel task handling inside one process.
+  concurrency:
+    # Maximum simultaneous tasks (1 keeps experiment isolation simple).
+    max_tasks: 1
+# Timeouts, retries, and failure policy for task handling.
+reliability:
+  # Wall-clock seconds before a task is considered failed.
+  task_timeout_secs: 120
+  # How many times the fleet may retry a failed task.
+  max_retries: 1
+  # Policy when tools fail (replan asks the lead to adjust the graph).
+  on_failure: replan
+# Declared capability ids surfaced to planners (mirrors skills).
+capabilities:
+# Stable identifier for this list entry.
+- id: write_create_clock
+  # Human-readable description for this manifest entry.
+  description: Write create_clock constraints for the declared clocks.
+# Stable identifier for this list entry.
+- id: write_generated_clock
+  # Human-readable description for this manifest entry.
+  description: Write create_generated_clock for one derived or gated clock.
+# Stable identifier for this list entry.
+- id: write_input_delay
+  # Human-readable description for this manifest entry.
+  description: Write set_input_delay for one port group.
+# Stable identifier for this list entry.
+- id: write_output_delay
+  # Human-readable description for this manifest entry.
+  description: Write set_output_delay for one port group.
+# Stable identifier for this list entry.
+- id: write_clock_uncertainty
+  # Human-readable description for this manifest entry.
+  description: Write setup and hold uncertainty for one clock.
+# Stable identifier for this list entry.
+- id: write_clock_groups
+  # Human-readable description for this manifest entry.
+  description: Write asynchronous or logically exclusive clock groups.
+# Stable identifier for this list entry.
+- id: write_false_path
+  # Human-readable description for this manifest entry.
+  description: Write a false path only with the justification that makes it legal.
+# Stable identifier for this list entry.
+- id: write_multicycle_path
+  # Human-readable description for this manifest entry.
+  description: Write a multicycle path with its architectural latency.
+# Stable identifier for this list entry.
+- id: write_case_analysis
+  # Human-readable description for this manifest entry.
+  description: Write set_case_analysis for one operating mode.
+# Stable identifier for this list entry.
+- id: write_sdc
+  # Human-readable description for this manifest entry.
+  description: Write the SDC file for this candidate.
+# Stable identifier for this list entry.
+- id: audit_constraints
+  # Human-readable description for this manifest entry.
+  description: Flag missing, contradictory, or unjustified exceptions.
+# Stable identifier for this list entry.
+- id: check_clocks_exist_in_netlist
+  # Human-readable description for this manifest entry.
+  description: Check that every constrained clock exists in the candidate.
+# Stable identifier for this list entry.
+- id: read_constraint_exceptions
+  # Human-readable description for this manifest entry.
+  description: Read false paths, multicycle paths, and case analysis.
+# Stable identifier for this list entry.
+- id: flag_unjustified_exception
+  # Human-readable description for this manifest entry.
+  description: Publish an exception that has no architectural justification.
+# Stable identifier for this list entry.
+- id: flag_missing_clock
+  # Human-readable description for this manifest entry.
+  description: Publish a declared clock with no create_clock.
+# Stable identifier for this list entry.
+- id: record_constraint_lineage
+  # Human-readable description for this manifest entry.
+  description: Record the SDC revision, mode list, and RTL revision.
+# Concrete Python callables the agent may invoke.
+skills:
+# Stable identifier for this list entry.
+- id: write_create_clock
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_create_clock
+  # Human-readable description for this manifest entry.
+  description: Write create_clock constraints for the declared clocks.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+    # Field `clock_name` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    clock_name: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: clock_name
+    # Human-readable description for this manifest entry.
+    description: Clock being constrained.
+# Stable identifier for this list entry.
+- id: write_generated_clock
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_generated_clock
+  # Human-readable description for this manifest entry.
+  description: Write create_generated_clock for one derived or gated clock.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+    # Field `clock_name` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    clock_name: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: clock_name
+    # Human-readable description for this manifest entry.
+    description: Generated clock name.
+# Stable identifier for this list entry.
+- id: write_input_delay
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_input_delay
+  # Human-readable description for this manifest entry.
+  description: Write set_input_delay for one port group.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_output_delay
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_output_delay
+  # Human-readable description for this manifest entry.
+  description: Write set_output_delay for one port group.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_clock_uncertainty
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_clock_uncertainty
+  # Human-readable description for this manifest entry.
+  description: Write setup and hold uncertainty for one clock.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_clock_groups
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_clock_groups
+  # Human-readable description for this manifest entry.
+  description: Write asynchronous or logically exclusive clock groups.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_false_path
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_false_path
+  # Human-readable description for this manifest entry.
+  description: Write a false path only with the justification that makes it legal.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+    # Field `justification` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    justification: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: justification
+    # Human-readable description for this manifest entry.
+    description: Why this path is not timed.
+# Stable identifier for this list entry.
+- id: write_multicycle_path
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_multicycle_path
+  # Human-readable description for this manifest entry.
+  description: Write a multicycle path with its architectural latency.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_case_analysis
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_case_analysis
+  # Human-readable description for this manifest entry.
+  description: Write set_case_analysis for one operating mode.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+    # Field `mode_name` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    mode_name: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode_name
+    # Human-readable description for this manifest entry.
+    description: Mode this case analysis describes.
+# Stable identifier for this list entry.
+- id: write_sdc
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_sdc
+  # Human-readable description for this manifest entry.
+  description: Write the SDC file for this candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: audit_constraints
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: audit_constraints
+  # Human-readable description for this manifest entry.
+  description: Flag missing, contradictory, or unjustified exceptions.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Constraint Generation and Validation agent manifest (synthesis stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: check_clocks_exist_in_netlist
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_clocks_exist_in_netlist
+  # Human-readable description for this manifest entry.
+  description: Check that every constrained clock exists in the candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_constraint_exceptions
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_constraint_exceptions
+  # Human-readable description for this manifest entry.
+  description: Read false paths, multicycle paths, and case analysis.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: flag_unjustified_exception
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_unjustified_exception
+  # Human-readable description for this manifest entry.
+  description: Publish an exception that has no architectural justification.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_missing_clock
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_missing_clock
+  # Human-readable description for this manifest entry.
+  description: Publish a declared clock with no create_clock.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: record_constraint_lineage
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: record_constraint_lineage
+  # Human-readable description for this manifest entry.
+  description: Record the SDC revision, mode list, and RTL revision.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Local journal cache configuration for this agent process.
+memory:
+  # Named memory stores the agent may touch.
+  stores:
+  # Stable identifier for this list entry.
+  - id: journal
+    # Human-readable description for this manifest entry.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+    type: list
+    # Persistence medium (file-backed under SILICON_MEMORY_ROOT).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for the local journal cache.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where structured telemetry streams are POSTed.
+  telemetry:
+    # Telemetry collector URL (TELEMETRY_URL override).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: skill_calls
+      # Human-readable description for this manifest entry.
+      description: Tool invocations.
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: artifacts
+      # Human-readable description for this manifest entry.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Docker image tag published for this agent.
+  image: agentfleet/constraint_generation:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty keeps tools not_run.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-assembly policy for engineering memory records.
+context:
+  # Record kinds always pulled into the task context package.
+  include:
+  # Entry under `include` for Constraint Generation and Validation: canonical_source
+  - canonical_source
+  # Entry under `include` for Constraint Generation and Validation: open_findings
+  - open_findings
+  # Entry under `include` for Constraint Generation and Validation: experiments
+  - experiments
+  # Entry under `include` for Constraint Generation and Validation: gates
+  - gates
+  # Entry under `include` for Constraint Generation and Validation: decisions
+  - decisions
+  # Record kinds omitted from context even if present.
+  exclude:
+  # Entry under `exclude` for Constraint Generation and Validation: stale_candidates
+  - stale_candidates
+  # Validation states stripped from context (e.g. rejected).
+  drop:
+  # Entry under `drop` for Constraint Generation and Validation: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Entry under `precedence` for Constraint Generation and Validation: human-authored
+  - human-authored
+  # Entry under `precedence` for Constraint Generation and Validation: validated
+  - validated
+  # Entry under `precedence` for Constraint Generation and Validation: provisional
+  - provisional
+  # Record authorship classes that must not be overwritten lightly.
+  protect:
+  # Entry under `protect` for Constraint Generation and Validation: human-authored
+  - human-authored
+  # Approximate token budget for assembled context sent to the model.
+  token_budget: 80000

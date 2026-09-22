@@ -1,0 +1,23 @@
+# =============================================================================
+# DOCUMENTATION HEADER — Cost-Based Allocator — user prompt template
+# =============================================================================
+# This header is documentation for maintainers. The runtime loader reads the
+# entire file (including these lines) into the LLM prompt string. Keep the
+# original instructional sections below unchanged in meaning and order.
+#
+# SECTION: Placeholders
+#   {available_tasks} (frontier) and {agent_descriptions} (incl. previous_task_id).
+#
+# SECTION: Constraint
+#   Each agent at most one available task this round.
+#
+# SECTION: Response shape
+#   JSON object mapping agent_id → integer task_id (no nulls/strings).
+#
+# =============================================================================
+Given the available tasks and agents, assign each agent at most one available task.
+
+Available Tasks: {available_tasks}
+Agents: {agent_descriptions}
+
+Respond ONLY with a JSON object mapping agent IDs to assigned integer task IDs, e.g. {{"agent_id": 5, ...}}. Do not use null, string names, or non-integer task IDs.

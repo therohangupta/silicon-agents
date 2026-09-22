@@ -1,0 +1,40 @@
+# =============================================================================
+# DOCUMENTATION HEADER — DAG Planner — user prompt template
+# =============================================================================
+# This header is documentation for maintainers. The runtime loader reads the
+# entire file (including these lines) into the LLM prompt string. Keep the
+# original instructional sections below unchanged in meaning and order.
+#
+# SECTION: Placeholders
+#   {goal_id}, {goal_description}, {agent_context}, {goal_prefix} filled by DAGPlanner.plan().
+#
+# SECTION: Goal block
+#   States which single goal this DAG is for.
+#
+# SECTION: Agent context
+#   Injected AVAILABLE AGENTS summary from BasePlanner.
+#
+# SECTION: ID rules
+#   Require goal_prefix + nodeX ids and matching depends_on references.
+#
+# SECTION: Parallelism
+#   Ask for deps only when truly needed.
+#
+# =============================================================================
+GOAL ID: {goal_id}
+GOAL DESCRIPTION: {goal_description}
+
+{agent_context}
+
+Generate a DAG-based plan where tasks can depend on any number of previous tasks.
+For tasks with no dependencies, use an empty depends_on list.
+
+Important: 
+1. Create a unique ID for each node using the format: "{goal_prefix}nodeX" 
+   where X is a sequential number (e.g., "{goal_prefix}node0", "{goal_prefix}node1")
+
+2. When specifying dependencies in 'depends_on', use these same node IDs
+
+3. Make sure to set the goal_id to {goal_id} for all nodes in this plan
+
+4. Maximize parallelism where possible by only creating dependencies when truly needed

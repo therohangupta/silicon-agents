@@ -1,0 +1,7 @@
+# Python dependencies for Lint/Quality Agent (`lint_quality`).
+# These are the web/runtime libs only; EDA tool adapters are bound separately via EDA_FRAMEWORK.
+
+fastapi  # HTTP framework underlying AgentService's ASGI routes.
+uvicorn[standard]  # ASGI server that runs server.py; [standard] pulls uvloop/httptools extras.
+pydantic  # Used by agent SDK models and request/response validation.
+PyYAML  # Parses config.yaml agent specifications at startup.

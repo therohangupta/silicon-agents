@@ -1,0 +1,682 @@
+syntax = "proto3";
+
+// =============================================================================
+// fleet_manager.proto — Fleet control-plane gRPC contract
+// =============================================================================
+//
+// This file is the authoritative wire schema for the FleetManager service
+// implemented by fleet_server and consumed by:
+//   * packages/fleet_sdk (Python gRPC client + ORM converters)
+//   * the Gateway BFF (via fleet_sdk / grpc_bridge)
+//   * operator CLIs and scripts
+//
+// Every RPC mutates or reads durable control-plane state (agents, goals,
+// plans, tasks). Nested messages carry registration metadata, Docker
+// deployment hints, and planning/allocation strategy enums.
+//
+// Generated Python: fleet_manager_pb2.py / fleet_manager_pb2_grpc.py
+// (those generated files are not line-commented; document here instead).
+// =============================================================================
+
+package agent_fleet;
+
+// Timestamp type used on Agent.last_updated and ContainerInfo.created_at.
+import "google/protobuf/timestamp.proto";
+
+// ---------------------------------------------------------------------------
+// Service: FleetManager
+// ---------------------------------------------------------------------------
+// Central control-plane API. Agents register here; planners create plans;
+// allocators bind agents to tasks; StartPlan kicks execution.
+service FleetManager {
+    // Persist agent metadata (capabilities, task-server host/port, optional
+    // Docker image/env) so the agent becomes visible to ListAgents / GetAgent
+    // and eligible for deployment and task assignment.
+    rpc RegisterAgent (RegisterAgentRequest) returns (RegisterAgentResponse);
+    
+    // Remove agent metadata from the registry. Does not by itself stop a
+    // running container — pair with UndeployAgent when needed.
+    rpc UnregisterAgent (UnregisterAgentRequest) returns (UnregisterAgentResponse);
+    
+    // Start a container for an already-registered agent using the stored
+    // DeploymentInfo + ContainerConfig from registration.
+    rpc DeployAgent (DeployAgentRequest) returns (DeployAgentResponse);
+    
+    // Stop and remove the agent's container; registration metadata may remain.
+    rpc UndeployAgent (UndeployAgentRequest) returns (UndeployAgentResponse);
+    
+    // Return agents filtered by ALL / DEPLOYED / REGISTERED.
+    rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse);
+
+    // Fetch one Agent by agent_id (or an error string if missing).
+    rpc GetAgent (GetAgentRequest) returns (GetAgentResponse);
+    
+    // Return the AgentStatus sub-message for one agent (state + message).
+    rpc GetAgentStatus (GetAgentStatusRequest) returns (AgentStatus);
+
+    // Create a Plan from goals using planning_strategy + allocation_strategy.
+    rpc CreatePlan (CreatePlanRequest) returns (CreatePlanResponse);
+    // Fetch one Plan by plan_id.
+    rpc GetPlan (GetPlanRequest) returns (GetPlanResponse);
+    // List every Plan.
+    rpc ListPlans (ListPlansRequest) returns (ListPlansResponse);
+    // Delete a Plan (and typically its tasks, server-side).
+    rpc DeletePlan (DeletePlanRequest) returns (DeletePlanResponse);
+
+    // Create a Task under a goal/plan with optional agent assignment.
+    rpc CreateTask (CreateTaskRequest) returns (CreateTaskResponse);
+    // Patch task fields; see UpdateTaskRequest for clear/replace semantics.
+    rpc UpdateTask (UpdateTaskRequest) returns (UpdateTaskResponse);
+    // Fetch one Task by task_id.
+    rpc GetTask (GetTaskRequest) returns (GetTaskResponse);
+    // List tasks filtered by plan_ids / goal_ids / agent_ids.
+    rpc ListTasks (ListTasksRequest) returns (ListTasksResponse);
+    // Delete a Task; response may list other tasks whose deps were updated.
+    rpc DeleteTask (DeleteTaskRequest) returns (DeleteTaskResponse);
+
+    // Create a Goal with an optional initial task_id list.
+    rpc CreateGoal (CreateGoalRequest) returns (CreateGoalResponse);
+    // Fetch one Goal by goal_id.
+    rpc GetGoal (GetGoalRequest) returns (GetGoalResponse);
+    // List every Goal.
+    rpc ListGoals (ListGoalsRequest) returns (ListGoalsResponse);
+    // Delete a Goal.
+    rpc DeleteGoal (DeleteGoalRequest) returns (DeleteGoalResponse);
+
+    // Begin executing an allocated plan (dispatch runnable tasks to agents).
+    rpc StartPlan(StartPlanRequest) returns (StartPlanResponse);
+    
+    // Run allocation on an existing plan that was created without agents
+    // (allocation_strategy NONE) or needs re-allocation.
+    rpc AllocatePlan(AllocatePlanRequest) returns (AllocatePlanResponse);
+}
+
+// Request body for AllocatePlan: which plan and which allocation strategy.
+message AllocatePlanRequest {
+    // Plan primary key to allocate.
+    int64 plan_id = 1;
+    // LP / LLM / COST_BASED / MANUAL_ALLOCATION / etc.
+    AllocationStrategy allocation_strategy = 2;
+}
+
+// Response body for AllocatePlan: updated Plan or error string.
+message AllocatePlanResponse {
+    // Plan after allocation artifacts / agent bindings applied.
+    Plan plan = 1;
+    // Non-empty when allocation failed.
+    string error = 2;
+}
+
+// Request body for StartPlan.
+message StartPlanRequest {
+    // Plan primary key to start executing.
+    int64 plan_id = 1;
+}
+
+// Response body for StartPlan.
+message StartPlanResponse {
+    // Plan with execution_status flipped toward executing/completed/failed.
+    Plan plan = 1;
+    // Non-empty when start failed (e.g. not allocated).
+    string error = 2;
+}
+
+// Common agent id + type pair (legacy/helper; most RPCs use flat fields).
+message AgentIdentifier {
+    // Unique agent instance id.
+    string agent_id = 1;
+    // Logical agent type / name.
+    string agent_type = 2;
+}
+
+// Full registration payload for RegisterAgent.
+message RegisterAgentRequest {
+    // Unique identifier for the agent instance.
+    string agent_id = 1;
+    // Type/name of the agent (matches agent package config).
+    string agent_type = 2;
+    // Optional human-readable description.
+    string description = 3;
+    // List of capability strings used by allocators.
+    repeated string capabilities = 4;
+    // Where the agent's HTTP task server listens.
+    TaskServerInfo task_server_info = 5;
+    // Docker daemon endpoint for DeployAgent.
+    DeploymentInfo deployment = 6;
+    // Image + environment for container start.
+    ContainerConfig container = 7;
+}
+
+// Docker image and environment for an agent container.
+message ContainerConfig {
+    // Docker image reference to pull/run.
+    string image = 1;
+    // Environment variables injected into the container.
+    map<string, string> environment = 2;
+}
+
+// Result of RegisterAgent.
+message RegisterAgentResponse {
+    // True when the agent was stored successfully.
+    bool success = 1;
+    // Human message (success detail or failure reason).
+    string message = 2;
+    // The registered agent snapshot.
+    Agent agent = 3;
+}
+
+// Deploy an already-registered agent by id only.
+message DeployAgentRequest {
+    // Must be already registered; deploy config comes from the registry.
+    string agent_id = 1;
+}
+
+// Result of DeployAgent including running container info.
+message DeployAgentResponse {
+    // True when the container started.
+    bool success = 1;
+    // Human message.
+    string message = 2;
+    // Runtime container metadata (id, host, port, env, created_at).
+    ContainerInfo container = 3;
+}
+
+// Stop/remove a deployed agent container.
+message UndeployAgentRequest {
+    // Agent whose container should be stopped/removed.
+    string agent_id = 1;
+}
+
+// Result of UndeployAgent.
+message UndeployAgentResponse {
+    // True when undeploy succeeded.
+    bool success = 1;
+    // Human message.
+    string message = 2;
+}
+
+// Remove agent metadata from the registry.
+message UnregisterAgentRequest {
+    // Agent id to unregister.
+    string agent_id = 1;
+}
+
+// Result of UnregisterAgent.
+message UnregisterAgentResponse {
+    // True when unregister succeeded.
+    bool success = 1;
+    // Human message.
+    string message = 2;
+}
+
+// Filter for ListAgents.
+message ListAgentsRequest {
+    // Which agents to include in the listing.
+    enum Filter {
+        // Every registered agent regardless of deploy state.
+        ALL = 0;
+        // Only agents with a running container.
+        DEPLOYED = 1;
+        // Registered but not necessarily deployed.
+        REGISTERED = 2;
+    }
+    // Selected filter (defaults to ALL).
+    Filter filter = 1;
+}
+
+// Result of ListAgents.
+message ListAgentsResponse {
+    // Matching Agent messages.
+    repeated Agent agents = 1;
+}
+
+// Lookup one agent by id.
+message GetAgentRequest {
+    // Agent primary key.
+    string agent_id = 1;
+}
+
+// Result of GetAgent.
+message GetAgentResponse {
+    // Agent when found.
+    Agent agent = 1;
+    // Error string when not found / failed.
+    string error = 2;
+}
+
+// Lookup status for one agent.
+message GetAgentStatusRequest {
+    // Agent primary key.
+    string agent_id = 1;
+}
+
+// Rich agent snapshot (historically parallel to Agent; keep fields aligned).
+message AgentInfo {
+    // Unique agent instance id.
+    string agent_id = 1;
+    // Logical agent type.
+    string agent_type = 2;
+    // Optional description.
+    string description = 3;
+    // Capability strings.
+    repeated string capabilities = 4;
+    // Current lifecycle status.
+    AgentStatus status = 5;
+    // Running container metadata when deployed.
+    ContainerInfo container = 6;
+    // Docker daemon connection info.
+    DeploymentInfo deployment = 7;
+    // HTTP task-server host/port.
+    TaskServerInfo task_server_info = 8;
+    // Last update timestamp.
+    google.protobuf.Timestamp last_updated = 9;
+    // Task ids currently associated with this agent.
+    repeated int64 task_ids = 10;
+}
+
+// Lifecycle status for an agent.
+message AgentStatus {
+    // Discrete agent lifecycle states.
+    enum State {
+        // Unknown / unset.
+        UNKNOWN = 0;
+        // Metadata stored; may not be running yet.
+        REGISTERED = 1;
+        // Container start in progress.
+        DEPLOYING = 2;
+        // Task server reachable / container running.
+        RUNNING = 3;
+        // Last operation failed.
+        ERROR = 4;
+        // Explicitly stopped.
+        STOPPED = 5;
+    }
+    // Current state enum value.
+    State state = 1;
+    // Optional human detail (error text, etc.).
+    string message = 2;
+}
+
+// Runtime info about a deployed container.
+message ContainerInfo {
+    // Docker container id.
+    string container_id = 1;
+    // Image that was started.
+    string image = 2;
+    // Host where the container publishes its port.
+    string host = 3;
+    // Published port for the agent task server.
+    int32 port = 4;
+    // Effective environment map.
+    map<string, string> environment = 5;
+    // When the container was created.
+    google.protobuf.Timestamp created_at = 6;
+}
+
+// Where DeployAgent should talk to Docker.
+message DeploymentInfo {
+    // Docker host hostname / IP.
+    string docker_host = 1;
+    // Docker API port.
+    int32 docker_port = 2;
+}
+
+// Where fleet_server sends task HTTP requests for this agent.
+message TaskServerInfo {
+    // Task-server hostname / IP.
+    string host = 1;
+    // Task-server listen port.
+    int32 port = 2;
+}
+
+// --- Planning Strategy Enum ---
+// How CreatePlan decomposes goals into tasks.
+enum PlanningStrategy {
+    // Unspecified / default placeholder.
+    PLANNING_STRATEGY_UNSPECIFIED = 0;
+    // Single monolithic plan structure.
+    MONOLITHIC = 1;
+    // Standard DAG planner.
+    DAG = 2;
+    // Larger / hierarchical DAG planner.
+    BIG_DAG = 3;
+    // User-defined tasks, no auto-planning.
+    MANUAL_PLAN = 4;
+}
+
+// How AllocatePlan / CreatePlan binds agents to tasks.
+enum AllocationStrategy {
+    // Unspecified / default placeholder.
+    ALLOCATION_STRATEGY_UNSPECIFIED = 0;
+    // Linear-programming allocator.
+    LP = 1;
+    // LLM-based allocator.
+    LLM = 2;
+    // Cost-based heuristic allocator.
+    COST_BASED = 3;
+    // No allocation (unallocated plan).
+    NONE = 4;
+    // Manual allocation of agents to tasks.
+    MANUAL_ALLOCATION = 5;
+}
+
+// --- Core Objects ---
+
+// Full agent record returned by list/get/register.
+message Agent {
+    // Unique agent instance id.
+    string agent_id = 1;
+    // Logical agent type / name.
+    string agent_type = 2;
+    // Optional description.
+    string description = 3;
+    // Capability strings for allocation matching.
+    repeated string capabilities = 4;
+    // Lifecycle status.
+    AgentStatus status = 5;
+    // Running container metadata when deployed.
+    ContainerInfo container = 6;
+    // Docker deployment endpoint.
+    DeploymentInfo deployment = 7;
+    // HTTP task-server endpoint.
+    TaskServerInfo task_server_info = 8;
+    // Last mutation time.
+    google.protobuf.Timestamp last_updated = 9;
+    // Associated task ids.
+    repeated int64 task_ids = 10;
+}
+
+// Work item in a plan/goal DAG.
+message Task {
+    // Task primary key.
+    int64 task_id = 1;
+    // Natural-language description sent to the agent.
+    string description = 2;
+    // Parent goal id (0 if unset).
+    int64 goal_id = 3;
+    // Parent plan id (0 if unset).
+    int64 plan_id = 4;
+    // Prerequisite task ids (DAG edges).
+    repeated int64 dependency_task_ids = 5;
+    // Assigned agent id (empty if unallocated).
+    string agent_id = 6;
+    // TaskStatus enum value.
+    TaskStatus status = 7;
+    // Desired agent type when agent_id not yet bound.
+    optional string agent_type = 8;
+    // Execution result / output after completion.
+    optional string result = 9;
+}
+
+// High-level goal that planners expand into tasks.
+message Goal {
+    // Goal primary key.
+    int64 goal_id = 1;
+    // Natural-language goal description.
+    string description = 2;
+    // Task ids that realize this goal.
+    repeated int64 task_ids = 3;
+}
+
+// Executable plan tying goals, tasks, and strategies together.
+message Plan {
+    // Plan primary key.
+    int64 plan_id = 1;
+    // How the plan was / will be generated.
+    PlanningStrategy planning_strategy = 2;
+    // How agents are / will be bound to tasks.
+    AllocationStrategy allocation_strategy = 3;
+    // Task ids belonging to this plan.
+    repeated int64 task_ids = 4;
+    // Goal ids this plan covers.
+    repeated int64 goal_ids = 5;
+    // Audit map of prompts used during planning.
+    map<string, string> planning_prompts = 6;
+    // Audit map of prompts used during allocation.
+    map<string, string> allocation_prompts = 7;
+    // JSON string of planning artifacts (DAG structure, etc.).
+    string planning_artifacts = 8;
+    // JSON string of allocation artifacts.
+    string allocation_artifacts = 9;
+    // Accumulated server-side logs for the plan lifecycle.
+    string server_logs = 10;
+    // 0=not_executed, 1=executing, 2=completed, 3=failed.
+    int32 execution_status = 11;
+    // User-defined plan name.
+    string name = 12;
+    // User-defined plan description.
+    string description = 13;
+}
+
+// --- Service Requests/Responses ---
+
+// CreatePlan inputs.
+message CreatePlanRequest {
+    // Planner strategy to run.
+    PlanningStrategy planning_strategy = 1;
+    // Allocator strategy to run (or NONE).
+    AllocationStrategy allocation_strategy = 2;
+    // Goals to include.
+    repeated int64 goal_ids = 3;
+    // Required user-facing name.
+    string name = 4;
+    // Required user-facing description.
+    string description = 5;
+}
+// CreatePlan result.
+message CreatePlanResponse {
+    // Created Plan.
+    Plan plan = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// GetPlan inputs.
+message GetPlanRequest {
+    // Plan primary key.
+    int64 plan_id = 1;
+}
+// GetPlan result.
+message GetPlanResponse {
+    // Plan when found.
+    Plan plan = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// ListPlans has no filters today.
+message ListPlansRequest {}
+// ListPlans result.
+message ListPlansResponse {
+    // All plans.
+    repeated Plan plans = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// DeletePlan inputs.
+message DeletePlanRequest {
+    // Plan primary key to delete.
+    int64 plan_id = 1;
+}
+// DeletePlan result.
+message DeletePlanResponse {
+    // Deleted plan snapshot (or empty on hard failure).
+    Plan plan = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// CreateTask inputs.
+message CreateTaskRequest {
+    // Task description.
+    string description = 1;
+    // Parent goal id.
+    int64 goal_id = 2;
+    // Parent plan id.
+    int64 plan_id = 3;
+    // Prerequisite task ids.
+    repeated int64 dependency_task_ids = 4;
+    // Optional assigned agent id.
+    string agent_id = 5;
+    // Optional desired agent type.
+    string agent_type = 6;
+}
+// CreateTask result.
+message CreateTaskResponse {
+    // Created Task.
+    Task task = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// UpdateTask inputs with optional-field clear/replace semantics.
+message UpdateTaskRequest {
+    // Task to update.
+    int64 task_id = 1;
+    // New description when set.
+    optional string description = 2;
+    // New goal id when set.
+    optional int64 goal_id = 3;
+    // If present and empty string, clears agent assignment.
+    optional string agent_id = 4;
+    // If true, dependency_task_ids replaces the existing list (can be empty).
+    bool update_dependency_task_ids = 5;
+    // Replacement dependency list when update_dependency_task_ids is true.
+    repeated int64 dependency_task_ids = 6;
+}
+// UpdateTask result.
+message UpdateTaskResponse {
+    // Updated Task.
+    Task task = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// GetTask inputs.
+message GetTaskRequest {
+    // Task primary key.
+    int64 task_id = 1;
+}
+// GetTask result.
+message GetTaskResponse {
+    // Task when found.
+    Task task = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// ListTasks filters (empty lists mean unrestricted for that dimension).
+message ListTasksRequest {
+    // Restrict to these plan ids.
+    repeated int64 plan_ids = 1;
+    // Restrict to these goal ids.
+    repeated int64 goal_ids = 2;
+    // Restrict to these agent ids.
+    repeated string agent_ids = 3;
+}
+// ListTasks result.
+message ListTasksResponse {
+    // Matching tasks.
+    repeated Task tasks = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// DeleteTask inputs.
+message DeleteTaskRequest {
+    // Task primary key to delete.
+    int64 task_id = 1;
+}
+// DeleteTask result including dependency side-effects.
+message DeleteTaskResponse {
+    // True when deletion succeeded.
+    bool success = 1;
+    // Id that was deleted.
+    int64 deleted_task_id = 2;
+    // Other tasks whose dependency lists were rewritten.
+    repeated int64 updated_task_ids = 3;
+    // Error string on failure.
+    string error = 4;
+}
+
+// CreateGoal inputs.
+message CreateGoalRequest {
+    // Goal description.
+    string description = 1;
+    // Optional initial task ids.
+    repeated int64 task_ids = 2;
+}
+// CreateGoal result.
+message CreateGoalResponse {
+    // Created Goal.
+    Goal goal = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// GetGoal inputs.
+message GetGoalRequest {
+    // Goal primary key.
+    int64 goal_id = 1;
+}
+// GetGoal result.
+message GetGoalResponse {
+    // Goal when found.
+    Goal goal = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// ListGoals has no filters today.
+message ListGoalsRequest {}
+// ListGoals result.
+message ListGoalsResponse {
+    // All goals.
+    repeated Goal goals = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// DeleteGoal inputs.
+message DeleteGoalRequest {
+    // Goal primary key to delete.
+    int64 goal_id = 1;
+}
+// DeleteGoal result.
+message DeleteGoalResponse {
+    // Deleted goal snapshot.
+    Goal goal = 1;
+    // Error string on failure.
+    string error = 2;
+}
+
+// Lifecycle states for a Task.
+enum TaskStatus {
+    // Unknown / unset.
+    TASK_UNKNOWN = 0;
+    // Waiting to run (deps unmet or not started).
+    TASK_PENDING = 1;
+    // Currently executing on an agent.
+    TASK_IN_PROGRESS = 2;
+    // Finished successfully.
+    TASK_COMPLETED = 3;
+    // Cancelled before/during execution.
+    TASK_CANCELLED = 4;
+    // Finished with failure.
+    TASK_FAILED = 5;
+}
+
+// Lifecycle states for a Goal (stored/used by higher layers; not all RPCs set it).
+enum GoalStatus {
+    // Unknown / unset.
+    GOAL_UNKNOWN = 0;
+    // Goal is active / in progress.
+    GOAL_ACTIVE = 1;
+    // Goal completed successfully.
+    GOAL_COMPLETED = 2;
+    // Goal cancelled.
+    GOAL_CANCELLED = 3;
+    // Goal failed.
+    GOAL_FAILED = 4;
+}

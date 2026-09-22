@@ -1,0 +1,764 @@
+# Agent manifest for Pin-Assignment (role=worker, stage=floorplan, port=8240).
+# EDA focus: Block pin locations, layers, bus order, feedthroughs against package/edge capacity.
+# Every mapping key and list entry has a comment; multi-line string values are untouched.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; Agent means a runnable chip-design agent service.
+kind: Agent
+# Human- and registry-facing identity for this agent.
+metadata:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  name: pin_assignment
+  # UI-facing title for operators and dashboards.
+  display_name: Pin-Assignment Agent
+  # One-paragraph responsibility statement shown in registries and UIs.
+  description: 'Propose and validate block-pin locations, layers, ordering, and feedthroughs. Adapter
+    target: OpenROAD pin placement.'
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent belongs to in the backend flow.
+    stage: floorplan
+    # lead orchestrates workers; worker executes specialist tools.
+    role: worker
+# lead orchestrates workers; worker executes specialist tools.
+role: worker
+# Pipeline stage this agent belongs to in the backend flow.
+stage: floorplan
+# Authoritative responsibility text mirrored from the design system.
+responsibility: 'Propose and validate block-pin locations, layers, ordering, and feedthroughs. Adapter
+  target: OpenROAD pin placement.'
+# Hard may / may_not rules the runtime enforces on tool actions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Entry under `may` for Pin-Assignment: Write a pin assignment on an isolated candidate
+  - Write a pin assignment on an isolated candidate
+  # Entry under `may` for Pin-Assignment: Report boundary density
+  - Report boundary density
+  # Actions this agent must never perform (promotion, waivers, etc.).
+  may_not:
+  # Entry under `may_not` for Pin-Assignment: Move a package bump
+  - Move a package bump
+  # Entry under `may_not` for Pin-Assignment: Ignore a feedthrough limit
+  - Ignore a feedthrough limit
+  # Entry under `may_not` for Pin-Assignment: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Entry under `may_not` for Pin-Assignment: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Entry under `may_not` for Pin-Assignment: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows toward.
+delegates_to: []
+# Optional validator agent ids that must confirm outcomes.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname inside Docker networks (host.docker.internal for local).
+  host: host.docker.internal
+  # TCP port this agent's uvicorn server listens on.
+  port: 8240
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness/readiness path probed by the fleet.
+    health: /health
+    # Path that accepts AgentTaskRequest payloads.
+    execute: /tasks/execute
+# Tool-backend binding; type none means observations are not_run until bound.
+backend:
+  # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+  type: none
+# How the agent runs tools for a task.
+execution:
+  # direct_function invokes Python callables named in skills.
+  mode: direct_function
+  # Limits on parallel task handling inside one process.
+  concurrency:
+    # Maximum simultaneous tasks (1 keeps experiment isolation simple).
+    max_tasks: 1
+# Timeouts, retries, and failure policy for task handling.
+reliability:
+  # Wall-clock seconds before a task is considered failed.
+  task_timeout_secs: 120
+  # How many times the fleet may retry a failed task.
+  max_retries: 1
+  # Policy when tools fail (replan asks the lead to adjust the graph).
+  on_failure: replan
+# Declared capability ids surfaced to planners (mirrors skills).
+capabilities:
+# Stable identifier for this list entry.
+- id: read_pin_contract
+  # Human-readable description for this manifest entry.
+  description: Read interface, package, and bump constraints for this block.
+# Stable identifier for this list entry.
+- id: read_edge_capacity
+  # Human-readable description for this manifest entry.
+  description: Read legal layers and track capacity on each edge.
+# Stable identifier for this list entry.
+- id: assign_pins
+  # Human-readable description for this manifest entry.
+  description: 'Assign block pin locations, layers, and order. Adapter target: OpenROAD place_pins.'
+# Stable identifier for this list entry.
+- id: assign_pin_layer
+  # Human-readable description for this manifest entry.
+  description: Set the layer of one pin or bus.
+# Stable identifier for this list entry.
+- id: order_bus_pins
+  # Human-readable description for this manifest entry.
+  description: Set the order of one bus along an edge.
+# Stable identifier for this list entry.
+- id: place_feedthrough
+  # Human-readable description for this manifest entry.
+  description: Add one feedthrough that the contract allows.
+# Stable identifier for this list entry.
+- id: write_pin_def
+  # Human-readable description for this manifest entry.
+  description: Write the pin section of the DEF.
+# Stable identifier for this list entry.
+- id: validate_pin_density
+  # Human-readable description for this manifest entry.
+  description: Check boundary pin density against the contract.
+# Stable identifier for this list entry.
+- id: check_pin_track_alignment
+  # Human-readable description for this manifest entry.
+  description: Check that pins sit on legal tracks.
+# Stable identifier for this list entry.
+- id: check_pin_layer_rules
+  # Human-readable description for this manifest entry.
+  description: Check pin layers against the technology rules.
+# Stable identifier for this list entry.
+- id: estimate_pin_wirelength
+  # Human-readable description for this manifest entry.
+  description: Estimate wirelength from this pin assignment to the macros.
+# Stable identifier for this list entry.
+- id: flag_pin_density_violation
+  # Human-readable description for this manifest entry.
+  description: Publish an edge whose pin density exceeds the contract.
+# Stable identifier for this list entry.
+- id: flag_illegal_feedthrough
+  # Human-readable description for this manifest entry.
+  description: Publish a feedthrough the contract does not allow.
+# Stable identifier for this list entry.
+- id: record_pin_assignment
+  # Human-readable description for this manifest entry.
+  description: Record the pin DEF ref and the contract revision it was checked against.
+# Concrete Python callables the agent may invoke.
+skills:
+# Stable identifier for this list entry.
+- id: read_pin_contract
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_pin_contract
+  # Human-readable description for this manifest entry.
+  description: Read interface, package, and bump constraints for this block.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_edge_capacity
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_edge_capacity
+  # Human-readable description for this manifest entry.
+  description: Read legal layers and track capacity on each edge.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: assign_pins
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: assign_pins
+  # Human-readable description for this manifest entry.
+  description: 'Assign block pin locations, layers, and order. Adapter target: OpenROAD place_pins.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: assign_pin_layer
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: assign_pin_layer
+  # Human-readable description for this manifest entry.
+  description: Set the layer of one pin or bus.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+    # Field `pin_name` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    pin_name: ''
+    # Field `layer` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    layer: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: pin_name
+    # Human-readable description for this manifest entry.
+    description: Pin or bus to move.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: layer
+    # Human-readable description for this manifest entry.
+    description: Routing layer.
+# Stable identifier for this list entry.
+- id: order_bus_pins
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: order_bus_pins
+  # Human-readable description for this manifest entry.
+  description: Set the order of one bus along an edge.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+    # Field `bus_name` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    bus_name: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: bus_name
+    # Human-readable description for this manifest entry.
+    description: Bus to order.
+# Stable identifier for this list entry.
+- id: place_feedthrough
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: place_feedthrough
+  # Human-readable description for this manifest entry.
+  description: Add one feedthrough that the contract allows.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: write_pin_def
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: write_pin_def
+  # Human-readable description for this manifest entry.
+  description: Write the pin section of the DEF.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Single synthesis/floorplan knob changed in an isolated experiment.
+    hypothesis: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: hypothesis
+    # Human-readable description for this manifest entry.
+    description: The single change this edit is testing.
+# Stable identifier for this list entry.
+- id: validate_pin_density
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: validate_pin_density
+  # Human-readable description for this manifest entry.
+  description: Check boundary pin density against the contract.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: check_pin_track_alignment
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_pin_track_alignment
+  # Human-readable description for this manifest entry.
+  description: Check that pins sit on legal tracks.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: check_pin_layer_rules
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: check_pin_layer_rules
+  # Human-readable description for this manifest entry.
+  description: Check pin layers against the technology rules.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Field `baseline_ref` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    baseline_ref: ''
+    # Field `recipe` in the Pin-Assignment agent manifest (floorplan stage, role worker).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate the job reads.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: baseline_ref
+    # Human-readable description for this manifest entry.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recipe
+    # Human-readable description for this manifest entry.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable identifier for this list entry.
+- id: estimate_pin_wirelength
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: estimate_pin_wirelength
+  # Human-readable description for this manifest entry.
+  description: Estimate wirelength from this pin assignment to the macros.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: flag_pin_density_violation
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_pin_density_violation
+  # Human-readable description for this manifest entry.
+  description: Publish an edge whose pin density exceeds the contract.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_illegal_feedthrough
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_illegal_feedthrough
+  # Human-readable description for this manifest entry.
+  description: Publish a feedthrough the contract does not allow.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: record_pin_assignment
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: record_pin_assignment
+  # Human-readable description for this manifest entry.
+  description: Record the pin DEF ref and the contract revision it was checked against.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Local journal cache configuration for this agent process.
+memory:
+  # Named memory stores the agent may touch.
+  stores:
+  # Stable identifier for this list entry.
+  - id: journal
+    # Human-readable description for this manifest entry.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+    type: list
+    # Persistence medium (file-backed under SILICON_MEMORY_ROOT).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for the local journal cache.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where structured telemetry streams are POSTed.
+  telemetry:
+    # Telemetry collector URL (TELEMETRY_URL override).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: skill_calls
+      # Human-readable description for this manifest entry.
+      description: Tool invocations.
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: artifacts
+      # Human-readable description for this manifest entry.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Docker image tag published for this agent.
+  image: agentfleet/pin_assignment:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty keeps tools not_run.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-assembly policy for engineering memory records.
+context:
+  # Record kinds always pulled into the task context package.
+  include:
+  # Entry under `include` for Pin-Assignment: canonical_source
+  - canonical_source
+  # Entry under `include` for Pin-Assignment: open_findings
+  - open_findings
+  # Entry under `include` for Pin-Assignment: experiments
+  - experiments
+  # Entry under `include` for Pin-Assignment: gates
+  - gates
+  # Entry under `include` for Pin-Assignment: decisions
+  - decisions
+  # Record kinds omitted from context even if present.
+  exclude:
+  # Entry under `exclude` for Pin-Assignment: stale_candidates
+  - stale_candidates
+  # Validation states stripped from context (e.g. rejected).
+  drop:
+  # Entry under `drop` for Pin-Assignment: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Entry under `precedence` for Pin-Assignment: human-authored
+  - human-authored
+  # Entry under `precedence` for Pin-Assignment: validated
+  - validated
+  # Entry under `precedence` for Pin-Assignment: provisional
+  - provisional
+  # Record authorship classes that must not be overwritten lightly.
+  protect:
+  # Entry under `protect` for Pin-Assignment: human-authored
+  - human-authored
+  # Approximate token budget for assembled context sent to the model.
+  token_budget: 80000

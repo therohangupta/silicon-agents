@@ -1,0 +1,694 @@
+# Agent specification for CDC/RDC Agent (`cdc_rdc`).
+# Stage: rtl. Role: worker. HTTP port: 8211.
+# Clock-domain crossing (CDC) and reset-domain crossing (RDC) analysis sits between RTL implementation and verification. Metastability and reset release hazards are structural bugs that simulation may miss; this agent surfaces crossings, synchronizers, and waiver proposals.
+# Every key below is loaded by EdaAgent.read_spec / AgentService at startup.
+# Comments are documentation only; they do not change runtime behavior.
+
+# Fleet manifest schema version; must match the agentfleet loader.
+apiVersion: agentfleet/v1
+# Resource kind. Agent means this YAML is an agent specification.
+kind: Agent
+# Human-facing identity and labels used by fleet discovery and dashboards.
+metadata:
+  # Stable agent id `cdc_rdc` used in routing and telemetry.
+  name: cdc_rdc
+  # Dashboard title for `cdc_rdc`.
+  display_name: CDC/RDC Agent
+  # Charter shown to planners and operators.
+  description: Analyze clock and reset domain crossings and return evidence for a fix or a human waiver.
+  # Labels expose stage and role.
+  labels:
+    # Lifecycle stage `rtl` for planner routing.
+    stage: rtl
+    # Agent role `worker` (lead vs worker) controlling delegation rights.
+    role: worker
+# Agent role `worker` (lead vs worker) controlling delegation rights.
+role: worker
+# Lifecycle stage `rtl` for planner routing.
+stage: rtl
+# Charter repeated at the top level for validators and planners.
+responsibility: Analyze clock and reset domain crossings and return evidence for a fix or a human waiver.
+# Hard may / may_not limits that prevent unsafe cross-stage edits.
+boundary:
+  # Actions this agent is allowed to perform on candidates and reports.
+  may:
+  # Allowed action: Read RTL and clock intent
+  - Read RTL and clock intent
+  # Allowed action: Propose a synchronizer or an unsigned waiver record
+  - Propose a synchronizer or an unsigned waiver record
+  # Allowed action: Edit a synchronizer on an isolated candidate
+  - Edit a synchronizer on an isolated candidate
+  # Actions forbidden even if a tool adapter could physically do them.
+  may_not:
+  # Forbidden action: Approve the waiver
+  - Approve the waiver
+  # Forbidden action: Delete a crossing from the report
+  - Delete a crossing from the report
+  # Forbidden action: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Forbidden action: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Forbidden action: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Worker agent ids this lead may open tasks against.
+delegates_to: []
+# Optional gate agents that must approve before promotion.
+validators: []
+# How peer services reach this agent's HTTP surface.
+connection:
+  # Docker host alias so containers reach the published port on the host.
+  host: host.docker.internal
+  # TCP port for this agent; must match Dockerfile EXPOSE (8211).
+  port: 8211
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness HTTP path for compose/fleet probes.
+    health: /health
+    # Task execution HTTP path used by the orchestrator.
+    execute: /tasks/execute
+# Where tool jobs run; type none means stub observations until bound.
+backend:
+  # none = no live EDA backend; tools return not_run stubs.
+  type: none
+# How the runtime invokes skills for this agent.
+execution:
+  # direct_function invokes Python skills in-process.
+  mode: direct_function
+  # Limits parallel task load on this container.
+  concurrency:
+    # Serialise tasks when 1 so candidate edits do not race.
+    max_tasks: 1
+# Timeouts and retry policy for failed tool or LLM turns.
+reliability:
+  # Abort tasks that exceed 120 seconds.
+  task_timeout_secs: 120
+  # Retry budget `1` before giving up / replanning.
+  max_retries: 1
+  # Planner policy `replan` after task failure.
+  on_failure: replan
+# Advertised skill ids the planner may schedule.
+capabilities:
+# Identifier `analyze_cdc` under `capabilities` for `cdc_rdc`.
+- id: analyze_cdc
+  # One-line charter of what this agent owns in the chip flow.
+  description: List clock-domain crossings and their synchronizers.
+# Identifier `analyze_rdc` under `capabilities` for `cdc_rdc`.
+- id: analyze_rdc
+  # One-line charter of what this agent owns in the chip flow.
+  description: List reset-domain crossings.
+# Identifier `read_cdc_report` under `capabilities` for `cdc_rdc`.
+- id: read_cdc_report
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read a CDC report and its waiver candidates.
+# Identifier `read_rdc_report` under `capabilities` for `cdc_rdc`.
+- id: read_rdc_report
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read an RDC report.
+# Identifier `classify_crossing` under `capabilities` for `cdc_rdc`.
+- id: classify_crossing
+  # One-line charter of what this agent owns in the chip flow.
+  description: Classify one crossing as synchronized, unsynchronized, or waived-pending.
+# Identifier `trace_crossing_path` under `capabilities` for `cdc_rdc`.
+- id: trace_crossing_path
+  # One-line charter of what this agent owns in the chip flow.
+  description: Trace the source and destination registers of one crossing.
+# Identifier `write_synchronizer` under `capabilities` for `cdc_rdc`.
+- id: write_synchronizer
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add one synchronizer on an isolated candidate.
+# Identifier `write_waiver_proposal` under `capabilities` for `cdc_rdc`.
+- id: write_waiver_proposal
+  # One-line charter of what this agent owns in the chip flow.
+  description: Write an unsigned waiver proposal with scope and rationale. It is not approved.
+# Identifier `check_reconvergence` under `capabilities` for `cdc_rdc`.
+- id: check_reconvergence
+  # One-line charter of what this agent owns in the chip flow.
+  description: Check reconvergent crossings that a single synchronizer does not cover.
+# Identifier `propose_waiver_or_fix` under `capabilities` for `cdc_rdc`.
+- id: propose_waiver_or_fix
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish either a bounded RTL fix or an unsigned waiver proposal.
+# Identifier `flag_unsynchronized_crossing` under `capabilities` for `cdc_rdc`.
+- id: flag_unsynchronized_crossing
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish a crossing that has no synchronizer and no waiver proposal.
+# Identifier `record_cdc_tool_version` under `capabilities` for `cdc_rdc`.
+- id: record_cdc_tool_version
+  # One-line charter of what this agent owns in the chip flow.
+  description: Record the CDC/RDC tool, version, and rule set used.
+# Binding of capability ids to Python callables and action kinds.
+skills:
+# Identifier `analyze_cdc` under `skills` for `cdc_rdc`.
+- id: analyze_cdc
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: analyze_cdc
+  # One-line charter of what this agent owns in the chip flow.
+  description: List clock-domain crossings and their synchronizers.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Versioned EDA-tool recipe name; the framework adapter rejects unknown recipes.
+    recipe: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Queues an EDA tool job through the bound adapter (stubbed as not_run until bound).
+  action: submit_tool_job
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recipe
+    # One-line charter of what this agent owns in the chip flow.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier `analyze_rdc` under `skills` for `cdc_rdc`.
+- id: analyze_rdc
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: analyze_rdc
+  # One-line charter of what this agent owns in the chip flow.
+  description: List reset-domain crossings.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Versioned EDA-tool recipe name; the framework adapter rejects unknown recipes.
+    recipe: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Queues an EDA tool job through the bound adapter (stubbed as not_run until bound).
+  action: submit_tool_job
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recipe
+    # One-line charter of what this agent owns in the chip flow.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier `read_cdc_report` under `skills` for `cdc_rdc`.
+- id: read_cdc_report
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: read_cdc_report
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read a CDC report and its waiver candidates.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `read_rdc_report` under `skills` for `cdc_rdc`.
+- id: read_rdc_report
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: read_rdc_report
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read an RDC report.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `classify_crossing` under `skills` for `cdc_rdc`.
+- id: classify_crossing
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: classify_crossing
+  # One-line charter of what this agent owns in the chip flow.
+  description: Classify one crossing as synchronized, unsynchronized, or waived-pending.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+    # Stable identifier of one clock/reset-domain crossing in the CDC/RDC report.
+    crossing_id: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: crossing_id
+    # One-line charter of what this agent owns in the chip flow.
+    description: Crossing to classify.
+# Identifier `trace_crossing_path` under `skills` for `cdc_rdc`.
+- id: trace_crossing_path
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: trace_crossing_path
+  # One-line charter of what this agent owns in the chip flow.
+  description: Trace the source and destination registers of one crossing.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `write_synchronizer` under `skills` for `cdc_rdc`.
+- id: write_synchronizer
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: write_synchronizer
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add one synchronizer on an isolated candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Single change under test for this edit so experiments stay one-hypothesis-at-a-time.
+    hypothesis: ''
+    # Stable identifier of one clock/reset-domain crossing in the CDC/RDC report.
+    crossing_id: ''
+  # Mutates only an isolated candidate branch, never the canonical baseline.
+  action: write_candidate
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: hypothesis
+    # One-line charter of what this agent owns in the chip flow.
+    description: The single change this edit is testing.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: crossing_id
+    # One-line charter of what this agent owns in the chip flow.
+    description: Crossing to synchronize.
+# Identifier `write_waiver_proposal` under `skills` for `cdc_rdc`.
+- id: write_waiver_proposal
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: write_waiver_proposal
+  # One-line charter of what this agent owns in the chip flow.
+  description: Write an unsigned waiver proposal with scope and rationale. It is not approved.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Single change under test for this edit so experiments stay one-hypothesis-at-a-time.
+    hypothesis: ''
+  # Mutates only an isolated candidate branch, never the canonical baseline.
+  action: write_candidate
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: hypothesis
+    # One-line charter of what this agent owns in the chip flow.
+    description: The single change this edit is testing.
+# Identifier `check_reconvergence` under `skills` for `cdc_rdc`.
+- id: check_reconvergence
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: check_reconvergence
+  # One-line charter of what this agent owns in the chip flow.
+  description: Check reconvergent crossings that a single synchronizer does not cover.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Versioned EDA-tool recipe name; the framework adapter rejects unknown recipes.
+    recipe: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Queues an EDA tool job through the bound adapter (stubbed as not_run until bound).
+  action: submit_tool_job
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recipe
+    # One-line charter of what this agent owns in the chip flow.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier `propose_waiver_or_fix` under `skills` for `cdc_rdc`.
+- id: propose_waiver_or_fix
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: propose_waiver_or_fix
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish either a bounded RTL fix or an unsigned waiver proposal.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `flag_unsynchronized_crossing` under `skills` for `cdc_rdc`.
+- id: flag_unsynchronized_crossing
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: flag_unsynchronized_crossing
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish a crossing that has no synchronizer and no waiver proposal.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `record_cdc_tool_version` under `skills` for `cdc_rdc`.
+- id: record_cdc_tool_version
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: record_cdc_tool_version
+  # One-line charter of what this agent owns in the chip flow.
+  description: Record the CDC/RDC tool, version, and rule set used.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Local memory store configuration for this agent process.
+memory:
+  # Named stores the agent may read/write through the memory API.
+  stores:
+  # Identifier `journal` under `stores` for `cdc_rdc`.
+  - id: journal
+    # One-line charter of what this agent owns in the chip flow.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type `list`.
+    type: list
+    # file means journal keys are cached on local disk.
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Local journal cache root; override with SILICON_MEMORY_ROOT.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry wiring for fleet dashboards.
+observability:
+  # Seconds between liveness heartbeats to telemetry.
+  heartbeat_interval_secs: 5
+  # Where structured skill and artifact events are shipped.
+  telemetry:
+    # Telemetry base URL; override with TELEMETRY_URL.
+    endpoint: ${TELEMETRY_URL}
+    # Named event streams this agent emits.
+    streams:
+    # Stable agent id used in routing, telemetry, and delegate targets.
+    - name: skill_calls
+      # One-line charter of what this agent owns in the chip flow.
+      description: Tool invocations.
+    # Stable agent id used in routing, telemetry, and delegate targets.
+    - name: artifacts
+      # One-line charter of what this agent owns in the chip flow.
+      description: Structured task results.
+# Container image metadata used by compose generation.
+deployment:
+  # Container image tag built from this agent's Dockerfile.
+  image: agentfleet/cdc_rdc:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Empty keeps adapters unbound; set to enable real tool execution.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Policy for which shared-memory records enter the LLM context window.
+context:
+  # Record kinds always considered for context assembly.
+  include:
+  # Context include kind: requirements (pulled into LLM context when present).
+  - requirements
+  # Context include kind: interface_contracts (pulled into LLM context when present).
+  - interface_contracts
+  # Context include kind: canonical_source (pulled into LLM context when present).
+  - canonical_source
+  # Context include kind: open_findings (pulled into LLM context when present).
+  - open_findings
+  # Context include kind: experiments (pulled into LLM context when present).
+  - experiments
+  # Record kinds never considered even if present.
+  exclude:
+  # Context exclude kind: stale_candidates (never assembled into prompts).
+  - stale_candidates
+  # States removed before ranking (e.g. rejected).
+  drop:
+  # Drop memory state before ranking: rejected.
+  - rejected
+  # Preferred record states first when trimming to token_budget.
+  precedence:
+  # Prefer memory state `human-authored` when trimming to token_budget.
+  - human-authored
+  # Prefer memory state `validated` when trimming to token_budget.
+  - validated
+  # Prefer memory state `provisional` when trimming to token_budget.
+  - provisional
+  # States kept even when over budget (usually human-authored).
+  protect:
+  # Never drop memory state `human-authored` even when over budget.
+  - human-authored
+  # Approximate max tokens of assembled context (80000).
+  token_budget: 80000

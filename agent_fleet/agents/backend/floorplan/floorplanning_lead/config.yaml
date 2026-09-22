@@ -1,0 +1,744 @@
+# Agent manifest for Floorplanning Lead (role=lead, stage=floorplan, port=8238).
+# EDA focus: Partition floorplanning: macros, pins, PDN, blockages, early routability/timing; recommend without promote.
+# Every mapping key and list entry has a comment; multi-line string values are untouched.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; Agent means a runnable chip-design agent service.
+kind: Agent
+# Human- and registry-facing identity for this agent.
+metadata:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  name: floorplanning_lead
+  # UI-facing title for operators and dashboards.
+  display_name: Floorplanning Lead
+  # One-paragraph responsibility statement shown in registries and UIs.
+  description: Own macro, pin, power-grid, blockage, and utilization decisions for one partition, and
+    recommend a candidate for placement.
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent belongs to in the backend flow.
+    stage: floorplan
+    # lead orchestrates workers; worker executes specialist tools.
+    role: lead
+# lead orchestrates workers; worker executes specialist tools.
+role: lead
+# Pipeline stage this agent belongs to in the backend flow.
+stage: floorplan
+# Authoritative responsibility text mirrored from the design system.
+responsibility: Own macro, pin, power-grid, blockage, and utilization decisions for one partition, and
+  recommend a candidate for placement.
+# Hard may / may_not rules the runtime enforces on tool actions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Entry under `may` for Floorplanning Lead: Publish a floorplan exploration workflow
+  - Publish a floorplan exploration workflow
+  # Entry under `may` for Floorplanning Lead: Read the netlist, constraints, and package contract
+  - Read the netlist, constraints, and package contract
+  # Entry under `may` for Floorplanning Lead: Request an upstream decision when the floorplan is infeasible
+  - Request an upstream decision when the floorplan is infeasible
+  # Actions this agent must never perform (promotion, waivers, etc.).
+  may_not:
+  # Entry under `may_not` for Floorplanning Lead: Edit RTL when the floorplan is infeasible
+  - Edit RTL when the floorplan is infeasible
+  # Entry under `may_not` for Floorplanning Lead: Advance a candidate that breaks a hard physical limit
+  - Advance a candidate that breaks a hard physical limit
+  # Entry under `may_not` for Floorplanning Lead: Promote a floorplan
+  - Promote a floorplan
+  # Entry under `may_not` for Floorplanning Lead: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Entry under `may_not` for Floorplanning Lead: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Entry under `may_not` for Floorplanning Lead: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows toward.
+delegates_to:
+# Entry under `delegates_to` for Floorplanning Lead: macro_placement
+- macro_placement
+# Entry under `delegates_to` for Floorplanning Lead: pin_assignment
+- pin_assignment
+# Entry under `delegates_to` for Floorplanning Lead: power_grid
+- power_grid
+# Entry under `delegates_to` for Floorplanning Lead: early_congestion_timing
+- early_congestion_timing
+# Optional validator agent ids that must confirm outcomes.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname inside Docker networks (host.docker.internal for local).
+  host: host.docker.internal
+  # TCP port this agent's uvicorn server listens on.
+  port: 8238
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness/readiness path probed by the fleet.
+    health: /health
+    # Path that accepts AgentTaskRequest payloads.
+    execute: /tasks/execute
+# Tool-backend binding; type none means observations are not_run until bound.
+backend:
+  # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+  type: none
+# How the agent runs tools for a task.
+execution:
+  # direct_function invokes Python callables named in skills.
+  mode: direct_function
+  # Limits on parallel task handling inside one process.
+  concurrency:
+    # Maximum simultaneous tasks (1 keeps experiment isolation simple).
+    max_tasks: 1
+# Timeouts, retries, and failure policy for task handling.
+reliability:
+  # Wall-clock seconds before a task is considered failed.
+  task_timeout_secs: 120
+  # How many times the fleet may retry a failed task.
+  max_retries: 1
+  # Policy when tools fail (replan asks the lead to adjust the graph).
+  on_failure: replan
+# Declared capability ids surfaced to planners (mirrors skills).
+capabilities:
+# Stable identifier for this list entry.
+- id: plan_floorplan_exploration
+  # Human-readable description for this manifest entry.
+  description: Emit the floorplan workflow for this partition.
+# Stable identifier for this list entry.
+- id: request_macro_alternatives
+  # Human-readable description for this manifest entry.
+  description: Open another macro-placement batch with one changed constraint.
+# Stable identifier for this list entry.
+- id: request_pin_assignment
+  # Human-readable description for this manifest entry.
+  description: Open pin assignment for the current macro candidate.
+# Stable identifier for this list entry.
+- id: request_power_grid
+  # Human-readable description for this manifest entry.
+  description: Open an early power-grid candidate.
+# Stable identifier for this list entry.
+- id: request_early_physical_estimate
+  # Human-readable description for this manifest entry.
+  description: Open trial placement, global route, and early timing.
+# Stable identifier for this list entry.
+- id: read_floorplan_inputs
+  # Human-readable description for this manifest entry.
+  description: Read die, utilization, macros, constraints, and package contract.
+# Stable identifier for this list entry.
+- id: read_floorplan_metrics
+  # Human-readable description for this manifest entry.
+  description: Read congestion, early timing, pin density, and IR proxy for each candidate.
+# Stable identifier for this list entry.
+- id: compare_floorplan_candidates
+  # Human-readable description for this manifest entry.
+  description: Rank candidates that satisfy hard physical limits.
+# Stable identifier for this list entry.
+- id: recommend_floorplan_candidate
+  # Human-readable description for this manifest entry.
+  description: Record which floorplan should advance to placement. This does not promote it.
+# Stable identifier for this list entry.
+- id: request_floorplan_upstream_change
+  # Human-readable description for this manifest entry.
+  description: Publish evidence when pin density or hierarchy makes the floorplan infeasible.
+# Stable identifier for this list entry.
+- id: flag_hard_physical_limit
+  # Human-readable description for this manifest entry.
+  description: Publish a candidate that breaks a keepout, pin-density, or IR limit.
+# Stable identifier for this list entry.
+- id: record_floorplan_strategy
+  # Human-readable description for this manifest entry.
+  description: Record which physical variable the next batch will change.
+# Stable identifier for this list entry.
+- id: request_floorplan_decision
+  # Human-readable description for this manifest entry.
+  description: Ask a human to choose among feasible floorplans or to change an upstream contract.
+# Stable identifier for this list entry.
+- id: delegate_tasks
+  # Human-readable description for this manifest entry.
+  description: Propose a dependency graph for the agents in this scope. Do not execute their tools.
+# Concrete Python callables the agent may invoke.
+skills:
+# Stable identifier for this list entry.
+- id: plan_floorplan_exploration
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: plan_floorplan_exploration
+  # Human-readable description for this manifest entry.
+  description: Emit the floorplan workflow for this partition.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner-facing outcome string for child workflows.
+    objective: ''
+    # Owning parent task id for child workflows.
+    parent_task_id: ''
+    # Hierarchical block scope; empty means current task block.
+    scope_block: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: objective
+    # Human-readable description for this manifest entry.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: parent_task_id
+    # Human-readable description for this manifest entry.
+    description: Task that owns this workflow.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: scope_block
+    # Human-readable description for this manifest entry.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable identifier for this list entry.
+- id: request_macro_alternatives
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: request_macro_alternatives
+  # Human-readable description for this manifest entry.
+  description: Open another macro-placement batch with one changed constraint.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner-facing outcome string for child workflows.
+    objective: ''
+    # Owning parent task id for child workflows.
+    parent_task_id: ''
+    # Hierarchical block scope; empty means current task block.
+    scope_block: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: objective
+    # Human-readable description for this manifest entry.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: parent_task_id
+    # Human-readable description for this manifest entry.
+    description: Task that owns this workflow.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: scope_block
+    # Human-readable description for this manifest entry.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable identifier for this list entry.
+- id: request_pin_assignment
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: request_pin_assignment
+  # Human-readable description for this manifest entry.
+  description: Open pin assignment for the current macro candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner-facing outcome string for child workflows.
+    objective: ''
+    # Owning parent task id for child workflows.
+    parent_task_id: ''
+    # Hierarchical block scope; empty means current task block.
+    scope_block: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: objective
+    # Human-readable description for this manifest entry.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: parent_task_id
+    # Human-readable description for this manifest entry.
+    description: Task that owns this workflow.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: scope_block
+    # Human-readable description for this manifest entry.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable identifier for this list entry.
+- id: request_power_grid
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: request_power_grid
+  # Human-readable description for this manifest entry.
+  description: Open an early power-grid candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner-facing outcome string for child workflows.
+    objective: ''
+    # Owning parent task id for child workflows.
+    parent_task_id: ''
+    # Hierarchical block scope; empty means current task block.
+    scope_block: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: objective
+    # Human-readable description for this manifest entry.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: parent_task_id
+    # Human-readable description for this manifest entry.
+    description: Task that owns this workflow.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: scope_block
+    # Human-readable description for this manifest entry.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable identifier for this list entry.
+- id: request_early_physical_estimate
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: request_early_physical_estimate
+  # Human-readable description for this manifest entry.
+  description: Open trial placement, global route, and early timing.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner-facing outcome string for child workflows.
+    objective: ''
+    # Owning parent task id for child workflows.
+    parent_task_id: ''
+    # Hierarchical block scope; empty means current task block.
+    scope_block: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: objective
+    # Human-readable description for this manifest entry.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: parent_task_id
+    # Human-readable description for this manifest entry.
+    description: Task that owns this workflow.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: scope_block
+    # Human-readable description for this manifest entry.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable identifier for this list entry.
+- id: read_floorplan_inputs
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_floorplan_inputs
+  # Human-readable description for this manifest entry.
+  description: Read die, utilization, macros, constraints, and package contract.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: read_floorplan_metrics
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: read_floorplan_metrics
+  # Human-readable description for this manifest entry.
+  description: Read congestion, early timing, pin density, and IR proxy for each candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: compare_floorplan_candidates
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: compare_floorplan_candidates
+  # Human-readable description for this manifest entry.
+  description: Rank candidates that satisfy hard physical limits.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Candidate artifact reference for report reads.
+    candidate_ref: ''
+    # Specific report URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Operating-mode filter for report reads; empty means every mode.
+    mode: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: read_reports
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: candidate_ref
+    # Human-readable description for this manifest entry.
+    description: Candidate whose reports are read.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: report_ref
+    # Human-readable description for this manifest entry.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: corner
+    # Human-readable description for this manifest entry.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: mode
+    # Human-readable description for this manifest entry.
+    description: Mode filter. Empty reads every available mode.
+# Stable identifier for this list entry.
+- id: recommend_floorplan_candidate
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: recommend_floorplan_candidate
+  # Human-readable description for this manifest entry.
+  description: Record which floorplan should advance to placement. This does not promote it.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: request_floorplan_upstream_change
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: request_floorplan_upstream_change
+  # Human-readable description for this manifest entry.
+  description: Publish evidence when pin density or hierarchy makes the floorplan infeasible.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: flag_hard_physical_limit
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: flag_hard_physical_limit
+  # Human-readable description for this manifest entry.
+  description: Publish a candidate that breaks a keepout, pin-density, or IR limit.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: record_floorplan_strategy
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: record_floorplan_strategy
+  # Human-readable description for this manifest entry.
+  description: Record which physical variable the next batch will change.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text for publish_finding skills.
+    summary: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a finding.
+    recommended_recipient: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: summary
+    # Human-readable description for this manifest entry.
+    description: One-sentence finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: severity
+    # Human-readable description for this manifest entry.
+    description: low, medium, high, or critical.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: recommended_recipient
+    # Human-readable description for this manifest entry.
+    description: Agent id that should act on the finding.
+# Stable identifier for this list entry.
+- id: request_floorplan_decision
+  # Python module (tools) exporting the callable.
+  module: tools
+  # Function name inside the module.
+  callable: request_floorplan_decision
+  # Human-readable description for this manifest entry.
+  description: Ask a human to choose among feasible floorplans or to change an upstream contract.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Human decision prompt text.
+    decision: ''
+    # Comma-separated feasible options for a human decision.
+    options: ''
+    # Comma-separated artifact URIs supporting a finding.
+    evidence_refs: ''
+    # ISO-8601 time after which the undecided choice blocks schedule.
+    deadline: ''
+  # Semantic ToolAction (create_workflow, read_reports, publish_finding, ...).
+  action: request_human_decision
+  # Parameter map or documented skill parameter list for this entry.
+  params:
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: decision
+    # Human-readable description for this manifest entry.
+    description: The choice a human must make.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: options
+    # Human-readable description for this manifest entry.
+    description: Comma-separated feasible options.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: evidence_refs
+    # Human-readable description for this manifest entry.
+    description: Comma-separated artifact URIs for the tradeoff.
+  # Stable agent id used in delegation graphs, findings, and telemetry.
+  - name: deadline
+    # Human-readable description for this manifest entry.
+    description: ISO-8601 time after which the decision blocks the schedule.
+# Local journal cache configuration for this agent process.
+memory:
+  # Named memory stores the agent may touch.
+  stores:
+  # Stable identifier for this list entry.
+  - id: journal
+    # Human-readable description for this manifest entry.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none until OpenROAD/Yosys/etc. is wired).
+    type: list
+    # Persistence medium (file-backed under SILICON_MEMORY_ROOT).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for the local journal cache.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where structured telemetry streams are POSTed.
+  telemetry:
+    # Telemetry collector URL (TELEMETRY_URL override).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: skill_calls
+      # Human-readable description for this manifest entry.
+      description: Tool invocations.
+    # Stable agent id used in delegation graphs, findings, and telemetry.
+    - name: artifacts
+      # Human-readable description for this manifest entry.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Docker image tag published for this agent.
+  image: agentfleet/floorplanning_lead:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty keeps tools not_run.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Field `plan` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+plan:
+# Stable identifier for this list entry.
+- id: macro_placement
+  # Field `agent` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  agent: macro_placement
+  # Field `depends_on` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  depends_on: []
+  # Planner-facing outcome string for child workflows.
+  objective: Generate macro placements
+# Stable identifier for this list entry.
+- id: pin_assignment
+  # Field `agent` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  agent: pin_assignment
+  # Field `depends_on` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  depends_on:
+  # Entry under `depends_on` for Floorplanning Lead: macro_placement
+  - macro_placement
+  # Planner-facing outcome string for child workflows.
+  objective: Assign pins
+# Stable identifier for this list entry.
+- id: power_grid
+  # Field `agent` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  agent: power_grid
+  # Field `depends_on` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  depends_on:
+  # Entry under `depends_on` for Floorplanning Lead: macro_placement
+  - macro_placement
+  # Planner-facing outcome string for child workflows.
+  objective: Build an early power grid
+# Stable identifier for this list entry.
+- id: early_congestion_timing
+  # Field `agent` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  agent: early_congestion_timing
+  # Field `depends_on` in the Floorplanning Lead agent manifest (floorplan stage, role lead).
+  depends_on:
+  # Entry under `depends_on` for Floorplanning Lead: pin_assignment
+  - pin_assignment
+  # Entry under `depends_on` for Floorplanning Lead: power_grid
+  - power_grid
+  # Planner-facing outcome string for child workflows.
+  objective: Estimate routability and timing
+# Context-assembly policy for engineering memory records.
+context:
+  # Record kinds always pulled into the task context package.
+  include:
+  # Entry under `include` for Floorplanning Lead: gates
+  - gates
+  # Entry under `include` for Floorplanning Lead: workflows
+  - workflows
+  # Entry under `include` for Floorplanning Lead: open_findings
+  - open_findings
+  # Entry under `include` for Floorplanning Lead: decisions
+  - decisions
+  # Entry under `include` for Floorplanning Lead: experiments
+  - experiments
+  # Record kinds omitted from context even if present.
+  exclude:
+  # Entry under `exclude` for Floorplanning Lead: stale_candidates
+  - stale_candidates
+  # Validation states stripped from context (e.g. rejected).
+  drop:
+  # Entry under `drop` for Floorplanning Lead: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Entry under `precedence` for Floorplanning Lead: human-authored
+  - human-authored
+  # Entry under `precedence` for Floorplanning Lead: validated
+  - validated
+  # Entry under `precedence` for Floorplanning Lead: provisional
+  - provisional
+  # Record authorship classes that must not be overwritten lightly.
+  protect:
+  # Entry under `protect` for Floorplanning Lead: human-authored
+  - human-authored
+  # Approximate token budget for assembled context sent to the model.
+  token_budget: 80000

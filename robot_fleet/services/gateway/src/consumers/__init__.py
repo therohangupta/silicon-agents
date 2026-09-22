@@ -1,1 +1,0 @@
-# Gateway bus consumers

@@ -1,0 +1,37 @@
+# =============================================================================
+# LLM Allocator catalog summary (dashboard / docs metadata — not loaded as code)
+# =============================================================================
+
+# Numeric strategy/catalog id for this allocator entry.
+id: 2
+# Human-readable display name.
+name: LLM-Based Allocator
+
+# Single-shot GPT-4 allocation description.
+description: >
+  Uses OpenAI's GPT-4 to intelligently allocate tasks to agents based on
+  their capabilities, task requirements, and current state. Considers agent
+  types and optimal goal completion.
+
+# Foundation-model method.
+method_type: foundation model
+
+# Allocation envelope schema returned to the service.
+output_format: >
+  JSON with 'allocations' array. Each allocation has: task_id, agent_id.
+
+# Co-located prompt inventory.
+prompts:
+  # system.prompt — allocator role.
+  - type: system
+    description: System prompt defining the allocation role
+  # user.prompt — tasks/agents JSON context.
+  - type: user
+    description: Template with agent/task context and allocation instructions
+
+# Behavioral steps for docs/UI.
+example_behavior: |
+  - Gathers agent capabilities and current states
+  - Analyzes task requirements and dependencies
+  - Uses GPT-4 to find optimal assignments
+  - Returns task-to-agent allocation mapping

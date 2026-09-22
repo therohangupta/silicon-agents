@@ -1,0 +1,698 @@
+# Agent specification for Lint/Quality Agent (`lint_quality`).
+# Stage: rtl. Role: worker. HTTP port: 8213.
+# RTL lint catches latch inference, combinational loops, undriven nets, and width mismatches before expensive verification or synthesis. Findings can be waived only through recorded requests, not silent drops.
+# Every key below is loaded by EdaAgent.read_spec / AgentService at startup.
+# Comments are documentation only; they do not change runtime behavior.
+
+# Fleet manifest schema version; must match the agentfleet loader.
+apiVersion: agentfleet/v1
+# Resource kind. Agent means this YAML is an agent specification.
+kind: Agent
+# Human-facing identity and labels used by fleet discovery and dashboards.
+metadata:
+  # Stable agent id `lint_quality` used in routing and telemetry.
+  name: lint_quality
+  # Dashboard title for `lint_quality`.
+  display_name: Lint/Quality Agent
+  # Charter shown to planners and operators.
+  description: Detect structural, synthesis, style, and maintainability problems in a candidate.
+  # Labels expose stage and role.
+  labels:
+    # Lifecycle stage `rtl` for planner routing.
+    stage: rtl
+    # Agent role `worker` (lead vs worker) controlling delegation rights.
+    role: worker
+# Agent role `worker` (lead vs worker) controlling delegation rights.
+role: worker
+# Lifecycle stage `rtl` for planner routing.
+stage: rtl
+# Charter repeated at the top level for validators and planners.
+responsibility: Detect structural, synthesis, style, and maintainability problems in a candidate.
+# Hard may / may_not limits that prevent unsafe cross-stage edits.
+boundary:
+  # Actions this agent is allowed to perform on candidates and reports.
+  may:
+  # Allowed action: Read the candidate RTL
+  - Read the candidate RTL
+  # Allowed action: Publish lint findings
+  - Publish lint findings
+  # Actions forbidden even if a tool adapter could physically do them.
+  may_not:
+  # Forbidden action: Edit the RTL it is grading
+  - Edit the RTL it is grading
+  # Forbidden action: Suppress a lint class globally
+  - Suppress a lint class globally
+  # Forbidden action: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Forbidden action: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Forbidden action: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Worker agent ids this lead may open tasks against.
+delegates_to: []
+# Optional gate agents that must approve before promotion.
+validators: []
+# How peer services reach this agent's HTTP surface.
+connection:
+  # Docker host alias so containers reach the published port on the host.
+  host: host.docker.internal
+  # TCP port for this agent; must match Dockerfile EXPOSE (8213).
+  port: 8213
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness HTTP path for compose/fleet probes.
+    health: /health
+    # Task execution HTTP path used by the orchestrator.
+    execute: /tasks/execute
+# Where tool jobs run; type none means stub observations until bound.
+backend:
+  # none = no live EDA backend; tools return not_run stubs.
+  type: none
+# How the runtime invokes skills for this agent.
+execution:
+  # direct_function invokes Python skills in-process.
+  mode: direct_function
+  # Limits parallel task load on this container.
+  concurrency:
+    # Serialise tasks when 1 so candidate edits do not race.
+    max_tasks: 1
+# Timeouts and retry policy for failed tool or LLM turns.
+reliability:
+  # Abort tasks that exceed 120 seconds.
+  task_timeout_secs: 120
+  # Retry budget `1` before giving up / replanning.
+  max_retries: 1
+  # Planner policy `replan` after task failure.
+  on_failure: replan
+# Advertised skill ids the planner may schedule.
+capabilities:
+# Identifier `run_lint` under `capabilities` for `lint_quality`.
+- id: run_lint
+  # One-line charter of what this agent owns in the chip flow.
+  description: Run the bound lint flow on one candidate.
+# Identifier `run_synthesis_lint` under `capabilities` for `lint_quality`.
+- id: run_synthesis_lint
+  # One-line charter of what this agent owns in the chip flow.
+  description: Run lint rules aimed at latch inference, loops, and undriven logic.
+# Identifier `read_lint_report` under `capabilities` for `lint_quality`.
+- id: read_lint_report
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read the lint report for one candidate.
+# Identifier `filter_lint_by_severity` under `capabilities` for `lint_quality`.
+- id: filter_lint_by_severity
+  # One-line charter of what this agent owns in the chip flow.
+  description: Return lint messages at or above a severity.
+# Identifier `filter_lint_by_rule` under `capabilities` for `lint_quality`.
+- id: filter_lint_by_rule
+  # One-line charter of what this agent owns in the chip flow.
+  description: Return lint messages for one rule id.
+# Identifier `diff_lint_against_baseline` under `capabilities` for `lint_quality`.
+- id: diff_lint_against_baseline
+  # One-line charter of what this agent owns in the chip flow.
+  description: Show lint messages introduced or removed versus the baseline.
+# Identifier `classify_lint_findings` under `capabilities` for `lint_quality`.
+- id: classify_lint_findings
+  # One-line charter of what this agent owns in the chip flow.
+  description: Group lint messages by likely owner and severity.
+# Identifier `flag_latch_inference` under `capabilities` for `lint_quality`.
+- id: flag_latch_inference
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish inferred latches.
+# Identifier `flag_combinational_loop` under `capabilities` for `lint_quality`.
+- id: flag_combinational_loop
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish combinational loops.
+# Identifier `flag_undriven_net` under `capabilities` for `lint_quality`.
+- id: flag_undriven_net
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish undriven or multiply driven nets.
+# Identifier `flag_width_mismatch` under `capabilities` for `lint_quality`.
+- id: flag_width_mismatch
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish assignment width mismatches.
+# Identifier `record_lint_waive_request` under `capabilities` for `lint_quality`.
+- id: record_lint_waive_request
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish an unsigned request to waive one lint rule on one line. This does not waive it.
+# Binding of capability ids to Python callables and action kinds.
+skills:
+# Identifier `run_lint` under `skills` for `lint_quality`.
+- id: run_lint
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: run_lint
+  # One-line charter of what this agent owns in the chip flow.
+  description: Run the bound lint flow on one candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Versioned EDA-tool recipe name; the framework adapter rejects unknown recipes.
+    recipe: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Queues an EDA tool job through the bound adapter (stubbed as not_run until bound).
+  action: submit_tool_job
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recipe
+    # One-line charter of what this agent owns in the chip flow.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier `run_synthesis_lint` under `skills` for `lint_quality`.
+- id: run_synthesis_lint
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: run_synthesis_lint
+  # One-line charter of what this agent owns in the chip flow.
+  description: Run lint rules aimed at latch inference, loops, and undriven logic.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Versioned EDA-tool recipe name; the framework adapter rejects unknown recipes.
+    recipe: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Queues an EDA tool job through the bound adapter (stubbed as not_run until bound).
+  action: submit_tool_job
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recipe
+    # One-line charter of what this agent owns in the chip flow.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier `read_lint_report` under `skills` for `lint_quality`.
+- id: read_lint_report
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: read_lint_report
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read the lint report for one candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `filter_lint_by_severity` under `skills` for `lint_quality`.
+- id: filter_lint_by_severity
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: filter_lint_by_severity
+  # One-line charter of what this agent owns in the chip flow.
+  description: Return lint messages at or above a severity.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+    # Lint severity floor; messages below this threshold are filtered out.
+    min_severity: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: min_severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: Minimum severity to return.
+# Identifier `filter_lint_by_rule` under `skills` for `lint_quality`.
+- id: filter_lint_by_rule
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: filter_lint_by_rule
+  # One-line charter of what this agent owns in the chip flow.
+  description: Return lint messages for one rule id.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+    # Lint rule identifier used to filter or classify messages.
+    rule_id: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: rule_id
+    # One-line charter of what this agent owns in the chip flow.
+    description: Lint rule id.
+# Identifier `diff_lint_against_baseline` under `skills` for `lint_quality`.
+- id: diff_lint_against_baseline
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: diff_lint_against_baseline
+  # One-line charter of what this agent owns in the chip flow.
+  description: Show lint messages introduced or removed versus the baseline.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `classify_lint_findings` under `skills` for `lint_quality`.
+- id: classify_lint_findings
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: classify_lint_findings
+  # One-line charter of what this agent owns in the chip flow.
+  description: Group lint messages by likely owner and severity.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `flag_latch_inference` under `skills` for `lint_quality`.
+- id: flag_latch_inference
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: flag_latch_inference
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish inferred latches.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `flag_combinational_loop` under `skills` for `lint_quality`.
+- id: flag_combinational_loop
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: flag_combinational_loop
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish combinational loops.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `flag_undriven_net` under `skills` for `lint_quality`.
+- id: flag_undriven_net
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: flag_undriven_net
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish undriven or multiply driven nets.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `flag_width_mismatch` under `skills` for `lint_quality`.
+- id: flag_width_mismatch
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: flag_width_mismatch
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish assignment width mismatches.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `record_lint_waive_request` under `skills` for `lint_quality`.
+- id: record_lint_waive_request
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: record_lint_waive_request
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish an unsigned request to waive one lint rule on one line. This does not waive it.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Local memory store configuration for this agent process.
+memory:
+  # Named stores the agent may read/write through the memory API.
+  stores:
+  # Identifier `journal` under `stores` for `lint_quality`.
+  - id: journal
+    # One-line charter of what this agent owns in the chip flow.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type `list`.
+    type: list
+    # file means journal keys are cached on local disk.
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Local journal cache root; override with SILICON_MEMORY_ROOT.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry wiring for fleet dashboards.
+observability:
+  # Seconds between liveness heartbeats to telemetry.
+  heartbeat_interval_secs: 5
+  # Where structured skill and artifact events are shipped.
+  telemetry:
+    # Telemetry base URL; override with TELEMETRY_URL.
+    endpoint: ${TELEMETRY_URL}
+    # Named event streams this agent emits.
+    streams:
+    # Stable agent id used in routing, telemetry, and delegate targets.
+    - name: skill_calls
+      # One-line charter of what this agent owns in the chip flow.
+      description: Tool invocations.
+    # Stable agent id used in routing, telemetry, and delegate targets.
+    - name: artifacts
+      # One-line charter of what this agent owns in the chip flow.
+      description: Structured task results.
+# Container image metadata used by compose generation.
+deployment:
+  # Container image tag built from this agent's Dockerfile.
+  image: agentfleet/lint_quality:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Empty keeps adapters unbound; set to enable real tool execution.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Policy for which shared-memory records enter the LLM context window.
+context:
+  # Record kinds always considered for context assembly.
+  include:
+  # Context include kind: requirements (pulled into LLM context when present).
+  - requirements
+  # Context include kind: interface_contracts (pulled into LLM context when present).
+  - interface_contracts
+  # Context include kind: canonical_source (pulled into LLM context when present).
+  - canonical_source
+  # Context include kind: open_findings (pulled into LLM context when present).
+  - open_findings
+  # Context include kind: experiments (pulled into LLM context when present).
+  - experiments
+  # Record kinds never considered even if present.
+  exclude:
+  # Context exclude kind: stale_candidates (never assembled into prompts).
+  - stale_candidates
+  # States removed before ranking (e.g. rejected).
+  drop:
+  # Drop memory state before ranking: rejected.
+  - rejected
+  # Preferred record states first when trimming to token_budget.
+  precedence:
+  # Prefer memory state `human-authored` when trimming to token_budget.
+  - human-authored
+  # Prefer memory state `validated` when trimming to token_budget.
+  - validated
+  # Prefer memory state `provisional` when trimming to token_budget.
+  - provisional
+  # States kept even when over budget (usually human-authored).
+  protect:
+  # Never drop memory state `human-authored` even when over budget.
+  - human-authored
+  # Approximate max tokens of assembled context (80000).
+  token_budget: 80000

@@ -1,0 +1,685 @@
+# AgentFleet config for ``reproduction`` — failing-seed/waveform minimization specialist.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``reproduction`` used across the verification plan graph.
+  name: reproduction
+  # Human-readable title shown in UIs and docs.
+  display_name: Reproduction Agent
+  # Responsibility brief for this verification specialist.
+  description: Produce a minimal stable reproduction and a waveform slice for one failure cluster.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Produce a minimal stable reproduction and a waveform slice for one failure cluster.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for reproduction: Write a minimized test on an isolated branch
+  - Write a minimized test on an isolated branch
+  # Boundary rule for reproduction: Read the failing waveform
+  - Read the failing waveform
+  # Boundary rule for reproduction: Rerun the minimized test to confirm it still fails
+  - Rerun the minimized test to confirm it still fails
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for reproduction: Edit RTL
+  - Edit RTL
+  # Boundary rule for reproduction: Declare the root cause fixed
+  - Declare the root cause fixed
+  # Boundary rule for reproduction: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for reproduction: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for reproduction: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8223 for the reproduction AgentService (must match Dockerfile EXPOSE).
+  port: 8223
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``read_failing_waveform`` — must stay aligned with tools.py / plan references.
+- id: read_failing_waveform
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Read the waveform for the seed that represents this cluster.
+# Identifier ``minimize_failure`` — must stay aligned with tools.py / plan references.
+- id: minimize_failure
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Reduce a failing test to a stable reproduction.
+# Identifier ``slice_waveform`` — must stay aligned with tools.py / plan references.
+- id: slice_waveform
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Extract the signals and time window that show the failure.
+# Identifier ``write_reproduction_test`` — must stay aligned with tools.py / plan references.
+- id: write_reproduction_test
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Write the minimized test on an isolated branch.
+# Identifier ``confirm_reproduction_fails`` — must stay aligned with tools.py / plan references.
+- id: confirm_reproduction_fails
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Rerun the minimized test and confirm it still fails.
+# Identifier ``confirm_reproduction_stable`` — must stay aligned with tools.py / plan references.
+- id: confirm_reproduction_stable
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Rerun the minimized test across the requested seeds and report which still fail.
+# Identifier ``list_reproduction_signals`` — must stay aligned with tools.py / plan references.
+- id: list_reproduction_signals
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: List the signals required to see the failure.
+# Identifier ``diff_reproduction_against_original`` — must stay aligned with tools.py / plan references.
+- id: diff_reproduction_against_original
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Show what the minimization removed.
+# Identifier ``flag_unstable_reproduction`` — must stay aligned with tools.py / plan references.
+- id: flag_unstable_reproduction
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Publish a minimized test that does not fail reliably.
+# Identifier ``flag_reproduction_changed_symptom`` — must stay aligned with tools.py / plan references.
+- id: flag_reproduction_changed_symptom
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Publish a minimized test whose first error differs from the original.
+# Identifier ``record_reproduction_artifact`` — must stay aligned with tools.py / plan references.
+- id: record_reproduction_artifact
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Record the test, seed, waveform slice, and original cluster.
+# Identifier ``publish_reproduction`` — must stay aligned with tools.py / plan references.
+- id: publish_reproduction
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Publish the minimized test ref and the waveform slice.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``read_failing_waveform`` — must stay aligned with tools.py / plan references.
+- id: read_failing_waveform
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: read_failing_waveform
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Read the waveform for the seed that represents this cluster.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    corner: ''
+    # YAML key ``mode`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    mode: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: report_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: corner
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: mode
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``minimize_failure`` — must stay aligned with tools.py / plan references.
+- id: minimize_failure
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: minimize_failure
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Reduce a failing test to a stable reproduction.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    hypothesis: ''
+    # YAML key ``cluster_id`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    cluster_id: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: cluster_id
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Cluster to minimize.
+# Identifier ``slice_waveform`` — must stay aligned with tools.py / plan references.
+- id: slice_waveform
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: slice_waveform
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Extract the signals and time window that show the failure.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    corner: ''
+    # YAML key ``mode`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    mode: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: report_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: corner
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: mode
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``write_reproduction_test`` — must stay aligned with tools.py / plan references.
+- id: write_reproduction_test
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: write_reproduction_test
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Write the minimized test on an isolated branch.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    hypothesis: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: hypothesis
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: The single change this edit is testing.
+# Identifier ``confirm_reproduction_fails`` — must stay aligned with tools.py / plan references.
+- id: confirm_reproduction_fails
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: confirm_reproduction_fails
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Rerun the minimized test and confirm it still fails.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    recipe: ''
+    # YAML key ``corner`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    corner: ''
+    # YAML key ``mode`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    mode: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: recipe
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: corner
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: mode
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``confirm_reproduction_stable`` — must stay aligned with tools.py / plan references.
+- id: confirm_reproduction_stable
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: confirm_reproduction_stable
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Rerun the minimized test across the requested seeds and report which still fail.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    recipe: ''
+    # YAML key ``corner`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    corner: ''
+    # YAML key ``mode`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    mode: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: baseline_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: recipe
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: corner
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: mode
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``list_reproduction_signals`` — must stay aligned with tools.py / plan references.
+- id: list_reproduction_signals
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: list_reproduction_signals
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: List the signals required to see the failure.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    corner: ''
+    # YAML key ``mode`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    mode: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: report_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: corner
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: mode
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``diff_reproduction_against_original`` — must stay aligned with tools.py / plan references.
+- id: diff_reproduction_against_original
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: diff_reproduction_against_original
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Show what the minimization removed.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    report_ref: ''
+    # YAML key ``corner`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    corner: ''
+    # YAML key ``mode`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    mode: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: candidate_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: report_ref
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: corner
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: mode
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``flag_unstable_reproduction`` — must stay aligned with tools.py / plan references.
+- id: flag_unstable_reproduction
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: flag_unstable_reproduction
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Publish a minimized test that does not fail reliably.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``summary`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: summary
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: severity
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``flag_reproduction_changed_symptom`` — must stay aligned with tools.py / plan references.
+- id: flag_reproduction_changed_symptom
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: flag_reproduction_changed_symptom
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Publish a minimized test whose first error differs from the original.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``summary`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: summary
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: severity
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``record_reproduction_artifact`` — must stay aligned with tools.py / plan references.
+- id: record_reproduction_artifact
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: record_reproduction_artifact
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Record the test, seed, waveform slice, and original cluster.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``summary`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: summary
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: severity
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Agent id that should act on the finding.
+# Identifier ``publish_reproduction`` — must stay aligned with tools.py / plan references.
+- id: publish_reproduction
+  # YAML key ``module`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  module: tools
+  # YAML key ``callable`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  callable: publish_reproduction
+  # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  description: Publish the minimized test ref and the waveform slice.
+  # YAML key ``args_defaults`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  args_defaults:
+    # YAML key ``summary`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    summary: ''
+    # YAML key ``evidence_refs`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    evidence_refs: ''
+    # YAML key ``severity`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    recommended_recipient: ''
+  # YAML key ``action`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: summary
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: One-sentence finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: evidence_refs
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: severity
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+  - name: recommended_recipient
+    # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    - name: skill_calls
+      # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+      description: Tool invocations.
+    # YAML key ``name`` for the reproduction agent (failing-seed/waveform minimization specialist).
+    - name: artifacts
+      # YAML key ``description`` for the reproduction agent (failing-seed/waveform minimization specialist).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/reproduction:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for reproduction.
+  - requirements
+  # include entry ``interface_contracts`` for reproduction.
+  - interface_contracts
+  # include entry ``canonical_source`` for reproduction.
+  - canonical_source
+  # include entry ``open_findings`` for reproduction.
+  - open_findings
+  # include entry ``experiments`` for reproduction.
+  - experiments
+  # include entry ``decisions`` for reproduction.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for reproduction.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for reproduction.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for reproduction.
+  - human-authored
+  # precedence entry ``validated`` for reproduction.
+  - validated
+  # precedence entry ``provisional`` for reproduction.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for reproduction.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

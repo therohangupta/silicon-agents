@@ -1,0 +1,673 @@
+# AgentFleet config for ``stimulus`` — directed and constrained-random stimulus author for coverage holes.
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``stimulus`` used across the verification plan graph.
+  name: stimulus
+  # Human-readable title shown in UIs and docs.
+  display_name: Stimulus Agent
+  # Responsibility brief for this verification specialist.
+  description: Create directed tests and constrained-random sequences aimed at coverage holes.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Create directed tests and constrained-random sequences aimed at coverage holes.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for stimulus: Write tests on an isolated branch
+  - Write tests on an isolated branch
+  # Boundary rule for stimulus: Read coverage holes
+  - Read coverage holes
+  # Boundary rule for stimulus: Compile the tests
+  - Compile the tests
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for stimulus: Edit RTL
+  - Edit RTL
+  # Boundary rule for stimulus: Constrain a test so it avoids a known failure
+  - Constrain a test so it avoids a known failure
+  # Boundary rule for stimulus: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for stimulus: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for stimulus: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8219 for the stimulus AgentService (must match Dockerfile EXPOSE).
+  port: 8219
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``create_directed_tests`` — must stay aligned with tools.py / plan references.
+- id: create_directed_tests
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write directed tests for specific coverage holes.
+# Identifier ``create_constrained_random_sequences`` — must stay aligned with tools.py / plan references.
+- id: create_constrained_random_sequences
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write constrained-random sequences from the interface contract.
+# Identifier ``create_coverage_directed_sequence`` — must stay aligned with tools.py / plan references.
+- id: create_coverage_directed_sequence
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write a sequence whose constraints target one uncovered bin.
+# Identifier ``write_seed_list`` — must stay aligned with tools.py / plan references.
+- id: write_seed_list
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write the seed list for this stimulus set. Do not drop a seed that previously failed.
+# Identifier ``write_stimulus_constraints`` — must stay aligned with tools.py / plan references.
+- id: write_stimulus_constraints
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write legal constraints taken from the interface contract.
+# Identifier ``read_coverage_holes`` — must stay aligned with tools.py / plan references.
+- id: read_coverage_holes
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Read the holes this stimulus is supposed to close.
+# Identifier ``read_stimulus_contract`` — must stay aligned with tools.py / plan references.
+- id: read_stimulus_contract
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Read the interface constraints stimulus must obey.
+# Identifier ``compile_stimulus`` — must stay aligned with tools.py / plan references.
+- id: compile_stimulus
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Compile the new tests against the UVM environment.
+# Identifier ``lint_stimulus_constraints`` — must stay aligned with tools.py / plan references.
+- id: lint_stimulus_constraints
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Check that constraints do not exclude a known failing transaction.
+# Identifier ``flag_failure_avoiding_constraint`` — must stay aligned with tools.py / plan references.
+- id: flag_failure_avoiding_constraint
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Publish a constraint that removes a previously failing legal transaction.
+# Identifier ``flag_unjustified_constraint`` — must stay aligned with tools.py / plan references.
+- id: flag_unjustified_constraint
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Publish a constraint that is not backed by the interface contract.
+# Identifier ``record_stimulus_intent`` — must stay aligned with tools.py / plan references.
+- id: record_stimulus_intent
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Record which holes and requirements this stimulus set targets.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``create_directed_tests`` — must stay aligned with tools.py / plan references.
+- id: create_directed_tests
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: create_directed_tests
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write directed tests for specific coverage holes.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    hypothesis: ''
+    # YAML key ``hole_ids`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    hole_ids: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: baseline_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: hypothesis
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: hole_ids
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Holes these tests must hit.
+# Identifier ``create_constrained_random_sequences`` — must stay aligned with tools.py / plan references.
+- id: create_constrained_random_sequences
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: create_constrained_random_sequences
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write constrained-random sequences from the interface contract.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    hypothesis: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: baseline_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: hypothesis
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: The single change this edit is testing.
+# Identifier ``create_coverage_directed_sequence`` — must stay aligned with tools.py / plan references.
+- id: create_coverage_directed_sequence
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: create_coverage_directed_sequence
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write a sequence whose constraints target one uncovered bin.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    hypothesis: ''
+    # YAML key ``coverpoint`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    coverpoint: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: baseline_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: hypothesis
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: coverpoint
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Coverpoint to hit.
+# Identifier ``write_seed_list`` — must stay aligned with tools.py / plan references.
+- id: write_seed_list
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: write_seed_list
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write the seed list for this stimulus set. Do not drop a seed that previously failed.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    hypothesis: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: baseline_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: hypothesis
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: The single change this edit is testing.
+# Identifier ``write_stimulus_constraints`` — must stay aligned with tools.py / plan references.
+- id: write_stimulus_constraints
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: write_stimulus_constraints
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Write legal constraints taken from the interface contract.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    hypothesis: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: baseline_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: hypothesis
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: The single change this edit is testing.
+# Identifier ``read_coverage_holes`` — must stay aligned with tools.py / plan references.
+- id: read_coverage_holes
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: read_coverage_holes
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Read the holes this stimulus is supposed to close.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    report_ref: ''
+    # YAML key ``corner`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    corner: ''
+    # YAML key ``mode`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    mode: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: report_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: corner
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: mode
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``read_stimulus_contract`` — must stay aligned with tools.py / plan references.
+- id: read_stimulus_contract
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: read_stimulus_contract
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Read the interface constraints stimulus must obey.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    report_ref: ''
+    # YAML key ``corner`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    corner: ''
+    # YAML key ``mode`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    mode: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: report_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: corner
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: mode
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``compile_stimulus`` — must stay aligned with tools.py / plan references.
+- id: compile_stimulus
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: compile_stimulus
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Compile the new tests against the UVM environment.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    recipe: ''
+    # YAML key ``corner`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    corner: ''
+    # YAML key ``mode`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    mode: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: baseline_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: recipe
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: corner
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: mode
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``lint_stimulus_constraints`` — must stay aligned with tools.py / plan references.
+- id: lint_stimulus_constraints
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: lint_stimulus_constraints
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Check that constraints do not exclude a known failing transaction.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    recipe: ''
+    # YAML key ``corner`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    corner: ''
+    # YAML key ``mode`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    mode: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: candidate_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: baseline_ref
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: recipe
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: corner
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: mode
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``flag_failure_avoiding_constraint`` — must stay aligned with tools.py / plan references.
+- id: flag_failure_avoiding_constraint
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: flag_failure_avoiding_constraint
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Publish a constraint that removes a previously failing legal transaction.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``summary`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    summary: ''
+    # YAML key ``evidence_refs`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    evidence_refs: ''
+    # YAML key ``severity`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    recommended_recipient: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: summary
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: One-sentence finding.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: evidence_refs
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: severity
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: recommended_recipient
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Agent id that should act on the finding.
+# Identifier ``flag_unjustified_constraint`` — must stay aligned with tools.py / plan references.
+- id: flag_unjustified_constraint
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: flag_unjustified_constraint
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Publish a constraint that is not backed by the interface contract.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``summary`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    summary: ''
+    # YAML key ``evidence_refs`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    evidence_refs: ''
+    # YAML key ``severity`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    recommended_recipient: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: summary
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: One-sentence finding.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: evidence_refs
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: severity
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: recommended_recipient
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Agent id that should act on the finding.
+# Identifier ``record_stimulus_intent`` — must stay aligned with tools.py / plan references.
+- id: record_stimulus_intent
+  # YAML key ``module`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  module: tools
+  # YAML key ``callable`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  callable: record_stimulus_intent
+  # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  description: Record which holes and requirements this stimulus set targets.
+  # YAML key ``args_defaults`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  args_defaults:
+    # YAML key ``summary`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    summary: ''
+    # YAML key ``evidence_refs`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    evidence_refs: ''
+    # YAML key ``severity`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    recommended_recipient: ''
+  # YAML key ``action`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: summary
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: One-sentence finding.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: evidence_refs
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: severity
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+  - name: recommended_recipient
+    # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    - name: skill_calls
+      # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+      description: Tool invocations.
+    # YAML key ``name`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+    - name: artifacts
+      # YAML key ``description`` for the stimulus agent (directed and constrained-random stimulus author for coverage holes).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/stimulus:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for stimulus.
+  - requirements
+  # include entry ``interface_contracts`` for stimulus.
+  - interface_contracts
+  # include entry ``canonical_source`` for stimulus.
+  - canonical_source
+  # include entry ``open_findings`` for stimulus.
+  - open_findings
+  # include entry ``experiments`` for stimulus.
+  - experiments
+  # include entry ``decisions`` for stimulus.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for stimulus.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for stimulus.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for stimulus.
+  - human-authored
+  # precedence entry ``validated`` for stimulus.
+  - validated
+  # precedence entry ``provisional`` for stimulus.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for stimulus.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

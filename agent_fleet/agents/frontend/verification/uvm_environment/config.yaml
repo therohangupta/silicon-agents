@@ -1,0 +1,739 @@
+# AgentFleet config for ``uvm_environment`` — UVM environment builder (drivers, monitors, scoreboards, sequences).
+# This file is the checked-in contract: identity, boundaries, HTTP connection,
+# capabilities/skills (bound to tools.py), memory, observability, deployment,
+# optional plan graph, and LLM context packing rules.
+# Comments below document every key's meaning in silicon verification.
+# Do not change values here when only editing documentation.
+
+# AgentFleet manifest schema version for this verification specialist.
+apiVersion: agentfleet/v1
+# Resource kind: a runnable Agent (not a Fleet or Workflow document).
+kind: Agent
+# Identity block used by the orchestrator, Docker labels, and telemetry.
+metadata:
+  # Stable agent id ``uvm_environment`` used across the verification plan graph.
+  name: uvm_environment
+  # Human-readable title shown in UIs and docs.
+  display_name: UVM Environment Agent
+  # Responsibility brief for this verification specialist.
+  description: Generate and maintain drivers, monitors, scoreboards, and sequences for one block.
+  # Routing labels: stage and role. The spec loader reads only these two.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: verification
+    # Fleet role: lead plans; worker executes; validator independently grades.
+    role: worker
+# Fleet role enum used for privilege and delegation policy.
+role: worker
+# Pipeline stage name matching metadata.labels.stage.
+stage: verification
+# Authoritative responsibility string enforced in prompts/policy.
+responsibility: Generate and maintain drivers, monitors, scoreboards, and sequences for one block.
+# Hard may / may_not rules for this verification agent.
+boundary:
+  # Allowed actions in the verification flow.
+  may:
+  # Boundary rule for uvm_environment: Write verification collateral on an isolated branch
+  - Write verification collateral on an isolated branch
+  # Boundary rule for uvm_environment: Read the interface contract
+  - Read the interface contract
+  # Boundary rule for uvm_environment: Compile the environment and run a smoke test
+  - Compile the environment and run a smoke test
+  # Forbidden actions (waivers, canonical RTL edits, self-signoff, etc.).
+  may_not:
+  # Boundary rule for uvm_environment: Edit the RTL under test
+  - Edit the RTL under test
+  # Boundary rule for uvm_environment: Weaken the scoreboard to make a test pass
+  - Weaken the scoreboard to make a test pass
+  # Boundary rule for uvm_environment: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Boundary rule for uvm_environment: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Boundary rule for uvm_environment: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks for (empty for pure workers).
+delegates_to: []
+# Independent graders that must pass before promotion/signoff.
+validators: []
+# How peers reach this agent's HTTP service inside Docker/compose.
+connection:
+  # Hostname reachable from other containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port 8216 for the uvm_environment AgentService (must match Dockerfile EXPOSE).
+  port: 8216
+  # HTTP paths the orchestrator calls.
+  endpoints:
+    # Liveness endpoint for fleet health checks.
+    health: /health
+    # Task execution endpoint for skill/workflow runs.
+    execute: /tasks/execute
+# EDA tool backend binding (none until a simulator/formal adapter is configured).
+backend:
+  # Backend kind; none means tools return not_run observations.
+  type: none
+# How the AgentService schedules work for this process.
+execution:
+  # Dispatch mode for skill calls (direct_function vs queued).
+  mode: direct_function
+  # Parallelism limits for in-flight verification tasks.
+  concurrency:
+    # Max concurrent tasks inside this agent process.
+    max_tasks: 1
+# Timeouts and retry policy when a verification task fails.
+reliability:
+  # Seconds before a stuck skill/task is aborted.
+  task_timeout_secs: 120
+  # Automatic retry count before replan/escalate.
+  max_retries: 1
+  # Failure policy hook (e.g. replan the workflow).
+  on_failure: replan
+# Public capability ids advertised to the orchestrator/LLM.
+capabilities:
+# Identifier ``generate_uvm_environment`` — must stay aligned with tools.py / plan references.
+- id: generate_uvm_environment
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Create the UVM environment package from the interface contract.
+# Identifier ``write_uvm_driver`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_driver
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the driver for one interface.
+# Identifier ``write_uvm_monitor`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_monitor
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the monitor for one interface.
+# Identifier ``write_uvm_scoreboard`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_scoreboard
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the scoreboard that compares DUT outputs with the reference model.
+# Identifier ``write_uvm_agent`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_agent
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the agent that binds driver, monitor, and sequencer.
+# Identifier ``write_uvm_sequence_library`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_sequence_library
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the base sequence library for this block.
+# Identifier ``write_uvm_config`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_config
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the configuration object and factory overrides.
+# Identifier ``bind_uvm_interfaces`` — must stay aligned with tools.py / plan references.
+- id: bind_uvm_interfaces
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Bind virtual interfaces to the DUT ports in the isolated branch.
+# Identifier ``update_scoreboard`` — must stay aligned with tools.py / plan references.
+- id: update_scoreboard
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Adjust the scoreboard for one clarified requirement.
+# Identifier ``read_uvm_interface_contract`` — must stay aligned with tools.py / plan references.
+- id: read_uvm_interface_contract
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Read the interface contract this environment implements.
+# Identifier ``compile_uvm_environment`` — must stay aligned with tools.py / plan references.
+- id: compile_uvm_environment
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Compile the environment and the DUT in the isolated branch.
+# Identifier ``run_uvm_smoke`` — must stay aligned with tools.py / plan references.
+- id: run_uvm_smoke
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Run one smoke test and return the log.
+# Identifier ``flag_scoreboard_gap`` — must stay aligned with tools.py / plan references.
+- id: flag_scoreboard_gap
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Publish a requirement the scoreboard does not check.
+# Identifier ``flag_protocol_monitor_mismatch`` — must stay aligned with tools.py / plan references.
+- id: flag_protocol_monitor_mismatch
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Publish a monitor that does not implement a contract clause.
+# Bound skill implementations: module/callable/args matching tools.py.
+skills:
+# Identifier ``generate_uvm_environment`` — must stay aligned with tools.py / plan references.
+- id: generate_uvm_environment
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: generate_uvm_environment
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Create the UVM environment package from the interface contract.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+# Identifier ``write_uvm_driver`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_driver
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: write_uvm_driver
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the driver for one interface.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+    # YAML key ``interface_id`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    interface_id: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: interface_id
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Interface the driver drives.
+# Identifier ``write_uvm_monitor`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_monitor
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: write_uvm_monitor
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the monitor for one interface.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+    # YAML key ``interface_id`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    interface_id: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: interface_id
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Interface the monitor observes.
+# Identifier ``write_uvm_scoreboard`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_scoreboard
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: write_uvm_scoreboard
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the scoreboard that compares DUT outputs with the reference model.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+# Identifier ``write_uvm_agent`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_agent
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: write_uvm_agent
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the agent that binds driver, monitor, and sequencer.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+# Identifier ``write_uvm_sequence_library`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_sequence_library
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: write_uvm_sequence_library
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the base sequence library for this block.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+# Identifier ``write_uvm_config`` — must stay aligned with tools.py / plan references.
+- id: write_uvm_config
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: write_uvm_config
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Write the configuration object and factory overrides.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+# Identifier ``bind_uvm_interfaces`` — must stay aligned with tools.py / plan references.
+- id: bind_uvm_interfaces
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: bind_uvm_interfaces
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Bind virtual interfaces to the DUT ports in the isolated branch.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+# Identifier ``update_scoreboard`` — must stay aligned with tools.py / plan references.
+- id: update_scoreboard
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: update_scoreboard
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Adjust the scoreboard for one clarified requirement.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``hypothesis`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    hypothesis: ''
+    # YAML key ``requirement_id`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    requirement_id: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: write_candidate
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Immutable baseline the candidate must descend from.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: hypothesis
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: The single change this edit is testing.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: requirement_id
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Requirement the scoreboard must check.
+# Identifier ``read_uvm_interface_contract`` — must stay aligned with tools.py / plan references.
+- id: read_uvm_interface_contract
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: read_uvm_interface_contract
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Read the interface contract this environment implements.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``report_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    report_ref: ''
+    # YAML key ``corner`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    corner: ''
+    # YAML key ``mode`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    mode: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: read_reports
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Candidate whose reports are read.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: report_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: corner
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Corner filter. Empty reads every available corner.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: mode
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Mode filter. Empty reads every available mode.
+# Identifier ``compile_uvm_environment`` — must stay aligned with tools.py / plan references.
+- id: compile_uvm_environment
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: compile_uvm_environment
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Compile the environment and the DUT in the isolated branch.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    recipe: ''
+    # YAML key ``corner`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    corner: ''
+    # YAML key ``mode`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    mode: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: recipe
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: corner
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: mode
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``run_uvm_smoke`` — must stay aligned with tools.py / plan references.
+- id: run_uvm_smoke
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: run_uvm_smoke
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Run one smoke test and return the log.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``candidate_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    candidate_ref: ''
+    # YAML key ``baseline_ref`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    baseline_ref: ''
+    # YAML key ``recipe`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    recipe: ''
+    # YAML key ``corner`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    corner: ''
+    # YAML key ``mode`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    mode: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: submit_tool_job
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: candidate_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Candidate the job reads.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: baseline_ref
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Baseline used when the job compares against a known result.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: recipe
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: corner
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: PVT corner. Empty when the job is not corner-specific.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: mode
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier ``flag_scoreboard_gap`` — must stay aligned with tools.py / plan references.
+- id: flag_scoreboard_gap
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: flag_scoreboard_gap
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Publish a requirement the scoreboard does not check.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``summary`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    summary: ''
+    # YAML key ``evidence_refs`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    evidence_refs: ''
+    # YAML key ``severity`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    recommended_recipient: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: summary
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: One-sentence finding.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: evidence_refs
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: severity
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: recommended_recipient
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Agent id that should act on the finding.
+# Identifier ``flag_protocol_monitor_mismatch`` — must stay aligned with tools.py / plan references.
+- id: flag_protocol_monitor_mismatch
+  # YAML key ``module`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  module: tools
+  # YAML key ``callable`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  callable: flag_protocol_monitor_mismatch
+  # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  description: Publish a monitor that does not implement a contract clause.
+  # YAML key ``args_defaults`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  args_defaults:
+    # YAML key ``summary`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    summary: ''
+    # YAML key ``evidence_refs`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    evidence_refs: ''
+    # YAML key ``severity`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    severity: ''
+    # YAML key ``recommended_recipient`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    recommended_recipient: ''
+  # YAML key ``action`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  action: publish_finding
+  # Declared parameters with descriptions for validation and prompting.
+  params:
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: summary
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: One-sentence finding.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: evidence_refs
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Comma-separated artifact URIs that support the finding.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: severity
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: low, medium, high, or critical.
+  # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+  - name: recommended_recipient
+    # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    description: Agent id that should act on the finding.
+# Local memory configuration layered on shared silicon engineering memory.
+memory:
+  # Named memory stores this agent may read/write.
+  stores:
+  # Identifier ``journal`` — must stay aligned with tools.py / plan references.
+  - id: journal
+    # Human/LLM-facing description of the verification operation.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type or parameter type depending on parent context.
+    type: list
+    # How the memory store is persisted (file, ephemeral, …).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path for file-backed memory (env-expandable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry streams for verification operations.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Telemetry sink configuration.
+  telemetry:
+    # Telemetry collector URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named streams (skill_calls, artifacts, etc.).
+    streams:
+    # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    - name: skill_calls
+      # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+      description: Tool invocations.
+    # YAML key ``name`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+    - name: artifacts
+      # YAML key ``description`` for the uvm_environment agent (UVM environment builder (drivers, monitors, scoreboards, sequences)).
+      description: Structured task results.
+# Container image metadata for this specialist.
+deployment:
+  # Image repository:tag for compose/k8s deployment.
+  image: agentfleet/uvm_environment:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework adapter selector; empty means unbound.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Which engineering-memory slices are included in the LLM context window.
+context:
+  # Memory categories to include (gates, findings, decisions, …).
+  include:
+  # include entry ``requirements`` for uvm_environment.
+  - requirements
+  # include entry ``interface_contracts`` for uvm_environment.
+  - interface_contracts
+  # include entry ``canonical_source`` for uvm_environment.
+  - canonical_source
+  # include entry ``open_findings`` for uvm_environment.
+  - open_findings
+  # include entry ``experiments`` for uvm_environment.
+  - experiments
+  # include entry ``decisions`` for uvm_environment.
+  - decisions
+  # Categories to omit from context packing.
+  exclude:
+  # exclude entry ``stale_candidates`` for uvm_environment.
+  - stale_candidates
+  # Statuses to drop (e.g. rejected candidates).
+  drop:
+  # drop entry ``rejected`` for uvm_environment.
+  - rejected
+  # Priority order when packing conflicting memory items.
+  precedence:
+  # precedence entry ``human-authored`` for uvm_environment.
+  - human-authored
+  # precedence entry ``validated`` for uvm_environment.
+  - validated
+  # precedence entry ``provisional`` for uvm_environment.
+  - provisional
+  # Items that must not be dropped under token pressure.
+  protect:
+  # protect entry ``human-authored`` for uvm_environment.
+  - human-authored
+  # Max tokens for packed verification context.
+  token_budget: 80000

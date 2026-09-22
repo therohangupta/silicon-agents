@@ -1,0 +1,735 @@
+# Agent manifest for SI/Noise Repair Agent (id=si_noise_repair, port=8252).
+# EDA role: Signal integrity (SI) covers crosstalk, coupling capacitance, and glitches on victim nets attacked by aggressors. Repairs include spacing, shielding, and layer changes, then re-verify noise and timing impact.
+# Loaded by EdaAgent.read_spec / AgentService.from_agent; skills map to tools.py.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for worker/lead physical-design agents.
+kind: Agent
+# Identity and labels used by the fleet registry and dashboards.
+metadata:
+  # Stable agent id ``si_noise_repair`` used in telemetry and tool_observation.
+  name: si_noise_repair
+  # Human-readable title shown in UIs and READMEs.
+  display_name: SI/Noise Repair Agent
+  # One-paragraph responsibility for this physical-design stage.
+  description: Analyze coupling, crosstalk, and glitches, apply a repair on an isolated candidate, and
+    verify it against noise and timing limits.
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: routing
+    # Fleet role: lead orchestrates; worker executes; validator independently checks.
+    role: worker
+# Fleet role ``worker`` (lead orchestrates; worker executes).
+role: worker
+# Physical-design stage ``routing`` for planning and context filters.
+stage: routing
+# Authoritative responsibility string mirrored from description.
+responsibility: Analyze coupling, crosstalk, and glitches, apply a repair on an isolated candidate, and
+  verify it against noise and timing limits.
+# Hard may / may_not contract enforced conceptually by planning and permissions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Allowed action: Read noise reports
+  - Read noise reports
+  # Allowed action: Apply spacing, shielding, or layer changes on an isolated candidate
+  - Apply spacing, shielding, or layer changes on an isolated candidate
+  # Allowed action: Submit a noise and timing check of that candidate
+  - Submit a noise and timing check of that candidate
+  # Forbidden actions (no silent promotion, no self-signoff, etc.).
+  may_not:
+  # Forbidden: Edit victim logic
+  - Edit victim logic
+  # Forbidden: Claim a repair is closed without a noise and timing check
+  - Claim a repair is closed without a noise and timing check
+  # Forbidden: Edit the canonical route
+  - Edit the canonical route
+  # Forbidden: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Forbidden: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Forbidden: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids a lead may schedule.
+delegates_to: []
+# Optional independent validator agent ids.
+validators: []
+# HTTP reachability for AgentService inside Docker/compose.
+connection:
+  # Hostname peers use to reach this container (host.docker.internal for local).
+  host: host.docker.internal
+  # HTTP port 8252 for SI/Noise Repair Agent AgentService endpoints.
+  port: 8252
+  # Path map for health and execute routes.
+  endpoints:
+    # Liveness/readiness HTTP path.
+    health: /health
+    # Task submission HTTP path.
+    execute: /tasks/execute
+# EDA framework backend binding (none until OpenROAD adapter configured).
+backend:
+  # Backend type discriminator (none means observations stay not_run).
+  type: none
+# How skills are invoked by the agent runtime.
+execution:
+  # Mode parameter (overloaded key; YAML context distinguishes).
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum concurrent tasks for this agent process.
+    max_tasks: 1
+# Timeouts, retries, and failure policy for tasks.
+reliability:
+  # Wall-clock timeout for one task attempt.
+  task_timeout_secs: 120
+  # How many times to retry a failed task before replan/give-up.
+  max_retries: 1
+  # Planner hint when the task fails (e.g. replan).
+  on_failure: replan
+# Capability index mirroring skills for UIs and planners.
+capabilities:
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_noise_report
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read the noise report for this candidate.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_aggressor_victim_pairs
+  # One-paragraph responsibility for this physical-design stage.
+  description: List aggressor and victim pairs over the noise limit.
+# Stable id for a capability, skill, memory store, or stream.
+- id: classify_crosstalk_delay
+  # One-paragraph responsibility for this physical-design stage.
+  description: Classify crosstalk delay on one victim.
+# Stable id for a capability, skill, memory store, or stream.
+- id: classify_glitch
+  # One-paragraph responsibility for this physical-design stage.
+  description: Classify glitches on one victim.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_spacing_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a spacing change and the tracks it consumes.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_shield
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a shield net and the layer it uses.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_noise_layer_change
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a layer change for one victim or aggressor.
+# Stable id for a capability, skill, memory store, or stream.
+- id: apply_noise_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Apply one spacing, shield, or layer change on an isolated candidate.
+# Stable id for a capability, skill, memory store, or stream.
+- id: verify_noise_after_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Re-run noise analysis on the repaired candidate.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_noise_timing_impact
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report setup and hold change caused by the noise repair.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_noise_still_over_limit
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a pair that is still over the noise limit.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_unverified_noise_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a repair that has no noise or timing check.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_si_tool_version
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record the SI tool, version, and limits used.
+# Callable skills bound to tools.py functions.
+skills:
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_noise_report
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: read_noise_report
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read the noise report for this candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: list_aggressor_victim_pairs
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: list_aggressor_victim_pairs
+  # One-paragraph responsibility for this physical-design stage.
+  description: List aggressor and victim pairs over the noise limit.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: classify_crosstalk_delay
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: classify_crosstalk_delay
+  # One-paragraph responsibility for this physical-design stage.
+  description: Classify crosstalk delay on one victim.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+    net: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: net
+    # One-paragraph responsibility for this physical-design stage.
+    description: Victim net.
+# Stable id for a capability, skill, memory store, or stream.
+- id: classify_glitch
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: classify_glitch
+  # One-paragraph responsibility for this physical-design stage.
+  description: Classify glitches on one victim.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+    net: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: net
+    # One-paragraph responsibility for this physical-design stage.
+    description: Victim net.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_spacing_repair
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: propose_spacing_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a spacing change and the tracks it consumes.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_shield
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: propose_shield
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a shield net and the layer it uses.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: propose_noise_layer_change
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: propose_noise_layer_change
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a layer change for one victim or aggressor.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: apply_noise_repair
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: apply_noise_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Apply one spacing, shield, or layer change on an isolated candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Single-change hypothesis parameter.
+    hypothesis: ''
+    net: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: hypothesis
+    # One-paragraph responsibility for this physical-design stage.
+    description: The single change this edit is testing.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: net
+    # One-paragraph responsibility for this physical-design stage.
+    description: Net to repair.
+# Stable id for a capability, skill, memory store, or stream.
+- id: verify_noise_after_repair
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: verify_noise_after_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Re-run noise analysis on the repaired candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_noise_timing_impact
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: report_noise_timing_impact
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report setup and hold change caused by the noise repair.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_noise_still_over_limit
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: flag_noise_still_over_limit
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a pair that is still over the noise limit.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_unverified_noise_repair
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: flag_unverified_noise_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a repair that has no noise or timing check.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_si_tool_version
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: record_si_tool_version
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record the SI tool, version, and limits used.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Engineering-memory configuration for this agent.
+memory:
+  # Named local memory stores (journal cache, etc.).
+  stores:
+  # Stable id for a capability, skill, memory store, or stream.
+  - id: journal
+    # One-paragraph responsibility for this physical-design stage.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend type discriminator (none means observations stay not_run).
+    type: list
+    # Persistence medium (file, ...).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path template for file-backed memory.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry export settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls/artifacts streams are shipped.
+  telemetry:
+    # Telemetry service URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: skill_calls
+      # One-paragraph responsibility for this physical-design stage.
+      description: Tool invocations.
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: artifacts
+      # One-paragraph responsibility for this physical-design stage.
+      description: Structured task results.
+# Container image and environment for compose/k8s.
+deployment:
+  # Container image name:tag for this agent.
+  image: agentfleet/si_noise_repair:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework selector for adapters (empty = unbound).
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory records.
+context:
+  # Record categories always considered for the prompt/context package.
+  include:
+  # Context include category: canonical_source
+  - canonical_source
+  # Context include category: open_findings
+  - open_findings
+  # Context include category: experiments
+  - experiments
+  # Context include category: gates
+  - gates
+  # Context include category: decisions
+  - decisions
+  # Record categories omitted from context.
+  exclude:
+  # Context exclude category: stale_candidates
+  - stale_candidates
+  # Statuses that cause records to be dropped.
+  drop:
+  # Drop records with status: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Context precedence preference: human-authored
+  - human-authored
+  # Context precedence preference: validated
+  - validated
+  # Context precedence preference: provisional
+  - provisional
+  # Record classes that must not be auto-dropped.
+  protect:
+  # Protected record class: human-authored
+  - human-authored
+  # Approximate token budget for assembled context.
+  token_budget: 80000
