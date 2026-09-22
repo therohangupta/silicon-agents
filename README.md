@@ -19,7 +19,6 @@ eda-agent-fleet/                 # repo root (this README)
 ├── README.md                    # you are here
 ├── pyproject.toml               # pointer: install from agent_fleet/
 ├── requirements.txt             # convenience dependency pins
-├── etched_agentic_chip_design_system_v3.md
 └── agent_fleet/                 # installable package + Compose + docs
     ├── README.md                # package overview, architecture, quick start
     ├── pyproject.toml           # canonical Python package metadata (agentctl)
