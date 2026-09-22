@@ -1,4 +1,4 @@
-# EDA agent fleet
+# Silicon Agents fleet
 
 A multi-agent control plane specialized for chip design. Shared packages hold the agent process, memory stores, and context-assembly primitives. `agent_fleet/domains/eda` holds EDA record types, scope keys, write-policy defaults, and the tool adapter. `agent_fleet/agents` holds one directory per agent.
 
@@ -15,7 +15,7 @@ The design this fleet follows is `etched_agentic_chip_design_system_v3.md`.
 ## Repository tree
 
 ```text
-eda-agent-fleet/                 # repo root (this README)
+silicon-agents/                 # repo root (this README)
 ├── README.md                    # you are here
 ├── pyproject.toml               # pointer: install from agent_fleet/
 ├── requirements.txt             # convenience dependency pins
