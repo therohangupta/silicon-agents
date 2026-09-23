@@ -2,7 +2,7 @@
 
 This directory implements the **skill registration and invocation layer** for the Agent SDK. In fleet terminology, a **skill** is a named, callable operation an agent exposes to planners and runtimes (for example `write_scan_configuration` on a DFT agent). The HTTP task server does not hard-code those names; it loads them from `config.yaml` capabilities, binds them to Python callables, and executes them through `SkillRegistry.call`.
 
-Silicon / EDA agents in this repo usually define skills in a sibling `tools.py` using the `@tool` decorator re-exported from `packages.agent_sdk`. The registry here is what turns YAML `callable` names into live functions at process startup.
+Domain agents in this repo usually define skills in a sibling `tools.py` using the `@tool` decorator re-exported from `packages.agent_sdk`. The registry here is what turns YAML `callable` names into live functions at process startup.
 
 ---
 
@@ -34,7 +34,7 @@ AgentRuntime (tool_loop / direct_function / codegen)
 SkillRegistry.call(skill_id, **kwargs)  ──►  SkillCall + result dict
 ```
 
-For **EDA domain agents**, `domains.eda.server.BoundAgentRuntime` usually bypasses the generic “run one skill” path and forwards the whole task to `EdaAgent.handle`, which internally dispatches to the same `tools.py` callables. The registry is still constructed on `AgentServer` because memory skills, telemetry hooks, and SDK runtimes expect it to exist.
+For domain wrappers, a bound runtime usually bypasses the generic “run one skill” path and forwards the whole task to `domain handler.handle`, which internally dispatches to the same `tools.py` callables. The registry is still constructed on `AgentServer` because memory skills, telemetry hooks, and SDK runtimes expect it to exist.
 
 ---
 
@@ -80,7 +80,7 @@ It does **not** register the function globally. Registration happens when `Skill
 - `register(spec: SkillSpec, func)` — maps `spec.id` to `(spec, callable)`.
 - `load_from_config(specs, package_root=None)` — for each spec, `importlib.import_module(spec.module)` (optionally prefixed with `package_root`), then `getattr(module, spec.callable)`.
 
-EDA agents typically load `tools` as a dynamically injected module (`AgentServer` loads `tools.py` from the agent directory) while YAML lists `callable: write_scan_configuration` matching the function name.
+Domain agents typically load `tools` as a dynamically injected module (`AgentServer` loads `tools.py` from the agent directory) while YAML lists `callable: write_scan_configuration` matching the function name.
 
 ### Invocation
 
@@ -111,14 +111,6 @@ The validator in `src/schema/` parses YAML into `AgentConfig`; `AgentServer._loa
 
 ---
 
-## Relationship to EDA `tools.py`
-
-Under `agents/**/tools.py`, almost every function is a thin wrapper:
-
-- Build a payload dict (`candidate_ref`, `baseline_ref`, `hypothesis`, …).
-- Return `domains.eda.eda.tool_observation(name, payload, agent_id=...)`.
-
-Those functions are still **skills** from the SDK’s point of view: they are registered, timed, and traced the same way as a fully bound OpenROAD adapter would be. The difference is runtime behavior (stub `not_run` vs real EDA execution), not the registry mechanics.
 
 ---
 
@@ -136,7 +128,6 @@ Those functions are still **skills** from the SDK’s point of view: they are re
 - [`../server/README.md`](../server/README.md) — `AgentServer` constructs the registry and loads `tools.py`.
 - [`../runtime/README.md`](../runtime/README.md) — runtimes that invoke `skills.call` during tool loops.
 - [`../schema/README.md`](../schema/README.md) — YAML → `SkillSpec` validation.
-- [`../../../../domains/eda/server.py`](../../../../domains/eda/server.py) — `BoundAgentRuntime` and `AgentService` for EDA agents.
 - [`../../../../agents/README.md`](../../../../agents/README.md) — per-agent `tools.py` pattern.
 
 ---
@@ -146,7 +137,7 @@ Those functions are still **skills** from the SDK’s point of view: they are re
 1. Read `base.py` (small) to see how agents mark callables.
 2. Read `registry.py` `call()` and `load_from_config()` — that is the full runtime contract.
 3. Open any agent’s `tools.py` and `server.py`, then `AgentServer._load_skills` in `../server/agent_server.py` to see injection + registration end to end.
-4. Trace one task through `EdaAgent.handle` if you care about domain journaling rather than raw SDK tool loops.
+4. Trace one task through `domain handler.handle` if you care about domain journaling rather than raw SDK tool loops.
 
 ---
 

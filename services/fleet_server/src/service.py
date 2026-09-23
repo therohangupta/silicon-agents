@@ -19,14 +19,14 @@ This module is the heart of the Fleet Server process. It defines:
     initializes the registry schema, binds ``[::]:port``, and waits for
     termination (with engine dispose on exit).
 
-Planning strategies invoked from CreatePlan (via ``get_planner``):
-  - MONOLITHIC — single sequential Plan for all goals.
+Planning strategies invoked from CreatePlan (via SDK ``get_planning_strategy``):
+  - MONOLITHIC — single sequential DAGPlan for all goals.
   - DAG — one DAG per goal, concatenated (no cross-goal edges).
   - BIG_DAG — one unified DAG allowing cross-goal dependencies.
   - MANUAL_PLAN — empty plan shell; no LLM planner call.
   - Replanner is NOT selected here; Executor invokes it on failure.
 
-Allocation strategies invoked via ``get_allocator``:
+Allocation strategies invoked via SDK ``get_allocation_strategy``:
   - LP — PuLP integer program minimizing max agent load.
   - LLM — GPT-4 structured Allocation parse.
   - COST_BASED — iterative LLM rounds over DAG frontier.
@@ -56,6 +56,9 @@ from packages.proto import fleet_manager_pb2
 from packages.proto import fleet_manager_pb2_grpc
 # Persistent registry of agents/goals/tasks/plans backed by SQLAlchemy.
 from packages.fleet_sdk.src.instance_registry import AgentInstanceRegistry
+# SDK owns strategy implementations and DAG materialization.
+from packages.fleet_sdk.src.planners.base import get_planning_strategy
+from packages.fleet_sdk.src.allocators.base import get_allocator
 # ORM Base.metadata used when --reset-db drops/recreates tables.
 from packages.fleet_sdk.src.models import Base
 # Default DATABASE_URL and GRPC_SERVER_PORT when callers omit overrides.
@@ -987,9 +990,9 @@ class FleetManagerService(fleet_manager_pb2_grpc.FleetManagerServicer):
           1. MANUAL_PLAN → empty plan shell (no LLM), emit created, return.
           2. Auto-plan requires at least one goal_id (else INVALID_ARGUMENT).
           3. If TESTING env is truthy → empty plan without planner (tests).
-          4. Else ``get_planner(strategy).plan(goal_ids)`` then
-             ``save_plan_to_db(...)``.
-          5. If allocation_strategy != NONE → ``get_allocator(...).allocate``.
+          4. Else SDK ``get_planning_strategy(strategy).plan(goal_ids)`` then
+             SDK ``Planner.create_plan(...)``.
+          5. If allocation_strategy != NONE → SDK ``Allocator.allocate``.
           6. Return the fully loaded plan proto.
 
         Planners: monolithic (sequential), DAG (per-goal graphs), big_dag
@@ -1050,17 +1053,14 @@ class FleetManagerService(fleet_manager_pb2_grpc.FleetManagerServicer):
                 emit_plan_changed(plan.plan_id, status="created")
                 return fleet_manager_pb2.CreatePlanResponse(plan=plan)
 
-            # Normal flow using the planner factory + optional allocator.
-            from .planners.base import get_planner
-            from .allocators.base import get_allocator
-            # Construct the concrete planner (Monolithic/DAG/BigDAG).
-            planner = get_planner(planning_strategy, registry=self.registry)
+            # Strategy implementations are SDK-owned; this service only
+            # orchestrates RPC, persistence, eventing, and execution.
+            planner = get_planning_strategy(planning_strategy, self.registry)
 
             # Generate plan using the planner
             try:
                 logger.info(f"Generating plan for goals {goal_ids} using {planning_strategy} planner")
-                # LLM/algorithmic plan JSON in unified Plan schema.
-                plan_json = await planner.plan(goal_ids)
+                graph = await planner.plan(goal_ids)
 
                 # Debug: Check what the planner has stored for artifacts/prompts.
                 logger.debug("PLANNER DEBUG: planning_prompts = %s", getattr(planner, 'planning_prompts', 'NOT SET'))
@@ -1072,8 +1072,15 @@ class FleetManagerService(fleet_manager_pb2_grpc.FleetManagerServicer):
                 if not server_logs:
                     server_logs = [f"Planning completed successfully for goals {goal_ids} using {planning_strategy} strategy"]
 
-                # Persist plan + tasks; returns new plan_id.
-                plan_id = await planner.save_plan_to_db(plan_json, planning_strategy, allocation_strategy, goal_ids, name=name, description=description)
+                # Persist the canonical DAG using SDK two-pass materialization.
+                plan_id = await planner.persist_dag(
+                    graph,
+                    planning_strategy=planning_strategy,
+                    allocation_strategy=allocation_strategy,
+                    goal_ids=goal_ids,
+                    name=name,
+                    description=description,
+                )
                 logger.info(f"Successfully created and saved plan {plan_id}")
             except Exception as e:
                 # Planner failures surface as INTERNAL CreatePlan errors.
@@ -1086,9 +1093,7 @@ class FleetManagerService(fleet_manager_pb2_grpc.FleetManagerServicer):
 
             # Allocate tasks if allocation strategy is not NONE
             if allocation_strategy != fleet_manager_pb2.AllocationStrategy.NONE:
-                # Factory selects LP / LLM / CostBased allocator.
                 allocator = get_allocator(allocation_strategy, registry=self.registry)
-                # Mutates task rows with agent_id assignments.
                 allocation = await allocator.allocate(plan_id)
                 logger.info("Task allocation complete: %s", allocation)
 
@@ -1163,8 +1168,7 @@ class FleetManagerService(fleet_manager_pb2_grpc.FleetManagerServicer):
                     error=f"Plan {plan_id} has no tasks to allocate"
                 )
 
-            # Run allocation via factory-selected allocator implementation.
-            from .allocators.base import get_allocator
+            # Allocation strategies and persistence protocol are SDK-owned.
             allocator = get_allocator(allocation_strategy, registry=self.registry)
             allocation = await allocator.allocate(plan_id)
             logger.info(f"Allocation complete for plan {plan_id}: {allocation}")
@@ -1334,7 +1338,7 @@ class FleetManagerService(fleet_manager_pb2_grpc.FleetManagerServicer):
             ``StartPlanResponse`` with empty error on accept, else error text.
         """
         # Lazy import to avoid circular imports with executor package.
-        from .executor.executor import Executor
+        from packages.fleet_sdk.src.executor.executor import Executor
         plan_id = request.plan_id
         logger.info(f"Received StartPlan request for plan_id: {plan_id}")
 

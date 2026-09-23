@@ -8,7 +8,7 @@ This is distinct from **agent-local memory** ([`../memory/`](../memory/README.md
 
 ## Purpose in the fleet
 
-Chip design flows produce large intermediates (DEF snippets, JSON reports, logs). The workspace layer:
+Long-running workflows produce large intermediates (JSON reports, binary blobs, logs). The workspace layer:
 
 - Stores bytes under `{plan_id}/{task_id}/{name}`
 - Returns stable **`ArtifactRef`** URIs for planners and LLMs (`schema_hint`, `description`)
@@ -122,20 +122,6 @@ Abstract async API:
 
 ---
 
-## How EDA agents use PlanWorkspace
-
-- **Floorplan / placement** — Publish floorplan summaries, heatmaps, or metric JSON for routing or timing agents.
-- **tools.py** — Obtain workspace from handler context (domain code often wraps `PlanWorkspace.from_request`).
-- **Cross-stage handoff** — Prefer refs over copying multi-MB strings into `inputs`.
-- **Descriptions** — Fill `description` and `schema_hint` so requirements agents understand artifact semantics without loading.
-
-Example pattern:
-
-```python
-ws = PlanWorkspace.from_request(request)
-ref = await ws.publish("congestion_report.json", json.dumps(report).encode(), format="json")
-# return AgentTaskResult(..., artifact_refs=ws.published_refs)
-```
 
 ---
 
@@ -145,7 +131,6 @@ ref = await ws.publish("congestion_report.json", json.dumps(report).encode(), fo
 |------|--------|
 | [`../models.py`](../models.py) | `ArtifactRef`, `ExecutionContextSnapshot` |
 | [`../memory/README.md`](../memory/README.md) | Small agent-local state |
-| [`../../../domains/eda/context.py`](../../../domains/eda/context.py) | EDA context assembly |
 | [`../../../packages/config/`](../../../packages/config/) | Default storage roots and buckets |
 
 ---

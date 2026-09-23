@@ -40,7 +40,7 @@ packages/agent_sdk/src/
         └── client/            ← AgentClient (peer HTTP)
 ```
 
-[`domains/eda/server.py`](../../../domains/eda/server.py) composes many of the same pieces for EDA agents without always instantiating `AgentServer` directly.
+[`domains/server.py`](../../../domains/server.py) composes many of the same pieces for Domain agents without always instantiating `AgentServer` directly.
 
 ---
 
@@ -81,16 +81,10 @@ packages/agent_sdk/src/
 3. `runtime.execute(request)` → `AgentTaskResult`
 4. Telemetry flush of traces; release semaphore; resume idle stream
 
-**Cross-cutting models** — `ExecutionContextSnapshot` on the request carries plan summary, completed tasks, and `ArtifactRef` list for downstream EDA agents. Results append `ExecutionTrace` entries for skill calls, memory ops, and code execution.
+**Cross-cutting models** — `ExecutionContextSnapshot` on the request carries plan summary, completed tasks, and `ArtifactRef` list for downstream Domain agents. Results append `ExecutionTrace` entries for skill calls, memory ops, and code execution.
 
 ---
 
-## How EDA agents use `src/`
-
-- **Config** — Every agent’s `config.yaml` is validated into `AgentConfig` (`models.py` + `schema/`).
-- **Handlers** — EDA `EdaAgent.handle` receives the same request type; skills still come from `tools.py` via registry setup in `AgentService`.
-- **Artifacts** — Floorplan/placement agents publish large JSON/DEF via `PlanWorkspace` (`workspace/`) and return `artifact_refs` instead of embedding payloads in `artifacts`.
-- **Traces** — Tool adapters record timing in `SkillCall` payloads for signoff and debugging.
 
 ---
 
@@ -99,7 +93,6 @@ packages/agent_sdk/src/
 | Path | Notes |
 |------|--------|
 | [`../README.md`](../README.md) | Package-level overview |
-| [`../../../domains/eda/agent.py`](../../../domains/eda/agent.py) | EDA task handling |
 | [`../../../agents/backend/*/config.yaml`](../../../agents/backend/) | Per-agent SDK config examples |
 | [`../../proto/telemetry.proto`](../../proto/telemetry.proto) | Telemetry wire format |
 
@@ -118,8 +111,8 @@ packages/agent_sdk/src/
 ## Operational notes
 
 - **Import path** — Monorepo expects `PYTHONPATH` including `agent_fleet` so `packages.agent_sdk` resolves.
-- **lifecycle.py** — Use when building non-EDA domains that need journaling without copying executor logic; EDA agents often implement equivalent steps inside `EdaAgent`.
+- **lifecycle.py** — Use when building other domains that need journaling without copying executor logic; Domain agents often implement equivalent steps inside `domain handler`.
 - **Testing** — Integration tests may construct validators and runtimes without HTTP; see fleet test layout outside this package.
-- **Do not duplicate** — Silicon-wide memory and gateway clients live in other `packages/*` trees; agent-local persistence is only [`memory/`](memory/README.md).
+- **Do not duplicate** — Fleet-wide memory and gateway clients live in other `packages/*` trees; agent-local persistence is only [`memory/`](memory/README.md).
 
 Subdirectory READMEs document each module in depth (target 80–150+ lines per leaf).

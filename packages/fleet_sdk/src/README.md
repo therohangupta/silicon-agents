@@ -27,6 +27,13 @@ from packages.fleet_sdk.src.instance_registry import AgentInstanceRegistry
 | `models.py` | `Base`, `AgentModel`, `GoalModel`, `PlanModel`, `TaskModel`, `TaskExecutionModel`, `MetricEvent`; proto ↔ ORM converters |
 | `grpc_client.py` | Sync `FleetManagerClient` — one method per RPC |
 | `instance_registry.py` | `AgentInstanceRegistry` — async CRUD, heartbeats, plan execution state |
+| `formats/` | `DAGPlan`, `WorkflowGraph`, allocation and executor-facing schemas |
+| `planners/` | `BasePlanner`, `persist_dag`, `get_planner`, and `types/*` strategies + prompts |
+| `allocators/` | `BaseAllocator`, `get_allocator`, and `types/*` strategies + prompts |
+| `executor/` | Dependency-aware plan execution loop |
+| `execution_context.py` | Per-plan execution context snapshots for agent task payloads |
+| `events.py` | Gateway mutation notifications (used by service and executor) |
+| `workflows.py` | Thin aliases over `formats` workflow graph types |
 | `__init__.py` | Submodule marker |
 | `README.md` | you are here |
 

@@ -1,0 +1,52 @@
+# provider.implementation selects the class. provider.config is that class's
+# document and is not interpreted by the HTTP host. To change the design while
+# staying on ORFS, edit only the keys listed under "Changing the design" in
+# docs/EDA_TOOLCHAIN_CONTRACT.md. Paths are relative to the repository root
+# unless absolute.
+provider:
+  implementation: services.eda_toolchain.providers.orfs:ORFSProvider
+  config:
+    paths:
+      pdk_root: external/OpenROAD-flow-scripts/flow/platforms/sky130hd
+      design_root: external/OpenROAD-flow-scripts/flow/designs
+      workspace_root: .data/eda-workspaces
+      orfs_root: external/OpenROAD-flow-scripts/flow
+
+    binaries:
+      yosys: yosys
+      opensta: ~/.local/openroad/bin/openroad
+      openroad: ~/.local/openroad/bin/openroad
+      make: make
+      klayout_command: /Applications/KLayout/klayout.app/Contents/MacOS/klayout -b
+
+    version_arguments:
+      yosys: [-V]
+      opensta: [-version]
+      openroad: [-version]
+
+    design:
+      rtl: src/gcd/gcd.v
+      sdc: sky130hd/gcd/constraint.sdc
+      top: gcd
+      platform: sky130hd
+      pdn_tcl: ""
+      placement_site: unithd
+
+    collateral:
+      liberty: lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+      tech_lef: lef/sky130_fd_sc_hd.tlef
+      macro_lef: lef/sky130_fd_sc_hd_merged.lef
+
+    # Names are OpenROAD-flow-scripts variables from designs/sky130hd/gcd/config.mk.
+    # An empty ADDER_MAP_FILE keeps the platform adder mapping from overriding that design.
+    orfs_flow:
+      CORE_UTILIZATION: 38
+      TNS_END_PERCENT: 100
+      SWAP_ARITH_OPERATORS: 1
+      OPENROAD_HIERARCHICAL: 1
+      ADDER_MAP_FILE: ""
+
+    limits:
+      synthesis_timeout_seconds: 300
+      analysis_timeout_seconds: 300
+      physical_timeout_seconds: 1800

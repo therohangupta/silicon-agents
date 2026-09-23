@@ -20,6 +20,8 @@ together and opens engineering memory for the process lifetime.
 
 from __future__ import annotations
 
+# Environment selects an explicitly configured real EDA sidecar.
+import os
 # Path typing for config_path and from_agent helpers.
 from pathlib import Path
 # Optional memory injection and concrete EdaAgent subclass typing.
@@ -43,6 +45,9 @@ from .agent import EdaAgent
 from .context import ContextService
 # Shared engineering memory and its default factory.
 from .memory.service import EngineeringMemory, open_memory
+# Tool binding remains a domain concern; generic SDK code knows no EDA tools.
+from .eda import bind_eda_adapter
+from .eda.toolchain import ToolchainAdapter
 
 
 class BoundAgentRuntime(AgentRuntime):
@@ -133,6 +138,11 @@ class AgentService(AgentServer):
         """
         # Initialize HTTP routes, skills, and SDK memory from the config.
         super().__init__(config, config_path=config_path)
+        # Bind the OSS sidecar when its URL is configured (Yosys, OpenSTA, OpenROAD).
+        if os.environ.get("EDA_TOOLCHAIN_URL") or os.environ.get("EDA_FRAMEWORK") in {
+            "yosys", "opensta", "openroad", "toolchain",
+        }:
+            bind_eda_adapter(ToolchainAdapter())
         # Prefer injected memory so tests can share an in-memory store.
         self.engineering_memory = engineering_memory or open_memory()
         # Construct the domain agent with matching context service.

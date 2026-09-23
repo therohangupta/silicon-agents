@@ -20,8 +20,7 @@ eda-agent-fleet/                 # repository root
 ├── README.md
 ├── __init__.py
 ├── pyproject.toml
-├── docker-compose.yml
-├── docker-compose.dev.yml
+├── compose/                      # Docker Compose manifests
 │
 ├── docs/                         # Architecture, runbooks, contracts
 │   ├── COMPONENT_FLOWS.md
@@ -68,7 +67,7 @@ eda-agent-fleet/                 # repository root
 │   ├── __init__.py
 │   ├── cli/                      # Reserved; empty placeholder today
 │   │
-│   ├── fleet_server/             # gRPC orchestration + planners + allocators + executor
+│   ├── fleet_server/             # gRPC orchestration + executor
 │   │   ├── Dockerfile
 │   │   └── src/
 │   │       ├── __main__.py       # Process entry
@@ -77,17 +76,8 @@ eda-agent-fleet/                 # repository root
 │   │       ├── README.md
 │   │       ├── executor/
 │   │       │   └── executor.py
-│   │       ├── planners/
-│   │       │   ├── base.py
-│   │       │   └── types/<dag|big_dag|monolithic|replanner>/
-│   │       │       ├── planner.py
-│   │       │       ├── summary.yaml
-│   │       │       ├── system.prompt
-│   │       │       └── user.prompt
-│   │       ├── allocators/
-│   │       │   ├── base.py
-│   │       │   └── types/<lp|llm|cost_based>/
-│   │       │       ├── allocator.py
+│   │       ├── planners/         # Deprecated compatibility imports
+│   │       └── allocators/       # Deprecated compatibility imports
 │   │       │       ├── summary.yaml
 │   │       │       └── *.prompt (as applicable)
 │   │       └── formats/
@@ -237,10 +227,14 @@ This section answers: “If the UI does X, which components and files run?”
 - **Gateway ⇄ Fleet (gRPC)**: `services/gateway/src/grpc_bridge.py`
 - **Fleet gRPC service**: `services/fleet_server/src/service.py`
 - **Fleet process entry**: `services/fleet_server/src/__main__.py`
-- **Execution loop**: `services/fleet_server/src/executor/executor.py` (uses `packages/agent_sdk/src/client/agent_client.py`)
-- **Planners / allocators**:
-  - `services/fleet_server/src/planners/types/<name>/planner.py`
-  - `services/fleet_server/src/allocators/types/<name>/allocator.py`
+- **Execution loop**: `packages/fleet_sdk/src/executor/executor.py` (uses `packages/agent_sdk/src/client/agent_client.py`)
+- **Execution context**: `packages/fleet_sdk/src/execution_context.py`
+- **Graph / allocation schemas**: `packages/fleet_sdk/src/formats/formats.py`
+- **Planning / allocation strategies and prompts**:
+  - `packages/fleet_sdk/src/planners/base.py`
+  - `packages/fleet_sdk/src/planners/types/<monolithic|dag|big_dag|replanner>/`
+  - `packages/fleet_sdk/src/allocators/base.py`
+  - `packages/fleet_sdk/src/allocators/types/<lp|llm|cost_based|deterministic>/`
 - **DB access (models + registry)**: `packages/fleet_sdk/src/instance_registry.py`, `packages/fleet_sdk/src/models.py`
 - **Realtime**: `services/gateway/src/routers/websocket.py` (WebSocket subscribers + `POST /internal/events` from Fleet)
 - **Agent heartbeats**: `services/telemetry/src/routers/ingest.py` → `heartbeat_store.py`; Gateway reads via `services/gateway/src/routers/telemetry.py` and `services/gateway/src/services/telemetry_client.py`
@@ -252,7 +246,7 @@ This section answers: “If the UI does X, which components and files run?”
 1. UI → Gateway: e.g. `POST /api/agents/register` (see `routers/agents.py`).
 2. Gateway → Fleet: `grpc_bridge.py` invokes the matching gRPC RPC on `service.py`.
 3. Fleet persists via `AgentInstanceRegistry` / models in `packages/fleet_sdk/src/`.
-4. Updates propagate: Fleet notifies Gateway (`events.py` / HTTP POST to Gateway); Gateway fans out over WebSocket (`websocket.py`).
+4. Updates propagate: Fleet notifies Gateway (`packages/fleet_sdk/src/events.py` / HTTP POST to Gateway); Gateway fans out over WebSocket (`websocket.py`).
 
 #### Unregister agent
 
@@ -262,13 +256,13 @@ Same shape via `DELETE` or equivalent route in `routers/agents.py` → gRPC → 
 
 1. UI → Gateway: `POST /api/plans` (`routers/plans.py`).
 2. Gateway → Fleet: `grpc_bridge.py` → `CreatePlan` (or equivalent) handled in `service.py`.
-3. Fleet selects a planner under `planners/types/<name>/`, writes tasks/plan through `fleet_sdk`, optionally runs an allocator under `allocators/types/<name>/`.
+3. Fleet selects SDK planning/allocation strategies, materializes a `DAGPlan` through `fleet_sdk`, and emits lifecycle events.
 4. Observe: Fleet → Gateway internal event path → WebSocket clients.
 
 ### C) Allocate an existing plan
 
 1. UI → Gateway: allocate endpoint in `routers/plans.py`.
-2. Gateway → Fleet via `grpc_bridge.py`; allocator runs from `allocators/types/<name>/allocator.py`.
+2. Gateway → Fleet via `grpc_bridge.py`; Fleet invokes the SDK allocation strategy.
 3. Registry updates persist allocation; events notify subscribers.
 
 ### D) Start execution / monitor execution

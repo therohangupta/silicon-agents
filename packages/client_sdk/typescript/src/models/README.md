@@ -27,7 +27,7 @@ names may differ from gRPC after Gateway normalization.
 | Tasks | `Task` | Task boards, execution |
 | Goals | `Goal`, `GoalCreateRequest` | Goal management |
 | Strategies | `StrategiesResponse` | Planner/allocator pickers |
-| World | `Embodiment`, world-related types | Digital twin / embodiment panels |
+| Agent templates | `AgentTemplate` | Catalog entries from `GET /api/agent-templates` |
 | Methods | `MethodSummary`, `MethodDetail` | Method browser |
 
 WebSocket-specific unions live in **`../realtime/events.ts`**, not here — except

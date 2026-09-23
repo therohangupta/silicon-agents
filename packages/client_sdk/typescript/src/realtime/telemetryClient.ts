@@ -163,5 +163,3 @@ export function connectAgentTelemetry(
   return ws
 }
 
-/** `connectRobotTelemetry` — Gateway client SDK export. */
-export const connectRobotTelemetry = connectAgentTelemetry

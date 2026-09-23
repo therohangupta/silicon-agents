@@ -21,7 +21,7 @@ FastAPI CORS middleware in ``app.py``.
 # the physical location of packages.config while preserving identical values.
 from packages.config import (
     REPO_ROOT,                 # Absolute path to the agent_fleet / repo root for YAML resolution
-    AGENT_PACKAGE_DIRS,        # Roots scanned for agents/**/config.yaml embodiments
+    AGENT_PACKAGE_DIRS,        # Roots scanned for agents/**/config.yaml templates
     PLANNER_TYPES_DIR,         # Directory of planner method packages (summary.yaml + prompts)
     ALLOCATOR_TYPES_DIR,       # Directory of allocator method packages
     GRPC_SERVER_ADDRESS,       # Full host:port string for the fleet manager (preferred)

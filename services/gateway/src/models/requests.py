@@ -40,7 +40,7 @@ class AgentRegistration(BaseModel):
     Failure behavior:
         Missing ``config_path`` → FastAPI 422.
     """
-    # Required path to the embodiment YAML the fleet should register from.
+    # Required path to the agent template YAML the fleet should register from.
     config_path: str = Field(..., description="Path to agent YAML configuration")
     # Optional override; bridge may invent ``{type}-1`` when absent.
     agent_id: Optional[str] = Field(None, description="Custom agent ID (auto-generated if not provided)")
@@ -51,7 +51,7 @@ class AgentInstanceCreate(BaseModel):
     Request to register a new agent instance with network coordinates.
 
     Purpose:
-        Combine an embodiment YAML path with explicit ``agent_id``, ``host``,
+        Combine an agent template YAML path with explicit ``agent_id``, ``host``,
         and ``port`` so localhost collisions can be validated before gRPC
         registration.
 

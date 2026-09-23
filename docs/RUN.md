@@ -71,7 +71,10 @@ From the repo root:
 ./scripts/startup.sh fleets/requirements-and-rtl.yaml
 ```
 
-The fleet file lists agent directories under `agents:`. `platform-only.yaml` starts the control plane without agents.
+This starts the macOS-host EDA toolchain before the platform and agent containers.
+Agents connect to it through `host.docker.internal:8090`; no separate EDA
+terminal is required. The fleet file lists agent directories under `agents:`.
+`platform-only.yaml` starts the control plane without agents.
 
 ---
 
@@ -98,10 +101,11 @@ Use `pip install -e .` from the repo root first for Python imports and `agentctl
 
 ## Docker (scalable)
 
-Compose files live at the **repo root**: `docker-compose.yml` and `docker-compose.dev.yml`.
+Compose files live under **`compose/`** (see [compose/README.md](../compose/README.md)). Startup renders `compose/docker-compose.platform.generated.yml` from `config/platform.yaml`.
 
 ```bash
-docker compose up --build
+python scripts/render_platform_compose.py --out compose/docker-compose.platform.generated.yml
+docker compose -f compose/docker-compose.platform.generated.yml up --build
 ```
 
 This starts **Postgres**, **fleet-server** (gRPC 50051), **telemetry** (HTTP 9000), and **gateway** (HTTP 8000) in separate containers. They use the Compose network (e.g. `gateway:8000`, `telemetry:9000`, `fleet-server:50051`, `db:5432` inside the network).
@@ -191,7 +195,7 @@ docker compose up --build
 To keep **gateway** and **telemetry** live reload while still using Compose for Postgres and all services:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose -f compose/docker-compose.platform.generated.yml -f compose/docker-compose.dev.yml up --build
 ```
 
 - **Gateway**: `./services/gateway/src` and `./packages` are mounted read-only; the container runs `uvicorn ... --reload`, so edits there apply without rebuilding the image.

@@ -46,7 +46,7 @@ Resource groups (grep `gatewayClient.ts` for full list):
 | `goals` | list, get, create, delete |
 | `plans` | list, get, create, manual create, delete, allocate, start, status |
 | `tasks` | list, get, create, update, delete |
-| `world` / embodiment | world model queries |
+| `agentTemplates` | agent template catalog |
 | `methods` | method catalog for UI |
 
 Each method is a thin `fetchApi` call with typed generic from `../models/types`.

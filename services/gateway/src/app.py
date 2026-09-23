@@ -42,8 +42,8 @@ from .routers import websocket as websocket_mod
 from .routers import agent_telemetry as agent_telemetry_mod
 # In-process pub-sub used to wake WS clients on fleet mutations / shutdown.
 from .routers.websocket import event_bus
-# Back-compat /api/ports/* router defined alongside embodiments.
-from .routers.embodiments import ports_router
+# /api/ports/* helpers for agent registration.
+from .routers.agent_templates import ports_router
 # Shared httpx client used when proxying Telemetry health.
 from .services import close_telemetry_client
 # Durable NATS consumer loop for telemetry.> fan-out to WS subscribers.

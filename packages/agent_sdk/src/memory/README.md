@@ -2,7 +2,7 @@
 
 This package implements **per-agent memory**: named stores configured in `config.yaml`, accessed through `MemoryManager` and optional **`memory_*` skills** registered automatically on `AgentServer` startup.
 
-It is **not** the silicon / fleet **`packages/memory`** data plane. Agent-local memory holds scratch state, short-lived queues, or container-persistent JSON/Redis/Postgres data scoped to one agent process.
+It is **not** the fleet-wide **`packages/memory`** data plane. Agent-local memory holds scratch state, short-lived queues, or container-persistent JSON/Redis/Postgres data scoped to one agent process.
 
 ---
 
@@ -15,7 +15,7 @@ LLM and tool runtimes need a consistent way to:
 - Dump state for debugging (`GET /memory/state` on the task server)
 - Choose persistence per store (ephemeral vs file vs Redis vs Postgres)
 
-EDA agents use memory for **session context** (last congestion report, pinned parameters) without pushing everything through the plan workspace.
+Domain agents use memory for **session context** (last congestion report, pinned parameters) without pushing everything through the plan workspace.
 
 ---
 
@@ -98,14 +98,6 @@ Traces can record `MemoryOp` payloads on [`AgentTaskResult`](../models.py) when 
 
 ---
 
-## How EDA agents use memory
-
-- **config.yaml** — Declare stores like `placement_notes` with `persistence: file` and `config.path: /data/agent_memory` on a Docker volume.
-- **tools.py** — Prefer workspace for **large** artifacts; memory for **small** structured state (metrics, last tool status).
-- **LLM agents** — `tool_loop` mode exposes memory skills to the model alongside domain `@tool` functions.
-- **Observability** — Operators inspect `/memory/state` in dev; avoid exposing in untrusted networks.
-
-Do not store secrets in file-backed stores without volume permissions; use env-based DSN for Postgres.
 
 ---
 
@@ -116,7 +108,7 @@ Do not store secrets in file-backed stores without volume permissions; use env-b
 | [`backends/README.md`](backends/README.md) | Backend-specific config and Redis/Postgres ops |
 | [`../server/README.md`](../server/README.md) | Wiring and `/memory/state` route |
 | [`../models.py`](../models.py) | `MemoryStoreConfig`, `MemoryOp` |
-| [`../../../../packages/memory/`](../../../../packages/memory/) | Fleet silicon memory (separate system) |
+| [`../../../../packages/memory/`](../../../../packages/memory/) | Fleet memory plane (separate system) |
 
 ---
 

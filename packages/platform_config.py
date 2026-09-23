@@ -192,6 +192,15 @@ def published_host_ports(document: dict[str, Any] | None = None) -> set[int]:
     return found
 
 
+def _compose_relative_host_path(host_path: str) -> str:
+    """Rewrite repo-root-relative bind mounts for manifests under ``compose/``."""
+    if host_path.startswith("/") or host_path.startswith("../"):
+        return host_path
+    if host_path.startswith("./"):
+        return "../" + host_path[2:]
+    return "../" + host_path
+
+
 def _compose_secret(environment_name: str) -> str:
     """Return a Compose-only secret placeholder, never the secret itself."""
     return f"${{{environment_name}:?set {environment_name} in the repository .env}}"
@@ -421,7 +430,7 @@ def compose_values(document: dict[str, Any] | None = None) -> dict[str, str]:
         "VAULT_DEV_ROOT_TOKEN_ID": _compose_secret(doc["vault"]["token_env"]),
         "VAULT_CONTAINER_PORT": str(doc["vault"]["container_port"]),
         "VAULT_PUBLISHED_PORT": str(doc["vault"]["published_host_port"]),
-        "GIT_HOST_MOUNT": str(doc["git"]["host_mount"]),
+        "GIT_HOST_MOUNT": _compose_relative_host_path(str(doc["git"]["host_mount"])),
         "GIT_CONTAINER_PORT": str(doc["git"]["container_port"]),
         "GIT_PUBLISHED_PORT": str(doc["git"]["published_host_port"]),
         "PLATFORM_NETWORK": str(doc["agent_compose"]["external_network"]),
@@ -436,7 +445,11 @@ def compose_values(document: dict[str, Any] | None = None) -> dict[str, str]:
     }
 
 
-def render_compose_template(template: Path, output: Path) -> Path:
+def render_compose_template(
+    template: Path,
+    output: Path,
+    values: dict[str, str] | None = None,
+) -> Path:
     """Render a Compose template from ``config/platform.yaml``.
 
     The template may use only ``${NAME:?config/platform.yaml}`` placeholders.
@@ -446,13 +459,13 @@ def render_compose_template(template: Path, output: Path) -> Path:
     """
     import re
 
-    values = compose_values()
+    resolved = compose_values() if values is None else values
     marker = re.compile(r"\$\{([A-Z][A-Z0-9_]*):\?config/platform\.yaml\}")
 
     def replace(match: re.Match[str]) -> str:
         name = match.group(1)
         try:
-            value = values[name]
+            value = resolved[name]
         except KeyError as exc:
             raise PlatformConfigError(
                 f"{name} is referenced by {template} but not produced from {PLATFORM_PATH}"

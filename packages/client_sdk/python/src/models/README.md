@@ -44,7 +44,7 @@ not merge WS types into `types.py` unless sharing nested DTOs (e.g. Task).
 
 `typescript/src/models/types.ts` defines:
 
-- `Agent`, `Plan`, `Task`, `Goal`, embodiment/world types
+- `Agent`, `Plan`, `Task`, `Goal`, agent profile types
 - Request types: `PlanCreateRequest`, `GoalCreateRequest`, etc.
 
 Python should grow equivalent names for script ergonomics. Grep TS file when
@@ -85,7 +85,7 @@ unless the BFF uses it):
 | Plan id | `plan_id` | integer |
 | Execution status | `execution_status` or nested status object | confirm in TS `Plan` |
 | Task id | `task_id` | integer |
-| Assigned agent | `agent_id` | string robot id |
+| Assigned agent | `agent_id` | string agent id |
 | Dependencies | `depends_on` or `dependency_task_ids` | Gateway-specific |
 
 Always verify against a live `GET /api/plans/{id}` response before locking

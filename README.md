@@ -19,9 +19,7 @@ silicon-agents/                  # repo root (this README)
 ├── README.md
 ├── pyproject.toml               # canonical Python package (pip install -e .)
 ├── requirements.txt             # convenience dependency pins
-├── docker-compose.yml           # platform + memory-plane services
-├── docker-compose.dev.yml       # live-reload overlay
-├── docker-compose.agents.yml    # GENERATED agent project (silicon-agents)
+├── compose/                     # Docker Compose manifests (platform, agents, EDA)
 ├── fleets/                      # which agents scripts/startup.sh starts
 ├── deploy/                      # config bind-mounted into Compose
 ├── docs/                        # design / runbook index
@@ -42,4 +40,4 @@ silicon-agents/                  # repo root (this README)
 | [deploy/README.md](deploy/README.md) | Deploy-time config snippets (e.g. OpenSearch) |
 | [etched_agentic_chip_design_system_v3.md](etched_agentic_chip_design_system_v3.md) | System design the agents implement |
 
-Install and run details: [docs/RUN.md](docs/RUN.md). Inline comments document glue files (`scripts/startup.sh`, `pyproject.toml`, `requirements.txt`, `docker-compose*.yml`, `.dockerignore`).
+Install and run details: [docs/RUN.md](docs/RUN.md). Compose layout: [compose/README.md](compose/README.md).

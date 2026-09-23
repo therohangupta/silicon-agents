@@ -1,6 +1,6 @@
 # Agent SDK (`packages/agent_sdk/`)
 
-The **Agent SDK** is the shared Python library baked into every first-party agent container in the EDA Agent Fleet. It turns a directory containing `config.yaml`, `tools.py`, and `server.py` into a runnable **task server**: HTTP health checks, task execution, skill registration, optional LLM runtimes, telemetry, agent-local memory, and plan-workspace helpers.
+The **Agent SDK** is the shared Python library for first-party agent task servers in the monorepo. It turns a directory containing `config.yaml`, `tools.py`, and `server.py` into a runnable **task server**: HTTP health checks, task execution, skill registration, optional LLM runtimes, telemetry, agent-local memory, and plan-workspace helpers.
 
 Fleet orchestration (Gateway, executor, plan workspace on the control plane) lives outside this package. The SDK is the **in-process runtime** that agents import as `from packages.agent_sdk import AgentServer, tool, PlanWorkspace, …`.
 
@@ -15,12 +15,12 @@ Fleet orchestration (Gateway, executor, plan workspace on the control plane) liv
 | Callable tools | [`src/skills/`](src/skills/README.md) — `@tool`, `SkillRegistry` |
 | `config.yaml` contract | [`src/models.py`](src/models.py), [`src/schema/`](src/schema/README.md) |
 | Observability | [`src/telemetry/`](src/telemetry/README.md) — HTTP ingest + optional gRPC streams |
-| Scratch / durable agent memory | [`src/memory/`](src/memory/README.md) — not silicon `packages/memory` |
+| Scratch / durable agent memory | [`src/memory/`](src/memory/README.md) — not fleet-wide `packages/memory` |
 | Large plan artifacts | [`src/workspace/`](src/workspace/README.md) — `PlanWorkspace`, local/S3 backends |
 | Agent-to-agent HTTP | [`src/client/`](src/client/README.md) — `AgentClient` |
 | Domain lifecycle template | [`src/lifecycle.py`](src/lifecycle.py) — `TaskLifecycle` ABC |
 
-**EDA agents** in this repo often wrap the SDK indirectly: [`domains/eda/server.py`](../../domains/eda/server.py) provides `AgentService`, which still loads YAML through the same validators and models, registers skills, and dispatches to `EdaAgent.handle`. Generic SDK agents call `AgentServer.from_yaml("config.yaml")` directly. Both paths share models, skills, memory, and telemetry building blocks under `src/`.
+Domain-specific wrappers may compose these modules under `domains/`; generic agents call `AgentServer.from_yaml("config.yaml")` directly.
 
 ---
 
@@ -33,7 +33,7 @@ Fleet orchestration (Gateway, executor, plan workspace on the control plane) liv
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  Agent container (this SDK)                                    │
-│  AgentServer or domains.eda.server.AgentService              │
+│  AgentServer (or a domain-specific service wrapper)          │
 │    ├─ AgentConfigValidator ← config.yaml                     │
 │    ├─ SkillRegistry ← tools.py + memory skills               │
 │    ├─ MemoryManager ← memory.stores[]                        │
@@ -103,23 +103,10 @@ Deep imports (`from packages.agent_sdk.src.runtime...`) are reserved for SDK int
 
 ---
 
-## How EDA agents use this SDK
-
-- **Standard pattern** — Each agent under `agents/backend/.../` has `config.yaml`, `tools.py`, `agent.py`, and `server.py` using `AgentService.from_agent(config, EdaAgentSubclass)` ([example placement lead server](../../agents/backend/placement/placement_lead/server.py)).
-- **Skills** — Physical-design operations are `@tool` functions; YAML `skills:` entries bind `callable` names to Python functions ([skills README](src/skills/README.md)).
-- **Workspace** — Tasks carry `workspace_uri` and `context.available_artifacts`; agents use `PlanWorkspace.from_request(request)` to load prior DEF/JSON blobs without inlining megabytes in the POST body.
-- **Memory** — Per-agent scratch (session notes, last run metrics) via `memory.stores` in YAML; distinct from fleet-wide silicon memory services.
-- **Telemetry** — Optional `telemetry_adapter.py` beside the agent for high-frequency gRPC streams during long P&R runs.
-
-Agents that only need deterministic Python (no LLM) set `execution.mode: direct_function` and implement `async def execute(request)` or sync equivalent in `tools.py`.
-
----
-
 ## Related paths
 
 | Location | Relationship |
 |----------|----------------|
-| [`domains/eda/`](../../domains/eda/) | EDA-specific server, agent base, fleet wiring |
 | [`packages/proto/telemetry.proto`](../../packages/proto/telemetry.proto) | Event schema for telemetry client/publisher |
 | [`packages/platform_config/`](../../packages/platform_config/) | Default hosts, ports, heartbeat intervals |
 | [`config/platform.yaml`](../../config/platform.yaml) | Fleet-wide settings referenced by validators |

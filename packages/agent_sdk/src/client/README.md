@@ -63,7 +63,7 @@ Methods:
 | `execute_task(request)` | POST `{base_url}{execute_path}` | `AgentTaskResult` |
 | `close()` | — | Closes httpx client |
 
-**Timeouts** — The underlying `httpx.AsyncClient` uses `timeout=None` for execute (long EDA runs). Callers should wrap with `asyncio.wait_for` if they need bounded waits.
+**Timeouts** — The underlying `httpx.AsyncClient` uses `timeout=None` for execute (long-running tasks). Callers should wrap with `asyncio.wait_for` if they need bounded waits.
 
 **Errors** — Non-2xx responses raise via `raise_for_status()`; callers map to replan or retry using [`ReliabilityConfig`](../models.py) on the callee side.
 
@@ -80,21 +80,6 @@ Health flow: optional preflight before execute in tests or circuit-breaker patte
 
 ---
 
-## How EDA agents use this client
-
-Most production EDA agents **do not** import `AgentClient` in `tools.py`; the **fleet executor** schedules tasks. When you add cross-agent calls:
-
-- Resolve callee host/port from fleet service discovery or static compose names (e.g. `routing-lead:8260`).
-- Pass through `workspace_uri` and artifact refs in `context` so the callee can `PlanWorkspace.load`.
-- Set `required_capabilities` so callee merges `capability.skill_params` into skill kwargs ([`../server/agent_server.py`](../server/agent_server.py)).
-
-Import path (deep):
-
-```python
-from packages.agent_sdk.src.client.agent_client import AgentClient
-```
-
-Consider promoting to package `__init__.py` if agent-to-agent calls become common.
 
 ---
 
@@ -105,7 +90,6 @@ Consider promoting to package `__init__.py` if agent-to-agent calls become commo
 | [`../server/README.md`](../server/README.md) | Server routes this client calls |
 | [`../models.py`](../models.py) | Request/result types |
 | [`../../../../client_sdk/`](../../../../client_sdk/) | Gateway client (different API) |
-| [`../../../../domains/eda/fleet.py`](../../../../domains/eda/fleet.py) | Fleet-level orchestration |
 
 ---
 

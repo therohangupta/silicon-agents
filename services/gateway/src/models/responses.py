@@ -13,7 +13,7 @@ handler ever returns them directly. Defaults document typical initial states
 
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
-# Default port shown on embodiment cards when YAML omits connection.port.
+# Default port shown on template cards when YAML omits connection.port.
 from packages.config import DEFAULT_AGENT_BASE_PORT
 
 
@@ -213,25 +213,13 @@ class PlanResponse(BaseModel):
 
 
 # =============================================================================
-# Embodiment Models
+# Agent template catalog
 # =============================================================================
 
-class EmbodimentResponse(BaseModel):
-    """
-    Agent type template discovered from ``agents/**/config.yaml``.
-
-    Purpose:
-        Power the embodiment catalog UI (name, capabilities, default port,
-        config path, container image, track/eda labels, category path).
-
-    Side effects:
-        None.
-
-    Failure behavior:
-        Response validation if name/config_path missing from scanner output.
-    """
-    name: str = Field(..., description="Embodiment name")
-    description: str = Field(default="", description="Embodiment description")
+class AgentTemplateResponse(BaseModel):
+    """Agent type template discovered from ``agents/**/config.yaml``."""
+    name: str = Field(..., description="Template name")
+    description: str = Field(default="", description="Template description")
     capabilities: List[str] = Field(default_factory=list, description="Available capabilities")
     default_port: int = Field(default=DEFAULT_AGENT_BASE_PORT, description="Default task server port")
     config_path: str = Field(..., description="Path to YAML configuration")

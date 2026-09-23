@@ -1,17 +1,15 @@
 # memory
 
-Domain-agnostic **silicon memory plane** toolkit: write policies that fan out
-copies to physical stores, context assembly for LLM prompt packages, and async
-store adapters from in-memory tests through full `MemoryPlane` production
-facades.
+Domain-agnostic **memory plane** toolkit: write policies that fan out copies to
+physical stores, context assembly for LLM prompt packages, and async store
+adapters from in-memory tests through full `MemoryPlane` production facades.
 
 ## Purpose
 
-Chip-design and EDA agents persist structured **envelopes** (metadata + JSON
+Domain services and agents persist structured **envelopes** (metadata + JSON
 payload) that must land in Postgres, journals, object storage, search indexes,
-vectors, and event streams according to a design-table of placements. Domain
-code (for example `EngineeringMemory` under `domains/eda/`) supplies record
-types; this package supplies:
+vectors, and event streams according to configured placements. Domain code
+outside `packages/` supplies record types; this package supplies:
 
 - **Write path** — `WritePolicy`, `assemble_copies`, placement validation
 - **Read path for prompts** — `assemble` ranks and budget-trims already-selected
@@ -120,15 +118,13 @@ Default process backend is often `file` or `postgres` for dev; production uses
 | **client_sdk** | No direct memory plane — any UI goes through Gateway REST |
 
 Agent SDK memory backends under `agent_sdk/src/memory/` are per-agent skill
-storage; shared silicon plane is this `packages/memory` tree.
+storage; the shared memory plane is this `packages/memory` tree.
 
 ## Related documentation
 
 - `memory/stores/README.md` — adapter catalog and `MemoryStore` protocol
 - `packages/message_bus/README.md` — NATS abstraction used by NATS placement
 - `packages/config.py` — `MEMORY_*` constants
-- `domains/eda/` — EngineeringMemory integration (domain-specific)
-- Design doc memory table in `etched_agentic_chip_design_system_v3.md`
 
 ## Reading order
 

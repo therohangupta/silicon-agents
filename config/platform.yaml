@@ -125,7 +125,7 @@ agent_compose:
   project: silicon-agents
   image: agentfleet/silicon-agent:dev
   dockerfile: services/silicon_agent/Dockerfile
-  build_context: .
+  build_context: ..
   command:
     - python
     - server.py

@@ -5,7 +5,7 @@ selected, so the test follows the containers instead of a fixed pair.
 
 Locks in: host /health for each silicon-agents Compose service, docker-exec
 peer HTTP execute between two agents, fleet_server ListAgents gRPC readiness,
-and gateway /health plus /api/embodiments category alignment with the catalog.
+and gateway /health plus /api/agent-templates category alignment with the catalog.
 """
 
 from __future__ import annotations
@@ -135,9 +135,11 @@ def test_running_agents_are_healthy_and_call_each_other():
 
     import grpc
 
-    # fleet_server default local port.
-    from packages.platform_config import setting
-    channel = grpc.insecure_channel(setting("GRPC_SERVER_ADDRESS"))
+    # Use published host port — ``setting()`` may see Compose shell exports
+    # (container DNS names) that are not reachable from the test process.
+    from packages.platform_config import host_settings
+
+    channel = grpc.insecure_channel(host_settings()["GRPC_SERVER_ADDRESS"])
     # Block until the channel is ready or 10s elapse.
     grpc.channel_ready_future(channel).result(timeout=10)
     stub = fleet_manager_pb2_grpc.FleetManagerStub(channel)
@@ -145,13 +147,11 @@ def test_running_agents_are_healthy_and_call_each_other():
     listed = stub.ListAgents(fleet_manager_pb2.ListAgentsRequest(), timeout=10)
     assert listed is not None
 
-    # Gateway liveness.
-    from packages.platform_config import setting
-    gateway_url = setting("GATEWAY_URL")
+    gateway_url = host_settings()["GATEWAY_URL"]
     gateway = httpx.get(f"{gateway_url}/health", timeout=10.0)
     assert gateway.status_code == 200
     # Embodiment catalog from the gateway.
-    embodiments = httpx.get(f"{gateway_url}/api/embodiments", timeout=20.0)
+    embodiments = httpx.get(f"{gateway_url}/api/agent-templates", timeout=20.0)
     assert embodiments.status_code == 200
     by_name = {item["name"]: item for item in embodiments.json()}
     for agent in agents:

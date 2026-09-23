@@ -101,14 +101,17 @@ export interface Plan {
   execution_status?: string
 }
 
-/** interface `Embodiment` — Gateway client SDK contract type. */
-export interface Embodiment {
+/** Agent type template from the Gateway catalog (`GET /api/agent-templates`). */
+export interface AgentTemplate {
   name: string
   description: string
   capabilities: string[]
   default_port: number
   config_path: string
   container_image: string
+  category?: string
+  track?: string
+  eda?: string
 }
 
 /** interface `Strategy` — Gateway client SDK contract type. */

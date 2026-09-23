@@ -116,8 +116,7 @@ class ExecutionContextSnapshot(BaseModel):
     plan_summary: str = ""
     # Call ``completed_tasks: list[TaskSummary] = Field``.
     completed_tasks: list[TaskSummary] = Field(default_factory=list)
-    # Call ``world_facts: list[str] = Field``.
-    world_facts: list[str] = Field(default_factory=list)
+    execution_facts: list[str] = Field(default_factory=list)
     # Call ``available_artifacts: list[ArtifactRef] = Field``.
     available_artifacts: list[ArtifactRef] = Field(default_factory=list)
     agent_memory_hint: Optional[str] = None

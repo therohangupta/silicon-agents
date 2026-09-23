@@ -1,10 +1,10 @@
 """
-YAML configuration scanning for embodiments and planner/allocator methods.
+YAML configuration scanning for agent templates and planner/allocator methods.
 
 This service walks configured filesystem roots to discover:
 
 1. **Agent packages** — every ``config.yaml`` under ``AGENT_PACKAGE_DIRS``
-   becomes an embodiment template for ``GET /api/embodiments``.
+   becomes a catalog entry for ``GET /api/agent-templates``.
 2. **Planner / allocator methods** — each subdirectory under
    ``PLANNER_TYPES_DIR`` / ``ALLOCATOR_TYPES_DIR`` that contains ``summary.yaml``
    becomes a method entry for strategies and methods routers.
@@ -15,7 +15,7 @@ integer ids used by allocate/create plan RPCs.
 
 Scanning is synchronous and read-only aside from opening files. Parse errors
 for individual YAMLs are logged and skipped so one bad file does not break the
-catalog. Duplicate embodiment names (case-insensitive) keep the first seen.
+catalog. Duplicate agent template names (case-insensitive) keep the first seen.
 """
 
 from typing import List, Dict, Any, Optional
@@ -41,7 +41,7 @@ def _category_from_path(yaml_path: Path) -> str:
     Return the agent's stable full directory path under ``agents/``.
 
     Purpose:
-        Populate ``EmbodimentResponse.category`` with the same path used by
+        Populate ``AgentTemplateResponse.category`` with the same path used by
         fleet manifests, without adding a parallel taxonomy to YAML.
 
     Args:
@@ -99,13 +99,13 @@ def _capability_ids(config: dict) -> list[str]:
 
 def _parse_agent_config_yaml(yaml_path: Path) -> Optional[Dict[str, Any]]:
     """
-    Load one agent ``config.yaml`` into an embodiment dict for the catalog API.
+    Load one agent ``config.yaml`` into an agent template dict for the catalog API.
 
     Args:
         yaml_path: Path to the YAML file.
 
     Returns:
-        Embodiment field dict, or ``None`` if the file cannot be loaded.
+        AgentTemplate field dict, or ``None`` if the file cannot be loaded.
 
     Side effects:
         Reads the file from disk; logs errors on failure.
@@ -149,21 +149,21 @@ def _parse_agent_config_yaml(yaml_path: Path) -> Optional[Dict[str, Any]]:
 
 
 # =============================================================================
-# Agent package scanning (gateway GET /api/embodiments)
+# Agent package scanning (gateway GET /api/agent-templates)
 # =============================================================================
 
-def scan_embodiments() -> List[Dict[str, Any]]:
+def scan_agent_templates() -> List[Dict[str, Any]]:
     """
     Discover installable agent type templates from the repository tree.
 
     Purpose:
-        Power ``GET /api/embodiments`` and helpers that need the full catalog.
+        Power ``GET /api/agent-templates`` and helpers that need the full catalog.
 
     Args:
         None (uses ``AGENT_PACKAGE_DIRS`` from config).
 
     Returns:
-        Deduplicated list of embodiment dicts (first name wins, case-insensitive).
+        Deduplicated list of agent template dicts (first name wins, case-insensitive).
 
     Side effects:
         Walks the filesystem with ``rglob("config.yaml")`` and reads each file.
@@ -172,7 +172,7 @@ def scan_embodiments() -> List[Dict[str, Any]]:
         Skips missing roots, underscored/__pycache__ paths, and unparsable YAML.
         Never raises for individual file failures.
     """
-    embodiments: list[dict[str, Any]] = []
+    templates: list[dict[str, Any]] = []
     # Track lowercased names to avoid duplicate catalog entries.
     seen_names: set[str] = set()
 
@@ -193,9 +193,9 @@ def scan_embodiments() -> List[Dict[str, Any]]:
             if name in seen_names:
                 continue
             seen_names.add(name)
-            embodiments.append(parsed)
+            templates.append(parsed)
 
-    return embodiments
+    return templates
 
 
 def find_yaml_for_agent(agent: Dict) -> Optional[str]:
@@ -210,20 +210,20 @@ def find_yaml_for_agent(agent: Dict) -> Optional[str]:
         agent: Agent dict containing ``agent_type``.
 
     Returns:
-        Absolute path string if a matching embodiment file exists, else None.
+        Absolute path string if a matching agent template file exists, else None.
 
     Side effects:
-        Calls ``scan_embodiments()`` (full catalog scan).
+        Calls ``scan_agent_templates()`` (full catalog scan).
 
     Failure behavior:
         Returns None when type missing or file absent; does not raise.
     """
-    # Normalize type for case-insensitive match against embodiment names.
+    # Normalize type for case-insensitive match against agent template names.
     agent_type = (agent.get("agent_type") or "").lower()
     if not agent_type:
         return None
 
-    for emb in scan_embodiments():
+    for emb in scan_agent_templates():
         if emb["name"].lower() == agent_type:
             # Rehydrate absolute path from repo-relative config_path.
             path = REPO_ROOT / emb["config_path"]

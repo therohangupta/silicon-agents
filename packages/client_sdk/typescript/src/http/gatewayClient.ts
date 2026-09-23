@@ -1,14 +1,14 @@
 /**
  * @file Typed Gateway BFF HTTP client.
  *
- * One method per Gateway REST resource (agents, plans, tasks, goals, world,
- * methods). The dashboard and scripts call this instead of hand-rolling
+ * One method per Gateway REST resource (agents, plans, tasks, goals,
+ * agent templates, methods). The dashboard and scripts call this instead of hand-rolling
  * fetch URLs. Realtime updates arrive via `GatewayRealtimeClient`, not here.
  */
 
 import { fetchApi } from './fetchApi'
 import type {
-  Embodiment,
+  AgentTemplate,
   Goal,
   GoalCreateRequest,
   Plan,
@@ -50,9 +50,9 @@ export class GatewayClient {
   // Agents
   agents = {
     list: (filter = 'all') => fetchApi<Agent[]>(`/api/agents?filter=${filter}`, { baseUrl: this.baseUrl, headers: this.headers() }),
-    get: (robotId: string) => fetchApi<Agent>(`/api/agents/${robotId}`, { baseUrl: this.baseUrl, headers: this.headers() }),
-    getAllocations: (robotId: string) =>
-      fetchApi<AgentAllocationsResponse>(`/api/agents/${robotId}/allocations`, { baseUrl: this.baseUrl, headers: this.headers() }),
+    get: (agentId: string) => fetchApi<Agent>(`/api/agents/${agentId}`, { baseUrl: this.baseUrl, headers: this.headers() }),
+    getAllocations: (agentId: string) =>
+      fetchApi<AgentAllocationsResponse>(`/api/agents/${agentId}/allocations`, { baseUrl: this.baseUrl, headers: this.headers() }),
     register: (data: AgentInstanceCreateRequest) =>
       fetchApi<Agent>(`/api/agents/register`, {
         baseUrl: this.baseUrl,
@@ -60,8 +60,8 @@ export class GatewayClient {
         headers: this.headers(),
         body: JSON.stringify(data),
       }),
-    unregister: (robotId: string) =>
-      fetchApi<{ success: boolean }>(`/api/agents/${robotId}`, {
+    unregister: (agentId: string) =>
+      fetchApi<{ success: boolean }>(`/api/agents/${agentId}`, {
         baseUrl: this.baseUrl,
         method: 'DELETE',
         headers: this.headers(),
@@ -207,10 +207,11 @@ export class GatewayClient {
       }),
   }
 
-  // Embodiments
-  embodiments = {
-    list: () => fetchApi<Embodiment[]>(`/api/embodiments`, { baseUrl: this.baseUrl, headers: this.headers() }),
-    get: (name: string) => fetchApi<Embodiment>(`/api/embodiments/${name}`, { baseUrl: this.baseUrl, headers: this.headers() }),
+  agentTemplates = {
+    list: () =>
+      fetchApi<AgentTemplate[]>(`/api/agent-templates`, { baseUrl: this.baseUrl, headers: this.headers() }),
+    get: (name: string) =>
+      fetchApi<AgentTemplate>(`/api/agent-templates/${name}`, { baseUrl: this.baseUrl, headers: this.headers() }),
     suggestPort: (basePort = 8001) =>
       fetchApi<{ suggested_port: number }>(`/api/ports/suggest?base_port=${basePort}`, { baseUrl: this.baseUrl, headers: this.headers() }),
     usedPorts: () => fetchApi<{ used_ports: number[] }>(`/api/ports/used`, { baseUrl: this.baseUrl, headers: this.headers() }),

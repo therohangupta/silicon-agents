@@ -5,7 +5,7 @@ This package centralizes OpenAPI-facing schemas so routers stay thin:
 
 - ``requests`` — bodies for POST/PUT/PATCH (registration, goals, plans, tasks).
 - ``responses`` — shapes returned to the dashboard (agents, goals, plans, tasks,
-  embodiments).
+  agent templates).
 
 Re-exports below are the public surface used by routers and tests. Importing
 this package does not perform I/O; models are pure validation/documentation
@@ -29,7 +29,7 @@ from .responses import (
     GoalResponse,
     PlanResponse,
     TaskResponse,
-    EmbodimentResponse,
+    AgentTemplateResponse,
 )
 
 # Explicit public API for star-imports and documentation tooling.
@@ -47,5 +47,5 @@ __all__ = [
     "GoalResponse",
     "PlanResponse",
     "TaskResponse",
-    "EmbodimentResponse",
+    "AgentTemplateResponse",
 ]

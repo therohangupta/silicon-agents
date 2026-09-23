@@ -12,7 +12,7 @@ Different agents need different execution models:
 
 | Need | Runtime mode |
 |------|----------------|
-| Deterministic EDA tools, `EdaAgent`-style handlers | `direct_function` |
+| Deterministic tools, `domain handler`-style handlers | `direct_function` |
 | LLM chooses among registered skills | `tool_loop` (LangChain inside) |
 | Model writes Python executed in-container | `codegen` |
 | Reserved / same as direct today | `custom` |
@@ -60,7 +60,7 @@ LangChain stack also includes [`langchain_backend.py`](langchain_backend.py) hel
 - Requires **`execute(request)`** on that module (sync or async).
 - Accepts return types: `AgentTaskResult`, `dict` (kwargs for result model), or any value (wrapped as success + `artifacts.result`).
 
-**EDA default** — Most backend agents use this mode indirectly: domain server forwards to `EdaAgent.handle`, but standalone SDK agents use `tools.execute` the same way.
+**Typical default** — Most backend agents use this mode indirectly: domain server forwards to `domain handler.handle`, but standalone SDK agents use `tools.execute` the same way.
 
 ---
 
@@ -72,7 +72,7 @@ LangChain stack also includes [`langchain_backend.py`](langchain_backend.py) hel
 - System prompt may be inline or path ending in `.prompt`, `.txt`, `.md`.
 - Binds registry tools as LangChain tools; records `SkillCall`, `MemoryOp` on result.
 
-Use for exploratory agents; production EDA tools often stay direct for determinism.
+Use for exploratory agents; production tools often stay direct for determinism.
 
 ---
 
@@ -83,7 +83,7 @@ Use for exploratory agents; production EDA tools often stay direct for determini
 - `CodeExecutionRunner` executes Python with timeout from `ReliabilityConfig.task_timeout_secs`.
 - Traces include `code_execution` payloads; may publish workspace artifacts via skills inside runner.
 
-Relevant for agents that emit scripts to orchestrate OpenROAD or batch checks.
+Relevant for agents that emit scripts to orchestrate external toolchains or batch checks.
 
 ---
 
@@ -98,13 +98,6 @@ Relevant for agents that emit scripts to orchestrate OpenROAD or batch checks.
 
 ---
 
-## How EDA agents use runtimes
-
-- **`config.yaml`** — Set `execution.mode: direct_function` for clock/placement/routing agents driven by `EdaAgent`.
-- **LLM experiments** — Switch to `tool_loop`, configure `backend.provider` and API keys in deployment env.
-- **Codegen** — Rare in current fleet; enable `codegen` when tasks ask the model to write analysis scripts with sandbox execution.
-
-[`domains/eda/server.py`](../../../domains/eda/server.py) may substitute a bound runtime while reusing the same skill registry and memory instances.
 
 ---
 
@@ -122,7 +115,7 @@ Relevant for agents that emit scripts to orchestrate OpenROAD or batch checks.
 ## Newcomer reading order
 
 1. [`base.py`](base.py)
-2. [`direct_function_runtime.py`](direct_function_runtime.py) — match most EDA agents
+2. [`direct_function_runtime.py`](direct_function_runtime.py) — match most Domain agents
 3. [`../server/README.md`](../server/README.md) — mode selection
 4. [`langchain_runtime.py`](langchain_runtime.py) — only if using LLM mode
 5. [`codegen_runtime.py`](codegen_runtime.py) + [`codegen_runner.py`](codegen_runner.py) — codegen path

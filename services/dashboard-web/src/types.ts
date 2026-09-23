@@ -62,7 +62,7 @@ export interface AgentStatus {
 export interface Agent {
   /** Unique agent identifier used in allocations and telemetry keys. */
   agent_id: string
-  /** Embodiment / capability type (e.g. manipulator, mobile base). */
+  /** Agent type label from registration (matches a catalog template name). */
   agent_type: string
   /** Optional free-text description from the agent config. */
   description?: string
@@ -153,18 +153,18 @@ export interface Plan {
 }
 
 /**
- * Agent type template (embodiment) used when registering new agent instances.
+ * Agent type template used when registering new agent instances.
  */
-export interface Embodiment {
+export interface AgentTemplate {
   /** Template name / key. */
   name: string
-  /** Human description of the embodiment. */
+  /** Human description of the template. */
   description: string
   /** Default capability list for agents spawned from this template. */
   capabilities: string[]
   /** Suggested starting port for the task server. */
   default_port: number
-  /** Path to the embodiment config on the server filesystem. */
+  /** Path to the agent config on the server filesystem. */
   config_path: string
   /** Docker image used when launching containerized agents. */
   container_image: string
@@ -197,10 +197,10 @@ export interface StrategiesResponse {
 // =============================================================================
 
 /**
- * Payload to register a concrete agent instance from an embodiment config.
+ * Payload to register a concrete agent instance from a template config.
  */
 export interface AgentInstanceCreateRequest {
-  /** Server-side path to the agent / embodiment config file. */
+  /** Server-side path to the agent config file. */
   config_path: string
   /** Desired unique agent id. */
   agent_id: string

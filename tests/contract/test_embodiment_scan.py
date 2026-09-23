@@ -1,6 +1,6 @@
 """Agent directory scan matches the checked-in agent packages.
 
-Locks in ``services.gateway.src.services.yaml_scanner.scan_embodiments``:
+Locks in ``services.gateway.src.services.yaml_scanner.scan_agent_templates``:
 silicon catalog agents appear, legacy physical/digital demo names do not,
 and every entry points at a real ``config.yaml`` with a non-demo category.
 """
@@ -10,16 +10,16 @@ from __future__ import annotations
 from pathlib import Path
 
 # Gateway scanner under contract.
-from services.gateway.src.services.yaml_scanner import scan_embodiments
+from services.gateway.src.services.yaml_scanner import scan_agent_templates
 
 # agent_fleet root (tests/contract -> parents[2]).
 REPO = Path(__file__).resolve().parents[2]
 
 
 def test_scan_lists_agent_directories():
-    """scan_embodiments lists silicon agents with valid config paths/categories."""
+    """scan_agent_templates lists silicon agents with valid config paths/categories."""
     # Perform a full tree scan of agent packages.
-    found = scan_embodiments()
+    found = scan_agent_templates()
     # Index by embodiment name for membership checks.
     names = {entry["name"] for entry in found}
     # Known silicon agents must be discoverable.

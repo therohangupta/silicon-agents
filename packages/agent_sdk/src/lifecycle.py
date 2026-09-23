@@ -17,7 +17,7 @@ from .models import AgentTaskRequest, AgentTaskResult
 class TaskLifecycle(ABC):
     """Reliable task control flow reusable by any agent domain.
 
-    No hook or field assumes a design, robot, user, record type, state
+    No hook or field assumes a particular domain entity, user, record type, state
     machine, store, or tool framework. ``task``, ``context``, and ``result``
     are opaque domain values.
     """

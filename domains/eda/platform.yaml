@@ -1,0 +1,9 @@
+# EDA domain platform settings (not part of packages/platform_config schema).
+# The EDA binaries run on the macOS host; agent containers reach this service
+# through Docker Desktop's host.docker.internal DNS name.
+
+toolchain:
+  bind_host: 127.0.0.1
+  port: 8090
+  agent_host: host.docker.internal
+  framework: toolchain

@@ -36,6 +36,14 @@ node_modules
 # Runtime bind-mount data (nats/telemetry/git/dashboard); not part of the image.
 .data
 
+# Native EDA builds consume these pinned OSS sources. Other external material
+# remains excluded so service build contexts stay bounded.
+external/*
+!external/OpenROAD/
+!external/OpenROAD/**
+!external/OpenROAD-flow-scripts/
+!external/OpenROAD-flow-scripts/**
+
 # Coverage data files from host test runs.
 .coverage
 

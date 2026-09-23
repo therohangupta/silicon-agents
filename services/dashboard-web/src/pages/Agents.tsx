@@ -503,7 +503,7 @@ function OverviewTab({ agent, health }: { agent: Agent, health?: AgentHealth }) 
       {/* Technical Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <InfoCard
-          title="Embodiment"
+          title="Agent template"
           value={agent.agent_type}
           icon={<Bot className="w-5 h-5" />}
         />
@@ -1413,7 +1413,7 @@ function RegisterAgentModal({
             required
           />
           <p className="text-xs text-[var(--color-text-muted)] mt-1">
-            Path to the embodiment YAML (relative to project root)
+            Path to the agent config YAML (relative to project root)
           </p>
         </div>
 

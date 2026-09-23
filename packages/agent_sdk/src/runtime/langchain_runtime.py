@@ -114,10 +114,10 @@ def _build_system_message(system_prompt: str, request: AgentTaskRequest) -> str:
             )
             # Call ``context_lines.append``.
             context_lines.append(f"Completed tasks: {summaries}")
-        # Only when (ctx.world_facts).
-        if ctx.world_facts:
-            # Call ``context_lines.append``.
-            context_lines.append("Known facts:\n" + "\n".join(f"- {f}" for f in ctx.world_facts))
+        if ctx.execution_facts:
+            context_lines.append(
+                "Known facts:\n" + "\n".join(f"- {f}" for f in ctx.execution_facts)
+            )
         # Only when (ctx.available_artifacts).
         if ctx.available_artifacts:
             # Local ``artifact_lines`` ← [].

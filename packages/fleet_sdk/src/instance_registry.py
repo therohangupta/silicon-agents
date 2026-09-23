@@ -685,7 +685,8 @@ class AgentInstanceRegistry:
         plan_id: Optional[int] = None,
         dependency_task_ids: Optional[List[int]] = None,
         status: int = fleet_manager_pb2.TaskStatus.TASK_PENDING,
-        agent_type: Optional[str] = None  # Add agent_type parameter
+        agent_type: Optional[str] = None,
+        required_capabilities: Optional[List[str]] = None,
     ) -> Optional[fleet_manager_pb2.Task]:
         """Create a new task and assign it optionally to a agent and goal"""
         async with self.async_session_factory() as session:
@@ -738,7 +739,8 @@ class AgentInstanceRegistry:
                     # Local ``status`` ← status,.
                     status=status,
                     # Local ``agent_type`` ← agent_type  # Pass agent_type to the model.
-                    agent_type=agent_type  # Pass agent_type to the model
+                    agent_type=agent_type,
+                    required_capabilities=required_capabilities or [],
                 )
                 # Call ``session.add``.
                 session.add(new_task)
@@ -1372,7 +1374,7 @@ class AgentInstanceRegistry:
         result: Dict[str, Any],
         context_snapshot: Optional[Dict[str, Any]] = None,
     ) -> None:
-        """Persist a structured task execution result for world-state reconstruction."""
+        """Persist a structured task execution result for execution-context reconstruction."""
         async with self.async_session_factory() as session:
             # Local ``execution`` ← TaskExecutionModel(.
             execution = TaskExecutionModel(

@@ -2,7 +2,7 @@
 
 Hosts **`AgentServer`**, the FastAPI application factory that wires validated config, skills, memory, runtime, and telemetry, then serves health and task endpoints on the agent’s **`connection.port`**.
 
-Generic SDK agents run `AgentServer.from_yaml("config.yaml").run()`. EDA agents often use [`domains/eda/server.AgentService`](../../../domains/eda/server.py) instead, which reuses the same models and patterns; this module is the reference HTTP stack.
+Generic SDK agents run `AgentServer.from_yaml("config.yaml").run()`. Domain agents often use [`domains/server.AgentService`](../../../domains/server.py) instead, which reuses the same models and patterns; this module is the reference HTTP stack.
 
 ---
 
@@ -132,26 +132,6 @@ On shutdown: stop idle stream, close publisher, close telemetry client, `await m
 
 ---
 
-## How EDA agents use this server
-
-Many EDA `server.py` files use **`AgentService.from_agent(config, AgentClass)`** rather than importing `AgentServer` directly. That service still:
-
-- Validates YAML through the same schema layer
-- Registers tools and serves `/tasks/execute` on the port in config
-
-When prototyping a minimal agent without `domains.eda`, use:
-
-```python
-from packages.agent_sdk import AgentServer
-
-server = AgentServer.from_yaml(Path(__file__).parent / "config.yaml")
-app = server.app
-
-if __name__ == "__main__":
-    server.run()
-```
-
-Place `@tool` functions in `tools.py` and set `execution.mode: direct_function` with `tools.execute`.
 
 ---
 
@@ -163,7 +143,6 @@ Place `@tool` functions in `tools.py` and set `execution.mode: direct_function` 
 | [`../skills/README.md`](../skills/README.md) | Registry behavior |
 | [`../telemetry/README.md`](../telemetry/README.md) | Client and publisher |
 | [`../../../agents/TELEMETRY.md`](../../../agents/TELEMETRY.md) | Adapter authoring |
-| [`../../../domains/eda/server.py`](../../../domains/eda/server.py) | EDA FastAPI wrapper |
 
 ---
 

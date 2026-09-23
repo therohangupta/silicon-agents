@@ -1,7 +1,7 @@
 """
 Agent management REST endpoints (``/api/agents``).
 
-Handles agent registration from YAML embodiments, unregistration, health checks
+Handles agent registration from YAML templates, unregistration, health checks
 (Telemetry heartbeats by default, or direct HTTP probes), YAML detail/refresh,
 and allocation summary queries against the instance registry database.
 

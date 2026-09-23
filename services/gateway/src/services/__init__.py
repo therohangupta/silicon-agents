@@ -6,7 +6,7 @@ package holds reusable operations that may be shared across multiple routes:
 
 - Direct agent HTTP health probes (legacy/fallback).
 - Telemetry service HTTP client (preferred heartbeat-based health).
-- YAML scanners for embodiments and planner/allocator method metadata.
+- YAML scanners for agent templates and planner/allocator method metadata.
 - Localhost port occupancy helpers for agent registration.
 
 Importing this package re-exports the common entry points listed in ``__all__``.
@@ -18,7 +18,7 @@ No network I/O occurs at import time; clients and scanners run when called.
 from .agent_health import check_agent_health, check_all_agents_health
 # Filesystem discovery of agent packages and planner/allocator summaries.
 from .yaml_scanner import (
-    scan_embodiments,
+    scan_agent_templates,
     scan_planner_types,
     scan_allocator_types,
     scan_all_method_types,
@@ -46,7 +46,7 @@ __all__ = [
     "get_telemetry_agent_health",
     "close_telemetry_client",
     # YAML scanning
-    "scan_embodiments",
+    "scan_agent_templates",
     "scan_planner_types",
     "scan_allocator_types",
     "scan_all_method_types",

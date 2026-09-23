@@ -108,14 +108,6 @@ Events carry monotonic `sequence_id` per client/publisher instance for ordering 
 
 ---
 
-## How EDA agents use telemetry
-
-- **Default** — Every agent with observability config sends heartbeats and task events without custom code.
-- **Long runs** — P&R or routing repair agents add `telemetry_adapter.py` next to `config.yaml` for dense progress ([`agents/TELEMETRY.md`](../../../agents/TELEMETRY.md)).
-- **Episodes** — `AgentTaskRequest.record_episode` passed into adapter `stream_task(..., persist=...)`.
-- **EDA tools** — Skill traces help correlate OpenROAD adapter calls with planner task ids.
-
-Configure streams list in YAML under `observability.telemetry.streams` for documentation; ingest routing uses `stream_name` on each emit.
 
 ---
 

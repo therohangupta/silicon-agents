@@ -8,7 +8,7 @@ Concrete **`MemoryBackend`** implementations selected by [`MemoryManager`](../lo
 
 Agent containers need predictable storage semantics for **named stores** without each agent reimplementing Redis or Postgres access. Backends map `MemoryStoreConfig.type` (`key_value`, `list`, `queue`, `vector`) to appropriate data structures while honoring read/write/search/clear/dump for skills and runtimes.
 
-Production EDA deployments often use **file** (volume-mounted) or **redis** for multi-replica agents; **ephemeral** dict is the default for dev and stateless tools.
+Production deployments often use **file** (volume-mounted) or **redis** for multi-replica agents; **ephemeral** dict is the default for dev and stateless tools.
 
 ---
 
@@ -68,7 +68,7 @@ Use for unit tests and agents with no cross-restart state requirement.
 - Root directory: `config.path` or `/data/agent_memory` (created at init).
 - Each store persisted as `{store.id}.json`.
 - Load/save on each operation (simple, not high-QPS).
-- Suitable for **single-replica** EDA agents with Docker volume mounts.
+- Suitable for **single-replica** Domain agents with Docker volume mounts.
 
 Operational tip: backup the volume path before agent upgrades if stores hold non-reproducible tuning state.
 
@@ -113,23 +113,6 @@ Search APIs accept a string query; non-vector backends implement pragmatic text 
 
 ---
 
-## How EDA agents use backends
-
-- **Placement/routing leads** — File persistence for experiment IDs and last-good parameters across restarts on the same volume.
-- **Stateless signoff tools** — Ephemeral dict only; YAML `memory.stores: []` still allows implicit ad hoc stores.
-- **Shared fleet Redis** — Multiple agent replicas read the same store when horizontal scaling is enabled (watch key prefix and TTL in YAML).
-
-Example YAML fragment:
-
-```yaml
-memory:
-  stores:
-    - id: run_context
-      type: key_value
-      persistence: file
-      config:
-        path: /data/placement_lead_memory
-```
 
 ---
 

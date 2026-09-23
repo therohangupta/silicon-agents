@@ -358,6 +358,8 @@ enum AllocationStrategy {
     NONE = 4;
     // Manual allocation of agents to tasks.
     MANUAL_ALLOCATION = 5;
+    // Stable capability/type-aware assignment without an LLM or solver.
+    DETERMINISTIC = 6;
 }
 
 // --- Core Objects ---
@@ -406,6 +408,8 @@ message Task {
     optional string agent_type = 8;
     // Execution result / output after completion.
     optional string result = 9;
+    // Capability requirements supplied by the proposed DAG node.
+    repeated string required_capabilities = 10;
 }
 
 // High-level goal that planners expand into tasks.

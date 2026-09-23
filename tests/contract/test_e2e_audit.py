@@ -12,7 +12,7 @@ from pathlib import Path
 # Schema validator for agentfleet/v1 YAML.
 from packages.agent_sdk.src.schema.validator import AgentConfigValidator
 # Gateway helpers that map registry names to on-disk YAML.
-from services.gateway.src.services.yaml_scanner import find_yaml_for_agent, scan_embodiments
+from services.gateway.src.services.yaml_scanner import find_yaml_for_agent, scan_agent_templates
 
 # agent_fleet root.
 REPO = Path(__file__).resolve().parents[2]
@@ -38,9 +38,9 @@ def test_agents_are_flat_packages():
     assert len(names) >= 70
 
 
-def test_embodiment_catalog_matches_packages():
+def test_agent_template_catalog_matches_packages():
     """Gateway scan name set equals on-disk config.yaml parent names."""
-    assert {entry["name"] for entry in scan_embodiments()} == {path.parent.name for path in AGENT_CONFIGS}
+    assert {entry["name"] for entry in scan_agent_templates()} == {path.parent.name for path in AGENT_CONFIGS}
 
 
 def test_find_yaml_for_registered_type():

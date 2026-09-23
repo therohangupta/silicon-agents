@@ -159,7 +159,9 @@ def render_compose(agents: list[SelectedAgent]) -> str:
     import yaml
 
     platform = load_platform()["agent_compose"]
-    environment = agent_environment()
+    from domains.eda.platform_config import merge_agent_environment
+
+    environment = merge_agent_environment()
     # Build the services mapping keyed by agent_id.
     services = {}
     # One compose service per selected agent.

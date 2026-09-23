@@ -134,6 +134,8 @@ class TaskModel(Base):
     dependency_task_ids = Column(JSON, nullable=True, default=[])
     # Desired agent type when agent_id is not yet bound.
     agent_type = Column(String, nullable=True)
+    # Explicit capability requirements supplied by the task graph.
+    required_capabilities = Column(JSON, nullable=False, default=list)
     # Execution result / output text after completion.
     result = Column(Text, nullable=True)  # Execution result/output
     # ORM relationships back to goal / agent / plan.
@@ -252,7 +254,12 @@ def task_model_to_proto(task_model: TaskModel) -> fleet_manager_pb2.Task:
         # Local ``agent_type`` ← task_model.agent_type if task_model.agent_type is not None else "….
         agent_type=task_model.agent_type if task_model.agent_type is not None else "", # Add agent_type to proto
         # Local ``result`` ← task_model.result if task_model.result is not None else "" # Add ….
-        result=task_model.result if task_model.result is not None else "" # Add result to proto
+        result=task_model.result if task_model.result is not None else "", # Add result to proto
+        required_capabilities=(
+            task_model.required_capabilities
+            if isinstance(task_model.required_capabilities, list)
+            else []
+        ),
     )
     # Conditionally set optional fields if they have values
     if task_model.agent_id is not None:

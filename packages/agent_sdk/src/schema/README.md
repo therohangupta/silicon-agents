@@ -1,6 +1,6 @@
 # Agent SDK — config schema (`packages/agent_sdk/src/schema/`)
 
-Validates and normalizes each agent’s **`config.yaml`** into a typed **`AgentConfig`** ([`../models.py`](../models.py)). Used at process startup by [`AgentServer.from_yaml`](../server/agent_server.py) and EDA [`AgentService`](../../../domains/eda/server.py) loaders.
+Validates and normalizes each agent’s **`config.yaml`** into a typed **`AgentConfig`** ([`../models.py`](../models.py)). Used at process startup by [`AgentServer.from_yaml`](../server/agent_server.py) and domain [`AgentService`](../../../domains/) loaders loaders.
 
 ---
 
@@ -104,14 +104,6 @@ Use when a script needs JSON-serializable config without constructing server obj
 
 ---
 
-## How EDA agents use this layer
-
-- Every agent under `agents/backend/**/config.yaml` is validated through this code path when `server.py` starts.
-- **Capabilities** align with fleet registry entries; permissive extra fields on `CapabilitySpec` allow domain-specific metadata.
-- **Reliability** (`task_timeout_secs`, `on_failure: replan`) informs executor behavior when reading health/reliability from `/health`.
-- **Deployment** section documents Docker image/resources for fleet generators (not enforced inside validator).
-
-When adding a new config field, update **`AgentConfig`** in [`models.py`](../models.py) first, then document in agent template YAML.
 
 ---
 

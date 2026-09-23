@@ -1,16 +1,12 @@
 """
 Fleet Server ``src`` package.
 
-This package contains the runnable Fleet Manager service implementation:
+Runnable gRPC service only:
 
-  - ``service.py`` — gRPC ``FleetManagerServicer`` and ``serve()`` entry.
-  - ``__main__.py`` — CLI bootstrap (port, DB reset, signal handling).
-  - ``events.py`` — Gateway fire-and-forget mutation notifications.
-  - ``world_state.py`` — per-plan execution context snapshots for agents.
-  - ``planners/`` — planning strategies (monolithic, DAG, big DAG, replanner).
-  - ``allocators/`` — allocation strategies (LP, LLM, cost-based).
-  - ``executor/`` — dependency-aware task dispatch and reliability.
-  - ``formats/`` — Pydantic schemas shared by planners and allocators.
+  - ``service.py`` — ``FleetManagerServicer`` and ``serve()``
+  - ``__main__.py`` — CLI bootstrap
+  - ``events.py`` — re-exports SDK gateway emit helpers
 
-Running ``python -m services.fleet_server.src`` executes ``__main__.main``.
+Planning, allocation, formats, execution, and execution context live under
+``packages/fleet_sdk/src/``.
 """

@@ -19,7 +19,7 @@ layer that keeps ports, protos, and client contracts identical across
 | gRPC wire schema | `proto/` | `fleet_server`, `fleet_sdk`, telemetry |
 | Fleet ORM + gRPC client + registry | `fleet_sdk/` | `fleet_server`, Gateway gRPC bridge |
 | Per-agent HTTP server / runtime | `agent_sdk/` | Agent Docker images (documented separately) |
-| Silicon memory plane | `memory/` | Domain `EngineeringMemory`, agents |
+| Memory plane | `memory/` | Domain services, agents |
 | Durable pub/sub | `message_bus/` | Telemetry projection, memory NATS copies |
 | Gateway HTTP/WebSocket clients | `client_sdk/` | Dashboard, CLIs, scripts |
 
@@ -143,15 +143,13 @@ and memory event writers stay transport-agnostic.
 - `README.md` — monorepo-wide startup and Compose
 - `services/fleet_server/` — FleetManager servicer implementation
 - `services/gateway/` — REST + WebSocket BFF (names may vary; search for Gateway)
-- `etched_agentic_chip_design_system_v3.md` — memory-plane physical storage table
-
 ## Recommended reading order
 
 1. **`config.py`** (skim assignments) and **`config/platform.yaml`** (structure).
 2. **`proto/README.md`** then skim `fleet_manager.proto` / `telemetry.proto`.
 3. **`fleet_sdk/README.md`** — how RPCs become Postgres rows.
 4. **`client_sdk/README.md`** — external API surface for UIs.
-5. **`memory/README.md`** — if you touch agent memory or EngineeringMemory.
+5. **`memory/README.md`** — if you touch agent memory or the shared memory plane.
 6. **`message_bus/README.md`** — if you add consumers or new subjects.
 7. **`agent_sdk/`** — when implementing or debugging an agent container.
 
