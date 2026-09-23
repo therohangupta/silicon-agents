@@ -33,7 +33,7 @@ from typing import Optional
 # HTTP client used when delivering a pulled dispatch message to an agent.
 from packages.agent_sdk.src.client.agent_client import AgentClient
 # Request/result models carried inside the JetStream payload.
-from packages.agent_sdk.src.models import AgentTaskRequest, AgentTaskResult
+from packages.agent_sdk.src.contracts import AgentTaskRequest, AgentTaskResult
 # Message bus abstractions for subscribe/ack.
 from packages.message_bus import Message, Subscription
 # NATS JetStream implementation of the message bus.

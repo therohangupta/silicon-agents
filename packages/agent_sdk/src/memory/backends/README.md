@@ -122,8 +122,8 @@ Search APIs accept a string query; non-vector backends implement pragmatic text 
 |------|--------|
 | [`../README.md`](../README.md) | MemoryManager and skills |
 | [`../base.py`](../base.py) | Abstract interface |
-| [`../../models.py`](../../models.py) | `MemoryStoreConfig` |
-| [`../../schema/validator.py`](../../schema/validator.py) | Legacy memory YAML migration |
+| [`../../contracts/`](../../contracts/) and [`../../config/`](../../config/) | `MemoryStoreConfig` |
+| [`../../config/load.py`](../../config/load.py) | `load_agent_config` and environment expansion |
 
 ---
 

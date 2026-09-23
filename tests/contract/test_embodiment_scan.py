@@ -1,7 +1,7 @@
 """Agent directory scan matches the checked-in agent packages.
 
 Locks in ``services.gateway.src.services.yaml_scanner.scan_agent_templates``:
-silicon catalog agents appear, legacy physical/digital demo names do not,
+silicon registered agents appear, legacy physical/digital demo names do not,
 and every entry points at a real ``config.yaml`` with a non-demo category.
 """
 

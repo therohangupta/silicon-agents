@@ -17,17 +17,17 @@ from pathlib import Path
 # AgentServer + request model for codegen execution.
 from packages.agent_sdk import AgentServer, AgentTaskRequest
 # Validator + env expansion helper under test.
-from packages.agent_sdk.src.schema.validator import AgentConfigValidator, _expand_env_string
+from packages.agent_sdk.src.config.load import expand_env_string, load_agent_config
 
 
 def test_expand_env_default_syntax():
     """``${VAR:-default}`` uses default when unset/empty and value when set."""
     # Empty string should still trigger the default branch.
     os.environ["TEST_AGENT_DB"] = ""
-    assert _expand_env_string("${TEST_AGENT_DB:-sqlite:///tmp/test.db}") == "sqlite:///tmp/test.db"
+    assert expand_env_string("${TEST_AGENT_DB:-sqlite:///tmp/test.db}") == "sqlite:///tmp/test.db"
     # Non-empty overrides the default.
     os.environ["TEST_AGENT_DB"] = "postgres://real"
-    assert _expand_env_string("${TEST_AGENT_DB:-sqlite:///tmp/test.db}") == "postgres://real"
+    assert expand_env_string("${TEST_AGENT_DB:-sqlite:///tmp/test.db}") == "postgres://real"
     # Clean up so later tests are not polluted.
     del os.environ["TEST_AGENT_DB"]
 
@@ -60,7 +60,7 @@ capabilities:
 skills: []
 """
         )
-        config = AgentConfigValidator().validate_file(cfg_path)
+        config = load_agent_config(cfg_path)
         # Default endpoint applied because MISSING_TELEMETRY is unset.
         assert config.observability.telemetry.endpoint == "http://telemetry:9000"
 

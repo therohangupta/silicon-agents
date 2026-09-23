@@ -11,7 +11,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from .models import AgentTaskRequest, AgentTaskResult
+from .contracts import AgentTaskRequest, AgentTaskResult
 
 
 class TaskLifecycle(ABC):

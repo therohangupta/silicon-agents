@@ -1,24 +1,15 @@
-"""Module ``agent_sdk/src/__init__.py``.
+"""Agent runtime, transport contracts, skill declarations, and telemetry."""
 
-Agent SDK: HTTP task server, runtimes, skills, telemetry publisher, and workspace helpers for first-party agents.
-
-Part of the agent SDK server/runtime stack: agents import these helpers to serve tasks over HTTP, run LLM/tool loops, publish telemetry, and persist plan workspaces.
-
-Hand-written source for ``__init__.py``. Behavior is unchanged; comments document control-plane / agent-runtime intent for maintainers.
-"""
-
-from .models import (
+from .config import AgentConfig, ReliabilityConfig
+from .contracts import (
     AgentTaskRequest,
     AgentTaskResult,
-    AgentHealth,
-    AgentConfig,
     CodeExecution,
     ExecutionTrace,
     ExecutionContextSnapshot,
-    ReliabilityConfig,
 )
+from .server import AgentHealth
 
-# Local ``__all__`` ← [.
 __all__ = [
     "AgentConfig",
     "AgentTaskRequest",

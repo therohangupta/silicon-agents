@@ -3,7 +3,7 @@
 
 Provides a command tree over ``FleetManagerClient`` gRPC: agent
 register/unregister/list/status, and nested ``goal``, ``task``, and ``plan``
-groups. YAML agent configs are validated via ``YAMLValidator`` before
+groups. YAML agent configs are validated via ``load_agent_config_dict`` before
 registration. Pretty-printing is delegated to ``printer``. Deploy/undeploy
 commands remain commented out (not yet implemented on the server).
 
@@ -26,7 +26,7 @@ from typing import Optional, List
 # Protobuf symbols used when decoding agent status state names.
 from packages.proto import fleet_manager_pb2
 # Validates agent YAML against the agentfleet/v1 schema.
-from packages.agent_sdk.src.schema.yaml_validator import YAMLValidator
+from packages.agent_sdk.src.config.load import load_agent_config_dict
 # Shared stdout formatters and strategy Choice lists.
 from .printer import (
     print_task, print_all_tasks,
@@ -60,9 +60,7 @@ def load_agent_config(config_file: str) -> dict:
         raise click.UsageError("You must provide a config file path. Example: agentctl register my_agent.yaml")
     try:
         # Construct the schema validator used across the fleet.
-        validator = YAMLValidator()
-        # Parse + validate; returns a dict-like config structure.
-        return validator.validate_file(config_file)
+        return load_agent_config_dict(config_file)
     except Exception as e:
         # Surface validation/IO errors to the operator and abort.
         click.echo(f"Error loading config file: {str(e)}", err=True)

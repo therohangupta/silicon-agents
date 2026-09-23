@@ -29,12 +29,12 @@ def compose_values_for_render(template: Path, with_eda: bool) -> dict[str, str]:
     if not needs_eda:
         return values
     try:
-        from domains.eda.platform_config import EdaPlatformConfigError, extend_compose_values
+        from domains.eda.fleet.platform_config import EdaPlatformConfigError, extend_compose_values
 
         extend_compose_values(values)
     except ImportError as exc:
         raise PlatformConfigError(
-            "Template requires EDA toolchain placeholders but domains.eda.platform_config "
+            "Template requires EDA toolchain placeholders but domains.eda.fleet.platform_config "
             "is not importable"
         ) from exc
     except EdaPlatformConfigError as exc:

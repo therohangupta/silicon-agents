@@ -92,3 +92,8 @@ include = ["packages*", "services*", "cli*", "agents*", "domains*"]
 # So that "packages" is the top-level import (packages.proto, packages.fleet_sdk, etc.)
 [tool.setuptools.package-dir]
 "" = "."
+
+[tool.pytest.ini_options]
+# External tool source trees include their own test harnesses and are not part
+# of this repository's first-party verification surface.
+testpaths = ["tests"]

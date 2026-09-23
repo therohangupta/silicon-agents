@@ -15,14 +15,14 @@ import importlib
 import inspect
 
 from .base import AgentRuntime
-from ..models import AgentTaskRequest, AgentTaskResult, ExecutionTrace
+from ..contracts import AgentTaskRequest, AgentTaskResult, ExecutionTrace
 
 
 class DirectFunctionRuntime(AgentRuntime):
     """Deterministic execute(request) in tools module."""
 
     def __init__(self, skills, memory, module_name: str = "tools"):
-        """``DirectFunctionRuntime`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``DirectFunctionRuntime``"""
         super().__init__(skills, memory)
         # Bind ``module_name`` from module_name for later use on this instance.
         self.module_name = module_name
@@ -30,7 +30,7 @@ class DirectFunctionRuntime(AgentRuntime):
         self.module = importlib.import_module(module_name)
 
     async def execute(self, request: AgentTaskRequest) -> AgentTaskResult:
-        """``execute`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``execute``"""
         if not hasattr(self.module, "execute"):
             # Hand ``AgentTaskResult(`` back to the caller.
             return AgentTaskResult(

@@ -18,16 +18,14 @@ from pathlib import Path
 
 from .base import AgentRuntime
 from .codegen_runner import CodeExecutionRunner
-from ..models import (
+from ..config import BackendConfig, ExecutionConfig, ReliabilityConfig
+from ..contracts import (
     AgentTaskRequest,
     AgentTaskResult,
     ArtifactRef,
-    BackendConfig,
-    ExecutionConfig,
     ExecutionTrace,
-    ReliabilityConfig,
 )
-from ..memory.loader import MemoryManager
+from packages.memory.runtime import MemoryManager
 from ..skills.registry import SkillRegistry
 
 # Local ``logger`` ← logging.getLogger(__name__).
@@ -46,7 +44,7 @@ class CodegenRuntime(AgentRuntime):
         import_paths: list[str] | None = None,
         reliability: ReliabilityConfig | None = None,
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         super().__init__(skills, memory)
         # Bind ``backend`` from backend for later use on this instance.
         self.backend = backend
@@ -72,7 +70,7 @@ class CodegenRuntime(AgentRuntime):
 
     @staticmethod
     def _load_template(path: str | None) -> str | None:
-        """``_load_template`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_load_template``"""
         if not path:
             # Hand ``None`` back to the caller.
             return None
@@ -87,7 +85,7 @@ class CodegenRuntime(AgentRuntime):
         return None
 
     async def _generate_code(self, request: AgentTaskRequest) -> str:
-        """``_generate_code`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_generate_code``"""
         if self.backend.type == "langchain":
             from .langchain_backend import generate_task_code
             # Hand ``await generate_task_code(self.backend, self.skills, request)`` back to the caller.
@@ -121,7 +119,7 @@ def _main():
         return ""
 
     async def execute(self, request: AgentTaskRequest) -> AgentTaskResult:
-        """``execute`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``execute``"""
         try:
             # Local ``code`` ← request.inputs.get("code") if request.inputs else None.
             code = request.inputs.get("code") if request.inputs else None

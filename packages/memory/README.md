@@ -15,6 +15,9 @@ outside `packages/` supplies record types; this package supplies:
 - **Read path for prompts** — `assemble` ranks and budget-trims already-selected
   records; it does not fetch from stores
 - **Storage** — `MemoryStore` protocol and adapters in `stores/`
+- **Named-store runtime** — `MemoryConfig`, `MemoryStoreConfig`, `MemoryManager`,
+  and ephemeral/file/Redis/Postgres backends for any consumer that needs
+  process-scoped named stores
 
 Stores treat `scope_segments` and `scope_key` as opaque; they never interpret
 domain scope trees.

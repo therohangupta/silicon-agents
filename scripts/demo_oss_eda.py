@@ -14,12 +14,12 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RTL_AGENT_DIR = REPO_ROOT / "agents/frontend/rtl/rtl_implementation"
+RTL_AGENT_DIR = REPO_ROOT / "agents/eda/frontend/rtl/rtl_implementation"
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(RTL_AGENT_DIR))
 
-from domains.eda.eda import bind_eda_adapter
-from domains.eda.eda.toolchain import ToolchainAdapter
+from domains.eda.adapters import bind_eda_adapter
+from domains.eda.adapters.toolchain import ToolchainAdapter
 from domains.eda.memory.service import open_memory
 from domains.eda.schemas.artifact import ArtifactRef
 from domains.eda.schemas.memory import MemoryScope

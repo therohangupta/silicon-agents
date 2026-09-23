@@ -19,7 +19,7 @@ from pathlib import Path
 import pytest
 
 # Models that carry workspace URIs and artifact refs.
-from packages.agent_sdk.src.models import (
+from packages.agent_sdk.src.contracts import (
     AgentTaskRequest,
     AgentTaskResult,
     ArtifactRef,

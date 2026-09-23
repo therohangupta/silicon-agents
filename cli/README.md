@@ -30,7 +30,7 @@ Requires a reachable **fleet-server** (gRPC target from shared config / environm
 
 ## Configuration validation
 
-**`register`** loads agent YAML through **`YAMLValidator`** (`packages.agent_sdk.src.schema.yaml_validator`). Invalid configs print to stderr and exit **1** before any gRPC call.
+**`register`** loads agent YAML through **`load_agent_config_dict`** (`packages.agent_sdk.src.config.load`). Invalid configs print to stderr and exit **1** before any gRPC call.
 
 **`load_agent_config(path)`** is shared by register flows; empty paths raise **`click.UsageError`**.
 

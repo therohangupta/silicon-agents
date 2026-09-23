@@ -106,7 +106,7 @@ Relevant for agents that emit scripts to orchestrate external toolchains or batc
 | Path | Notes |
 |------|--------|
 | [`../server/agent_server.py`](../server/agent_server.py) | `_make_runtime()` |
-| [`../models.py`](../models.py) | `ExecutionConfig`, `BackendConfig`, traces |
+| [`../contracts/`](../contracts/) and [`../config/`](../config/) | `ExecutionConfig`, `BackendConfig`, traces |
 | [`../skills/README.md`](../skills/README.md) | Tool registration |
 | [`../../README.md`](../../README.md) | Package overview |
 

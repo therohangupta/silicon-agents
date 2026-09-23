@@ -1,15 +1,7 @@
-"""Module ``agent_sdk/__init__.py``.
+"""Public agent SDK surface."""
 
-Agent SDK: HTTP task server, runtimes, skills, telemetry publisher, and workspace helpers for first-party agents.
-
-Part of the agent SDK server/runtime stack: agents import these helpers to serve tasks over HTTP, run LLM/tool loops, publish telemetry, and persist plan workspaces.
-
-Hand-written source for ``__init__.py``. Behavior is unchanged; comments document control-plane / agent-runtime intent for maintainers.
-"""
-
-from .src.models import (
-    AgentConfig,
-    AgentHealth,
+from .src.config import AgentConfig, ReliabilityConfig
+from .src.contracts import (
     AgentTaskRequest,
     AgentTaskResult,
     ArtifactRef,
@@ -17,19 +9,16 @@ from .src.models import (
     ExecutionContextSnapshot,
     ExecutionTrace,
     MemoryOp,
-    ReliabilityConfig,
     SkillCall,
-    SkillSpec,
-    TaskRequest,
-    TaskResult,
     TaskSummary,
 )
+from .src.server import AgentHealth
 from .src.server.agent_server import AgentServer
+from .src.skills import OperationDeclaration, ParameterDeclaration, RoleDeclaration, SkillDeclaration
 from .src.skills.base import tool
 from .src.telemetry.client import TelemetryClient
 from .src.workspace import PlanWorkspace
 
-# Local ``__all__`` ← [.
 __all__ = [
     "AgentConfig",
     "AgentHealth",
@@ -38,16 +27,17 @@ __all__ = [
     "AgentTaskResult",
     "ArtifactRef",
     "CodeExecution",
+    "OperationDeclaration",
+    "ParameterDeclaration",
+    "RoleDeclaration",
     "ExecutionContextSnapshot",
     "ExecutionTrace",
     "MemoryOp",
     "PlanWorkspace",
     "ReliabilityConfig",
     "SkillCall",
-    "SkillSpec",
+    "SkillDeclaration",
     "TaskSummary",
-    "TaskRequest",
-    "TaskResult",
     "TelemetryClient",
     "tool",
 ]

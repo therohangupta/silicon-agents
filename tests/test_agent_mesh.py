@@ -5,7 +5,7 @@ selected, so the test follows the containers instead of a fixed pair.
 
 Locks in: host /health for each silicon-agents Compose service, docker-exec
 peer HTTP execute between two agents, fleet_server ListAgents gRPC readiness,
-and gateway /health plus /api/agent-templates category alignment with the catalog.
+and gateway /health plus /api/agent-templates category alignment with the registry.
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Catalog lookup for embodiment category assertions.
-from domains.eda.registry import get_spec
+# Registry lookup for embodiment category assertions.
+from domains.eda.fleet import get_config
 # gRPC stubs for fleet_server smoke check.
 from packages.proto import fleet_manager_pb2, fleet_manager_pb2_grpc
 
@@ -99,7 +99,7 @@ def test_running_agents_are_healthy_and_call_each_other():
         # agent_id matches Compose service name.
         assert body["agent_id"] == agent["service"]
         assert body["status"] == "healthy"
-        # Capabilities list is non-empty for catalog agents.
+        # Capabilities list is non-empty for registered agents.
         assert body["capabilities"]
 
     # First two agents by host_port act as caller/callee.
@@ -150,10 +150,10 @@ def test_running_agents_are_healthy_and_call_each_other():
     gateway_url = host_settings()["GATEWAY_URL"]
     gateway = httpx.get(f"{gateway_url}/health", timeout=10.0)
     assert gateway.status_code == 200
-    # Embodiment catalog from the gateway.
+    # Embodiment registry from the gateway.
     embodiments = httpx.get(f"{gateway_url}/api/agent-templates", timeout=20.0)
     assert embodiments.status_code == 200
     by_name = {item["name"]: item for item in embodiments.json()}
     for agent in agents:
         # Category in the API matches the registry spec for that agent id.
-        assert by_name[agent["service"]]["category"] == get_spec(agent["service"]).category
+        assert by_name[agent["service"]]["category"] == get_config(agent["service"]).category

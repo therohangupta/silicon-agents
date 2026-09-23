@@ -1,6 +1,6 @@
-"""Silicon/EDA domain unit tests for catalog, memory, context, and agents.
+"""Silicon/EDA domain unit tests for registry, memory, context, and agents.
 
-Locks in: 70-agent catalog file completeness, WritePolicy placements,
+Locks in: 70-agent registry file completeness, WritePolicy placements,
 lookup copies, journal idempotency, promotion races, FileStore reload,
 ContextService conflict handling, lead/worker/validator handle outcomes,
 and AgentService delegation to the agent object. Runs offline with
@@ -18,22 +18,22 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from packages.agent_sdk.src.models import AgentTaskRequest
-from packages.agent_sdk.src.schema.validator import AgentConfigValidator
-from domains.eda.agent import workflow_from_result
-from domains.eda.context import ContextService
+from packages.agent_sdk.src.contracts import AgentTaskRequest
+from packages.agent_sdk.src.config.load import load_agent_config
+from domains.eda.runtime import workflow_from_result
+from domains.eda.runtime import ContextService
 from domains.eda.memory import EngineeringMemory, InMemoryStore, StoreCopy, WritePolicy
 from domains.eda.memory.file_store import FileStore
 from domains.eda.memory.service import MemoryPolicyError
-from domains.eda.registry import all_specs, get_spec, validate_catalog
-from domains.eda.server import AgentService
+from domains.eda.fleet import all_configs, get_config, validate_eda_registry
+from domains.eda.runtime import AgentService
 from domains.eda.schemas import (
     AuthorKind,
     ExperimentRecord,
     MemoryScope,
     RecordType,
     TaskOutcome,
-    TaskSpec,
+    TaskBrief,
     ValidationState,
 )
 
@@ -41,44 +41,33 @@ AGENTS = ROOT / "agents"
 
 
 def _agent_dir(agent_id: str) -> Path:
-    spec = get_spec(agent_id)
-    return AGENTS / spec.path
+    config = get_config(agent_id)
+    return AGENTS / config.fleet_path
 
 
-def test_catalog_is_complete_and_files_match():
-    """Catalog has 70 agents; each package has agent/server/Dockerfile/config/tools matching the spec."""
+def test_registry_is_complete_and_files_match():
+    """Registry has 70 agents; each package has agent/server/Dockerfile/config/tools matching the spec."""
     # Locks in: not (ROOT / "packages" / "silicon").exists()
     assert not (ROOT / "packages" / "silicon").exists()
-    validate_catalog()
-    specs = all_specs()
-    # Locks in: len(specs) == 70
-    assert len(specs) == 70
-    # Locks in: get_spec("chip_flow_lead").role.value == "lead"
-    assert get_spec("chip_flow_lead").role.value == "lead"
-    # Locks in: get_spec("signoff_validator").role.value == "validator"
-    assert get_spec("signoff_validator").role.value == "validator"
-    for spec in specs:
-        directory = AGENTS / spec.path
-        # Locks in: (directory / "agent.py").exists()
+    validate_eda_registry()
+    configs = all_configs()
+    assert len(configs) == 70
+    assert get_config("chip_flow_lead").role.value == "lead"
+    assert get_config("signoff_validator").role.value == "validator"
+    for agent_config in configs:
+        directory = AGENTS / agent_config.fleet_path
         assert (directory / "agent.py").exists()
-        # Locks in: (directory / "server.py").exists()
         assert (directory / "server.py").exists()
-        # Locks in: (directory / "Dockerfile").exists()
         assert (directory / "Dockerfile").exists()
-        config = AgentConfigValidator().validate_file(directory / "config.yaml")
-        # Locks in: config.connection.port == spec.port
-        assert config.connection.port == spec.port
-        # Locks in: config.metadata.name == spec.agent_id
-        assert config.metadata.name == spec.agent_id
-        tool_names = {item.name for item in spec.tools}
-        # Locks in: {skill.callable for skill in config.skills} == tool_names
+        config = load_agent_config(directory / "config.yaml")
+        assert config.connection.port == agent_config.port
+        assert config.metadata.name == agent_config.agent_id
+        tool_names = {item.name for item in agent_config.skills}
         assert {skill.callable for skill in config.skills} == tool_names
         tree = ast.parse((directory / "tools.py").read_text())
         defined = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
-        # Locks in: tool_names <= defined
         assert tool_names <= defined
-        # Locks in: f"class {spec.class_name}" in (directory / "agent.py").read_text()
-        assert f"class {spec.class_name}" in (directory / "agent.py").read_text()
+        assert f"class {agent_config.fleet_class_name}" in (directory / "agent.py").read_text()
 
 
 def test_write_policy_places_different_payloads_on_chosen_stores():
@@ -449,12 +438,12 @@ async def _context():
         idempotency_key="current",
         validation_state=ValidationState.VALIDATED,
     )
-    from domains.eda.spec import AgentContext
+    from domains.eda.config.models import EDAEngineeringContext
 
     service = ContextService(memory)
     package = await service.assemble(
-        TaskSpec(task_id="verify-1", objective="check burst", project_id="chip-a", design_revision="r1", block="dma"),
-        AgentContext(
+        TaskBrief(task_id="verify-1", objective="check burst", project_id="chip-a", design_revision="r1", block="dma"),
+        EDAEngineeringContext(
             include=["human_intent", "open_findings"],
             exclude=["stale_candidates"],
             drop=["rejected"],
@@ -553,7 +542,7 @@ def test_server_delegates_to_the_agent_object():
 async def _server():
     import importlib.util
 
-    from domains.eda.server import AgentService
+    from domains.eda.runtime import AgentService
 
     path = _agent_dir("requirements") / "agent.py"
     spec = importlib.util.spec_from_file_location("_requirements_agent_mod", path)

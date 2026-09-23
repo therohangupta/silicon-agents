@@ -10,9 +10,9 @@ memory envelopes, agent specs, and permission checks:
 * ``ValidationState`` ranks trust for context assembly and promotion gates.
 * ``PayloadSchemaStatus`` describes how strictly a payload schema is registered.
 * ``AuthorKind`` distinguishes human-authored intent/waivers from agent writes.
-* ``AgentRole`` selects lead / worker / validator behavior in ``EdaAgent.act``.
+* ``AgentRole`` selects lead / worker / validator behavior in ``EDAAgent.act``.
 * ``ToolAction`` is the permission verb each skill declares in ``config.yaml``.
-* ``ROLE_ACTIONS`` is the static matrix ``assert_action`` and catalog validation
+* ``ROLE_ACTIONS`` is the static matrix ``assert_action`` and fleet registry validation
   enforce so leads cannot emit gates, workers cannot create workflows, etc.
 
 These enums are string enums so JSON serialization stays human-readable in
@@ -135,66 +135,9 @@ class AuthorKind(str, Enum):
     AGENT = "agent"
 
 
-class AgentRole(str, Enum):
-    """Runtime role that selects plan vs execute behavior and allowed actions.
+from ..config.models import EDAAgentRole, EDAOperation, ROLE_OPERATIONS
 
-    Leads call ``plan``. Workers call ``execute_tools``. Validators call
-    ``execute_tools`` then publish a gate via ``_validator_result``.
-    """
-
-    # Proposes child workflows; does not execute child tools itself.
-    LEAD = "lead"
-    # Produces candidates and findings via declared tools.
-    WORKER = "worker"
-    # Runs checks and emits gate decisions on candidates.
-    VALIDATOR = "validator"
-
-
-# Actions a tool may declare. The role policy allows a subset.
-class ToolAction(str, Enum):
-    """Permission verb attached to each skill in ``config.yaml``.
-
-    ``EdaAgent.assert_action`` checks the action against the task allow/forbid
-    lists and against ``ROLE_ACTIONS[role]`` before invoking the callable.
-    """
-
-    # Lead-only: propose a dependency graph for children.
-    CREATE_WORKFLOW = "create_workflow"
-    # Publish an agent finding (requires evidence at memory publish time).
-    PUBLISH_FINDING = "publish_finding"
-    # Read reports and memory without mutating candidates.
-    READ_REPORTS = "read_reports"
-    # Escalate a choice to a human decision-maker.
-    REQUEST_HUMAN_DECISION = "request_human_decision"
-    # Worker: write a design candidate artifact or revision.
-    WRITE_CANDIDATE = "write_candidate"
-    # Submit a durable tool job to a scheduler.
-    SUBMIT_TOOL_JOB = "submit_tool_job"
-    # Validator: emit a gate decision for a candidate.
-    EMIT_GATE = "emit_gate"
-
-
-# Closed matrix of which ToolAction values each AgentRole may declare/use.
-ROLE_ACTIONS: dict[AgentRole, frozenset[ToolAction]] = {
-    # Leads plan, read, publish findings, and request human decisions.
-    AgentRole.LEAD: frozenset({
-        ToolAction.CREATE_WORKFLOW,
-        ToolAction.PUBLISH_FINDING,
-        ToolAction.READ_REPORTS,
-        ToolAction.REQUEST_HUMAN_DECISION,
-    }),
-    # Workers produce candidates, submit jobs, read, and publish findings.
-    AgentRole.WORKER: frozenset({
-        ToolAction.WRITE_CANDIDATE,
-        ToolAction.SUBMIT_TOOL_JOB,
-        ToolAction.READ_REPORTS,
-        ToolAction.PUBLISH_FINDING,
-    }),
-    # Validators submit check jobs, read, emit gates, and publish findings.
-    AgentRole.VALIDATOR: frozenset({
-        ToolAction.SUBMIT_TOOL_JOB,
-        ToolAction.READ_REPORTS,
-        ToolAction.EMIT_GATE,
-        ToolAction.PUBLISH_FINDING,
-    }),
-}
+# Compatibility imports for callers that have not yet moved to EDA names.
+AgentRole = EDAAgentRole
+ToolAction = EDAOperation
+ROLE_ACTIONS = ROLE_OPERATIONS

@@ -1,0 +1,782 @@
+# Agent Fleet manifest for Independent Signoff Validator (signoff_validator).
+# Domain: independent signoff gate grading and waiver audit.
+# EDA focus: reproduce STA/DRC/LVS, audit waivers, emit pass/fail signoff gate.
+# Loaded by agent.py via EDAAgent.read_spec and by server.py via AgentService.from_agent.
+# HTTP port 8262 must stay aligned with connection.port, Dockerfile EXPOSE, and deployment.
+
+# Agent Fleet manifest schema version for this Agent resource.
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for fleet loaders.
+kind: Agent
+# Identity and labeling block consumed by discovery and observability.
+metadata:
+  # Stable agent id `signoff_validator` used in tool_observation and fleet routing.
+  name: signoff_validator
+  # Human-readable agent title shown in UIs and journals.
+  display_name: Independent Signoff Validator
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read primary signoff artifacts, reproduce critical checks, audit waivers, and decide whether
+    every required gate passed.
+  # Stage and role for this agent.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: signoff
+    # Fleet role: worker executes tools; lead plans and delegates.
+    role: validator
+# Fleet role: worker executes tools; lead plans and delegates.
+role: validator
+# Pipeline stage this agent participates in.
+stage: signoff
+# Authoritative one-paragraph responsibility used in prompts and docs.
+responsibility: Read primary signoff artifacts, reproduce critical checks, audit waivers, and decide whether
+  every required gate passed.
+# Hard may / may_not contract enforced by policy and reviewers.
+boundary:
+  # Operations this agent is allowed to perform in the signoff flow.
+  may:
+  # Signoff boundary or context item: Read a frozen candidate and frozen recipes
+  - Read a frozen candidate and frozen recipes
+  # Signoff boundary or context item: Reproduce critical checks
+  - Reproduce critical checks
+  # Signoff boundary or context item: Emit a signoff gate
+  - Emit a signoff gate
+  # Signoff boundary or context item: Publish missing inputs
+  - Publish missing inputs
+  # Forbidden actions (waiver, promote, edit canonical baseline, etc.).
+  may_not:
+  # Signoff boundary or context item: Modify the candidate
+  - Modify the candidate
+  # Signoff boundary or context item: Change a rule deck
+  - Change a rule deck
+  # Signoff boundary or context item: Suppress a violation
+  - Suppress a violation
+  # Signoff boundary or context item: Approve a waiver
+  - Approve a waiver
+  # Signoff boundary or context item: Release a tapeout package
+  - Release a tapeout package
+  # Signoff boundary or context item: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Signoff boundary or context item: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Signoff boundary or context item: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks against (empty for pure workers).
+delegates_to: []
+# Independent validators that must grade this agent's outputs (often empty).
+validators: []
+# Network binding for the HTTP AgentService inside Docker.
+connection:
+  # Docker-published host reachable from other fleet services.
+  host: host.docker.internal
+  # TCP port 8262 for this agent's AgentService (must match Dockerfile EXPOSE).
+  port: 8262
+  # HTTP paths for health probes and task execution.
+  endpoints:
+    # Liveness/readiness path returning service health.
+    health: /health
+    # Path that accepts execute-task requests from the orchestrator.
+    execute: /tasks/execute
+# LLM/tool backend binding; type none means tools are observations until adapted.
+backend:
+  # Backend type discriminator for the agent runtime.
+  type: none
+# How skills are invoked when a task arrives.
+execution:
+  # Functional/analysis mode filter or target.
+  mode: direct_function
+  # Limits on parallel signoff jobs for this container.
+  concurrency:
+    # Maximum concurrent tasks; signoff tools are often serialized at 1.
+    max_tasks: 1
+# Timeouts and failure policy for long EDA jobs.
+reliability:
+  # Wall seconds before a hanging tool job is aborted.
+  task_timeout_secs: 120
+  # Retries before the orchestrator must replan.
+  max_retries: 1
+  # Orchestrator action when the task fails after retries.
+  on_failure: replan
+# Advertised capability ids matching tools (discovery surface).
+capabilities:
+# Stable capability or skill or stream identifier.
+- id: read_frozen_signoff_candidate
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the pinned candidate being graded.
+# Stable capability or skill or stream identifier.
+- id: read_frozen_signoff_recipes
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the frozen tool recipes and rule decks.
+# Stable capability or skill or stream identifier.
+- id: read_primary_signoff_artifacts
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read timing, power, IR, DRC, LVS, and extraction artifacts.
+# Stable capability or skill or stream identifier.
+- id: check_signoff_provenance
+  # Short charter describing what this signoff agent is responsible for.
+  description: Check tool versions, SPEF, SDC, and rule decks against the frozen flow.
+# Stable capability or skill or stream identifier.
+- id: reproduce_signoff_checks
+  # Short charter describing what this signoff agent is responsible for.
+  description: Re-run the critical signoff checks from primary artifacts.
+# Stable capability or skill or stream identifier.
+- id: reproduce_signoff_sta
+  # Short charter describing what this signoff agent is responsible for.
+  description: Re-run static timing on the frozen SPEF and SDC.
+# Stable capability or skill or stream identifier.
+- id: reproduce_signoff_drc_lvs
+  # Short charter describing what this signoff agent is responsible for.
+  description: Re-run DRC and LVS with the frozen rule deck.
+# Stable capability or skill or stream identifier.
+- id: audit_waivers
+  # Short charter describing what this signoff agent is responsible for.
+  description: Check that every waiver has an owner, scope, and expiration.
+# Stable capability or skill or stream identifier.
+- id: list_missing_signoff_inputs
+  # Short charter describing what this signoff agent is responsible for.
+  description: List required reports that are absent.
+# Stable capability or skill or stream identifier.
+- id: compare_signoff_summary
+  # Short charter describing what this signoff agent is responsible for.
+  description: Compare producing agents' summaries with the primary artifacts.
+# Stable capability or skill or stream identifier.
+- id: emit_signoff_gate
+  # Short charter describing what this signoff agent is responsible for.
+  description: Record whether the signoff contract passed. A missing input fails the gate.
+# Stable capability or skill or stream identifier.
+- id: publish_signoff_disagreement
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish a place where a summary and a primary artifact disagree.
+# Stable capability or skill or stream identifier.
+- id: publish_missing_signoff_input
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish an input that blocks the signoff grade.
+# Stable capability or skill or stream identifier.
+- id: publish_waiver_audit_gap
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish a waiver that lacks an owner, scope, or expiration.
+# Concrete skill bindings: module/callable plus action and params.
+skills:
+# Stable capability or skill or stream identifier.
+- id: read_frozen_signoff_candidate
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: read_frozen_signoff_candidate
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the pinned candidate being graded.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: read_frozen_signoff_recipes
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: read_frozen_signoff_recipes
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the frozen tool recipes and rule decks.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: read_primary_signoff_artifacts
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: read_primary_signoff_artifacts
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read timing, power, IR, DRC, LVS, and extraction artifacts.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: check_signoff_provenance
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: check_signoff_provenance
+  # Short charter describing what this signoff agent is responsible for.
+  description: Check tool versions, SPEF, SDC, and rule decks against the frozen flow.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: reproduce_signoff_checks
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: reproduce_signoff_checks
+  # Short charter describing what this signoff agent is responsible for.
+  description: Re-run the critical signoff checks from primary artifacts.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Baseline artifact for compare/ECO operations.
+    baseline_ref: ''
+    # Versioned tool recipe accepted by the adapter.
+    recipe: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: submit_tool_job
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: baseline_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recipe
+    # Short charter describing what this signoff agent is responsible for.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable capability or skill or stream identifier.
+- id: reproduce_signoff_sta
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: reproduce_signoff_sta
+  # Short charter describing what this signoff agent is responsible for.
+  description: Re-run static timing on the frozen SPEF and SDC.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Baseline artifact for compare/ECO operations.
+    baseline_ref: ''
+    # Versioned tool recipe accepted by the adapter.
+    recipe: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: submit_tool_job
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: baseline_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recipe
+    # Short charter describing what this signoff agent is responsible for.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable capability or skill or stream identifier.
+- id: reproduce_signoff_drc_lvs
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: reproduce_signoff_drc_lvs
+  # Short charter describing what this signoff agent is responsible for.
+  description: Re-run DRC and LVS with the frozen rule deck.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Baseline artifact for compare/ECO operations.
+    baseline_ref: ''
+    # Versioned tool recipe accepted by the adapter.
+    recipe: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: submit_tool_job
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: baseline_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recipe
+    # Short charter describing what this signoff agent is responsible for.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable capability or skill or stream identifier.
+- id: audit_waivers
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: audit_waivers
+  # Short charter describing what this signoff agent is responsible for.
+  description: Check that every waiver has an owner, scope, and expiration.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: list_missing_signoff_inputs
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: list_missing_signoff_inputs
+  # Short charter describing what this signoff agent is responsible for.
+  description: List required reports that are absent.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: compare_signoff_summary
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: compare_signoff_summary
+  # Short charter describing what this signoff agent is responsible for.
+  description: Compare producing agents' summaries with the primary artifacts.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: emit_signoff_gate
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: emit_signoff_gate
+  # Short charter describing what this signoff agent is responsible for.
+  description: Record whether the signoff contract passed. A missing input fails the gate.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Signoff gate identifier.
+    gate_id: ''
+    # Checks feeding the gate.
+    check_refs: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: emit_gate
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Exact candidate being graded.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: gate_id
+    # Short charter describing what this signoff agent is responsible for.
+    description: Stable id for this gate decision.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: check_refs
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated primary report URIs the decision is based on.
+# Stable capability or skill or stream identifier.
+- id: publish_signoff_disagreement
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: publish_signoff_disagreement
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish a place where a summary and a primary artifact disagree.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Finding summary sentence.
+    summary: ''
+    # Supporting artifact URIs.
+    evidence_refs: ''
+    # Finding severity band.
+    severity: ''
+    # Downstream agent id for the finding.
+    recommended_recipient: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: publish_finding
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: summary
+    # Short charter describing what this signoff agent is responsible for.
+    description: One-sentence finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: evidence_refs
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: severity
+    # Short charter describing what this signoff agent is responsible for.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recommended_recipient
+    # Short charter describing what this signoff agent is responsible for.
+    description: Agent id that should act on the finding.
+# Stable capability or skill or stream identifier.
+- id: publish_missing_signoff_input
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: publish_missing_signoff_input
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish an input that blocks the signoff grade.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Finding summary sentence.
+    summary: ''
+    # Supporting artifact URIs.
+    evidence_refs: ''
+    # Finding severity band.
+    severity: ''
+    # Downstream agent id for the finding.
+    recommended_recipient: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: publish_finding
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: summary
+    # Short charter describing what this signoff agent is responsible for.
+    description: One-sentence finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: evidence_refs
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: severity
+    # Short charter describing what this signoff agent is responsible for.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recommended_recipient
+    # Short charter describing what this signoff agent is responsible for.
+    description: Agent id that should act on the finding.
+# Stable capability or skill or stream identifier.
+- id: publish_waiver_audit_gap
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: publish_waiver_audit_gap
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish a waiver that lacks an owner, scope, or expiration.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Finding summary sentence.
+    summary: ''
+    # Supporting artifact URIs.
+    evidence_refs: ''
+    # Finding severity band.
+    severity: ''
+    # Downstream agent id for the finding.
+    recommended_recipient: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: publish_finding
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: summary
+    # Short charter describing what this signoff agent is responsible for.
+    description: One-sentence finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: evidence_refs
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: severity
+    # Short charter describing what this signoff agent is responsible for.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recommended_recipient
+    # Short charter describing what this signoff agent is responsible for.
+    description: Agent id that should act on the finding.
+# Local and shared memory configuration for journals and silicon store.
+memory:
+  # Named memory stores attached to this agent.
+  stores:
+  # Stable capability or skill or stream identifier.
+  - id: journal
+    # Short charter describing what this signoff agent is responsible for.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend type discriminator for the agent runtime.
+    type: list
+    # How the store survives process restarts (file, etc.).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for journal cache keys under SILICON_MEMORY_ROOT.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats to the fleet.
+  heartbeat_interval_secs: 5
+  # Remote telemetry sink configuration.
+  telemetry:
+    # Telemetry service URL (overridable via TELEMETRY_URL).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in routing, findings, and agent_id tool observations.
+    - name: skill_calls
+      # Short charter describing what this signoff agent is responsible for.
+      description: Tool invocations.
+    # Stable agent id used in routing, findings, and agent_id tool observations.
+    - name: artifacts
+      # Short charter describing what this signoff agent is responsible for.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Container image tag for deploying the Independent Signoff Validator.
+  image: agentfleet/signoff_validator:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty until an adapter is configured.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-pack rules for what engineering memory the agent may see.
+context:
+  # Context categories always considered for prompts.
+  include:
+  # Signoff boundary or context item: requirements
+  - requirements
+  # Signoff boundary or context item: interface_contracts
+  - interface_contracts
+  # Signoff boundary or context item: canonical_source
+  - canonical_source
+  # Signoff boundary or context item: gates
+  - gates
+  # Signoff boundary or context item: open_findings
+  - open_findings
+  # Context categories withheld from this agent.
+  exclude:
+  # Signoff boundary or context item: stale_candidates
+  - stale_candidates
+  # Signoff boundary or context item: unverified_agent_claims
+  - unverified_agent_claims
+  # Statuses that cause context entries to be dropped.
+  drop:
+  # Signoff boundary or context item: rejected
+  - rejected
+  # Ordering when multiple context sources conflict.
+  precedence:
+  # Signoff boundary or context item: human-authored
+  - human-authored
+  # Signoff boundary or context item: validated
+  - validated
+  # Context classes that must not be overwritten by lower-trust sources.
+  protect:
+  # Signoff boundary or context item: human-authored
+  - human-authored
+  # Approximate token budget for assembled context windows.
+  token_budget: 80000

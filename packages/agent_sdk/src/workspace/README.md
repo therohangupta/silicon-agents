@@ -48,7 +48,7 @@ Backend selection parses **`workspace_uri`** ([`plan_workspace.py`](plan_workspa
 | [`__init__.py`](__init__.py) | Re-exports `PlanWorkspace`, backends |
 | [`README.md`](README.md) | This document |
 
-Models: [`ArtifactRef`](../models.py) in `models.py`.
+Models: [`ArtifactRef`](../contracts/) in `contracts/`.
 
 Public import: `from packages.agent_sdk import PlanWorkspace`.
 
@@ -129,7 +129,7 @@ Abstract async API:
 
 | Path | Notes |
 |------|--------|
-| [`../models.py`](../models.py) | `ArtifactRef`, `ExecutionContextSnapshot` |
+| [`../contracts/`](../contracts/) and [`../config/`](../config/) | `ArtifactRef`, `ExecutionContextSnapshot` |
 | [`../memory/README.md`](../memory/README.md) | Small agent-local state |
 | [`../../../packages/config/`](../../../packages/config/) | Default storage roots and buckets |
 
@@ -137,7 +137,7 @@ Abstract async API:
 
 ## Newcomer reading order
 
-1. `ArtifactRef` and `AgentTaskRequest.workspace_uri` in [`../models.py`](../models.py)
+1. `ArtifactRef` and `AgentTaskRequest.workspace_uri` in [`../contracts/`](../contracts/) and [`../config/`](../config/)
 2. [`plan_workspace.py`](plan_workspace.py) — agent API
 3. [`backend.py`](backend.py) — storage layout
 4. Domain agent example that publishes artifacts

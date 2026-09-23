@@ -13,7 +13,7 @@ pytest tests/contract/ -q
 
 | Goal | How contracts enforce it |
 |------|---------------------------|
-| Every catalog agent is runnable | Parametrized HTTP health + execute smoke |
+| Every registered agent is runnable | Parametrized HTTP health + execute smoke |
 | Gateway sees the right agents | Embodiment YAML scan matches silicon tree |
 | Config/codegen path stays wired | Env expansion + skill execution |
 | Plan artifacts resolve | **`ArtifactRef`** + workspace backend |
@@ -32,7 +32,7 @@ Parametrized over agent directories under **`agents/`**:
 - **`execute`** / task path accepts SDK-shaped requests where applicable
 - Telemetry adapter hooks present when required by platform config
 
-This is the broadest contract — new agents should pass automatically once the catalog layout is correct.
+This is the broadest contract — new agents should pass automatically once the registry layout is correct.
 
 ### test_config_and_codegen.py
 
@@ -43,7 +43,7 @@ Guards against broken **`${VAR}`** patterns and stale codegen entrypoints.
 
 ### test_embodiment_scan.py
 
-Gateway **embodiment scanner** reads YAML and lists **silicon** agents only (frontend/backend paths per product rules). Prevents dashboard/gateway from advertising removed demo agents or missing catalog entries.
+Gateway **embodiment scanner** reads YAML and lists **silicon** agents only (frontend/backend paths per product rules). Prevents dashboard/gateway from advertising removed demo agents or missing registry entries.
 
 ### test_e2e_audit.py
 
@@ -51,7 +51,7 @@ Repo-wide audit:
 
 - Agent tree shape vs validator expectations
 - Required files per agent directory
-- Cross-checks that complement **`registry.validate_catalog`**
+- Cross-checks that complement **`registry.validate_eda_registry`**
 
 Useful when refactoring directory conventions.
 
@@ -78,7 +78,7 @@ Ensures planning artifacts remain compatible with SDK workspace types.
 
 | Suite | Focus |
 |-------|--------|
-| **`tests/test_silicon.py`** | Domain behavior — memory policy, **`EdaAgent`** outcomes |
+| **`tests/test_silicon.py`** | Domain behavior — memory policy, **`EDAAgent`** outcomes |
 | **`tests/contract/`** | Package and platform **shape** — files, routes, config, scans |
 
 A change can pass silicon unit tests but fail contract tests if **`Dockerfile`** or **`server.py`** routing breaks.
@@ -92,7 +92,7 @@ A change can pass silicon unit tests but fail contract tests if **`Dockerfile`**
 When adding a new global requirement (e.g. mandatory OpenTelemetry exporter config):
 
 1. Add a focused test module or extend **`test_e2e_audit.py`** with a clear error message.
-2. Avoid duplicating full **`EdaAgent`** execution — keep contracts fast.
+2. Avoid duplicating full **`EDAAgent`** execution — keep contracts fast.
 3. Parametrize over **`all_specs()`** or filesystem globs consistent with **`registry`**.
 
 ## Related documentation
@@ -102,4 +102,4 @@ When adding a new global requirement (e.g. mandatory OpenTelemetry exporter conf
 | [`../README.md`](../README.md) | Full test suite layout |
 | [`../../agents/README.md`](../../agents/README.md) | Agent directory contract |
 | [`../../docs/GATEWAY_VS_TELEMETRY_SPLIT.md`](../../docs/GATEWAY_VS_TELEMETRY_SPLIT.md) | Gateway embodiment context |
-| [`../../scripts/check_agents.py`](../../scripts/check_agents.py) | Catalog validator CLI |
+| [`../../scripts/check_agents.py`](../../scripts/check_agents.py) | Registry validator CLI |

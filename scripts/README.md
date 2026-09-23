@@ -37,9 +37,9 @@ Wrapper around **`domains.eda.fleet`**:
 
 Used by **`startup.sh`**, tests (**`tests/test_fleet_select.py`**), and manual debugging.
 
-### Catalog validation — `check_agents.py`
+### fleet registry validation — `check_agents.py`
 
-Calls **`domains.eda.registry.validate_catalog()`** then prints **`len(all_specs())`**. Use in CI or before rendering Compose to catch incomplete agent directories (missing tools, bad context policy, Dockerfile drift).
+Calls **`domains.eda.fleet.registry.validate_eda_registry()`** then prints **`len(all_configs())`**. Use in CI or before rendering Compose to catch incomplete agent directories (missing tools, bad context policy, Dockerfile drift).
 
 ### Platform compose render — `render_platform_compose.py`
 
@@ -61,7 +61,7 @@ Host-side **`pg_dump`** using connection settings from **`packages.config`**. Pr
 |------|--------|------|
 | [`database_mgmt/`](database_mgmt/README.md) | Backup/restore via **`docker compose exec`** into the **`db`** service |
 | [`agents/`](agents/README.md) | Legacy demo-agent Docker helpers (removed; scripts exit with notice) |
-| [`examples/`](examples/README.md) | Legacy demo population (removed; use catalog registration) |
+| [`examples/`](examples/README.md) | Legacy demo population (removed; use registry registration) |
 
 ---
 
@@ -80,7 +80,7 @@ Host-side **`pg_dump`** using connection settings from **`packages.config`**. Pr
 Several scripts mirror assertions locked in pytest:
 
 - **`fleet_select.py`** ↔ **`tests/test_fleet_select.py`**
-- **`check_agents.py`** ↔ catalog tests in **`tests/test_silicon.py`**
+- **`check_agents.py`** ↔ registry tests in **`tests/test_silicon.py`**
 - Live plane scripts require Compose + **`SILICON_PLANE_TEST=1`** (see [`../tests/README.md`](../tests/README.md))
 
 ---
@@ -90,5 +90,5 @@ Several scripts mirror assertions locked in pytest:
 | Document | Topic |
 |----------|--------|
 | [`../docs/RUN.md`](../docs/RUN.md) | Runbook and failure modes |
-| [`../domains/eda/fleet.py`](../domains/eda/fleet.py) | Selection and compose rendering implementation |
+| [`../domains/eda/fleet/compose.py`](../domains/eda/fleet/compose.py) | Selection and compose rendering implementation |
 | [`../cli/README.md`](../cli/README.md) | **`agentctl`** operator CLI (fleet gRPC) |

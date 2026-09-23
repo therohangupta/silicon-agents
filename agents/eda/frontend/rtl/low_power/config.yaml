@@ -1,0 +1,662 @@
+# Agent specification for Low-Power Agent (`low_power`).
+# Stage: rtl. Role: worker. HTTP port: 8212.
+# Unified Power Format (UPF) describes power domains, isolation, retention, and level shifters. This agent keeps UPF and RTL consistent so low-power intent survives into backend power analysis.
+# Every key below is loaded by EDAAgent.read_spec / AgentService at startup.
+# Comments are documentation only; they do not change runtime behavior.
+
+# Fleet manifest schema version; must match the agentfleet loader.
+apiVersion: agentfleet/v1
+# Resource kind. Agent means this YAML is an agent specification.
+kind: Agent
+# Human-facing identity and labels used by fleet discovery and dashboards.
+metadata:
+  # Stable agent id `low_power` used in routing and telemetry.
+  name: low_power
+  # Dashboard title for `low_power`.
+  display_name: Low-Power Agent
+  # Charter shown to planners and operators.
+  description: Maintain power domains, isolation, retention, and UPF consistency.
+  # Labels expose stage and role.
+  labels:
+    # Lifecycle stage `rtl` for planner routing.
+    stage: rtl
+    # Agent role `worker` (lead vs worker) controlling delegation rights.
+    role: worker
+# Agent role `worker` (lead vs worker) controlling delegation rights.
+role: worker
+# Lifecycle stage `rtl` for planner routing.
+stage: rtl
+# Charter repeated at the top level for validators and planners.
+responsibility: Maintain power domains, isolation, retention, and UPF consistency.
+# Hard may / may_not limits that prevent unsafe cross-stage edits.
+boundary:
+  # Actions this agent is allowed to perform on candidates and reports.
+  may:
+  # Allowed action: Read UPF and RTL
+  - Read UPF and RTL
+  # Allowed action: Edit UPF on an isolated candidate
+  - Edit UPF on an isolated candidate
+  # Actions forbidden even if a tool adapter could physically do them.
+  may_not:
+  # Forbidden action: Drop an isolation cell to save area
+  - Drop an isolation cell to save area
+  # Forbidden action: Change a power domain without a finding
+  - Change a power domain without a finding
+  # Forbidden action: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Forbidden action: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Forbidden action: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Worker agent ids this lead may open tasks against.
+delegates_to: []
+# Optional gate agents that must approve before promotion.
+validators: []
+# How peer services reach this agent's HTTP surface.
+connection:
+  # Docker host alias so containers reach the published port on the host.
+  host: host.docker.internal
+  # TCP port for this agent; must match Dockerfile EXPOSE (8212).
+  port: 8212
+  # Relative HTTP paths for health and task execution.
+  endpoints:
+    # Liveness HTTP path for compose/fleet probes.
+    health: /health
+    # Task execution HTTP path used by the orchestrator.
+    execute: /tasks/execute
+# Where tool jobs run; type none means stub observations until bound.
+backend:
+  # none = no live EDA backend; tools return not_run stubs.
+  type: none
+# How the runtime invokes skills for this agent.
+execution:
+  # direct_function invokes Python skills in-process.
+  mode: direct_function
+  # Limits parallel task load on this container.
+  concurrency:
+    # Serialise tasks when 1 so candidate edits do not race.
+    max_tasks: 1
+# Timeouts and retry policy for failed tool or LLM turns.
+reliability:
+  # Abort tasks that exceed 120 seconds.
+  task_timeout_secs: 120
+  # Retry budget `1` before giving up / replanning.
+  max_retries: 1
+  # Planner policy `replan` after task failure.
+  on_failure: replan
+# Advertised skill ids the planner may schedule.
+capabilities:
+# Identifier `read_upf` under `capabilities` for `low_power`.
+- id: read_upf
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read power domains, supply nets, and isolation strategies.
+# Identifier `check_upf_consistency` under `capabilities` for `low_power`.
+- id: check_upf_consistency
+  # One-line charter of what this agent owns in the chip flow.
+  description: Compare UPF domains and RTL hierarchy.
+# Identifier `check_isolation_retention` under `capabilities` for `low_power`.
+- id: check_isolation_retention
+  # One-line charter of what this agent owns in the chip flow.
+  description: Check isolation, retention, and level-shifter strategy.
+# Identifier `list_power_domains` under `capabilities` for `low_power`.
+- id: list_power_domains
+  # One-line charter of what this agent owns in the chip flow.
+  description: List domains, their supplies, and the modules inside them.
+# Identifier `list_domain_crossings` under `capabilities` for `low_power`.
+- id: list_domain_crossings
+  # One-line charter of what this agent owns in the chip flow.
+  description: List signals that cross power domains.
+# Identifier `check_retention_registers` under `capabilities` for `low_power`.
+- id: check_retention_registers
+  # One-line charter of what this agent owns in the chip flow.
+  description: Check which registers require retention and which cells implement it.
+# Identifier `write_isolation_strategy` under `capabilities` for `low_power`.
+- id: write_isolation_strategy
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add a missing isolation strategy on an isolated UPF candidate.
+# Identifier `write_retention_strategy` under `capabilities` for `low_power`.
+- id: write_retention_strategy
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add a missing retention strategy on an isolated UPF candidate.
+# Identifier `write_level_shifter` under `capabilities` for `low_power`.
+- id: write_level_shifter
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add a level shifter on one domain crossing in the candidate.
+# Identifier `run_upf_lint` under `capabilities` for `low_power`.
+- id: run_upf_lint
+  # One-line charter of what this agent owns in the chip flow.
+  description: Run UPF consistency checks.
+# Identifier `flag_missing_power_isolation` under `capabilities` for `low_power`.
+- id: flag_missing_power_isolation
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish a domain crossing with no isolation.
+# Identifier `flag_upf_rtl_mismatch` under `capabilities` for `low_power`.
+- id: flag_upf_rtl_mismatch
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish a module whose UPF domain and RTL hierarchy disagree.
+# Binding of capability ids to Python callables and action kinds.
+skills:
+# Identifier `read_upf` under `skills` for `low_power`.
+- id: read_upf
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: read_upf
+  # One-line charter of what this agent owns in the chip flow.
+  description: Read power domains, supply nets, and isolation strategies.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `check_upf_consistency` under `skills` for `low_power`.
+- id: check_upf_consistency
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: check_upf_consistency
+  # One-line charter of what this agent owns in the chip flow.
+  description: Compare UPF domains and RTL hierarchy.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `check_isolation_retention` under `skills` for `low_power`.
+- id: check_isolation_retention
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: check_isolation_retention
+  # One-line charter of what this agent owns in the chip flow.
+  description: Check isolation, retention, and level-shifter strategy.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `list_power_domains` under `skills` for `low_power`.
+- id: list_power_domains
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: list_power_domains
+  # One-line charter of what this agent owns in the chip flow.
+  description: List domains, their supplies, and the modules inside them.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `list_domain_crossings` under `skills` for `low_power`.
+- id: list_domain_crossings
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: list_domain_crossings
+  # One-line charter of what this agent owns in the chip flow.
+  description: List signals that cross power domains.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `check_retention_registers` under `skills` for `low_power`.
+- id: check_retention_registers
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: check_retention_registers
+  # One-line charter of what this agent owns in the chip flow.
+  description: Check which registers require retention and which cells implement it.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Artifact URI of a prior report. Empty reads the latest report for this candidate.
+    report_ref: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Reads structured report artifacts without mutating the candidate.
+  action: read_reports
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: report_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Mode filter. Empty reads every available mode.
+# Identifier `write_isolation_strategy` under `skills` for `low_power`.
+- id: write_isolation_strategy
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: write_isolation_strategy
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add a missing isolation strategy on an isolated UPF candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Single change under test for this edit so experiments stay one-hypothesis-at-a-time.
+    hypothesis: ''
+  # Mutates only an isolated candidate branch, never the canonical baseline.
+  action: write_candidate
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: hypothesis
+    # One-line charter of what this agent owns in the chip flow.
+    description: The single change this edit is testing.
+# Identifier `write_retention_strategy` under `skills` for `low_power`.
+- id: write_retention_strategy
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: write_retention_strategy
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add a missing retention strategy on an isolated UPF candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Single change under test for this edit so experiments stay one-hypothesis-at-a-time.
+    hypothesis: ''
+  # Mutates only an isolated candidate branch, never the canonical baseline.
+  action: write_candidate
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: hypothesis
+    # One-line charter of what this agent owns in the chip flow.
+    description: The single change this edit is testing.
+# Identifier `write_level_shifter` under `skills` for `low_power`.
+- id: write_level_shifter
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: write_level_shifter
+  # One-line charter of what this agent owns in the chip flow.
+  description: Add a level shifter on one domain crossing in the candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Single change under test for this edit so experiments stay one-hypothesis-at-a-time.
+    hypothesis: ''
+  # Mutates only an isolated candidate branch, never the canonical baseline.
+  action: write_candidate
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: hypothesis
+    # One-line charter of what this agent owns in the chip flow.
+    description: The single change this edit is testing.
+# Identifier `run_upf_lint` under `skills` for `low_power`.
+- id: run_upf_lint
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: run_upf_lint
+  # One-line charter of what this agent owns in the chip flow.
+  description: Run UPF consistency checks.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Artifact URI of the isolated design candidate this skill reads or edits; empty often means create-from-baseline.
+    candidate_ref: ''
+    # Immutable baseline revision the candidate must descend from so lineage stays auditable.
+    baseline_ref: ''
+    # Versioned EDA-tool recipe name; the framework adapter rejects unknown recipes.
+    recipe: ''
+    # PVT corner (process/voltage/temperature). Empty when the job is not corner-specific.
+    corner: ''
+    # direct_function calls Python tools in-process rather than shelling out.
+    mode: ''
+  # Queues an EDA tool job through the bound adapter (stubbed as not_run until bound).
+  action: submit_tool_job
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: candidate_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Candidate the job reads.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: baseline_ref
+    # One-line charter of what this agent owns in the chip flow.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recipe
+    # One-line charter of what this agent owns in the chip flow.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: corner
+    # One-line charter of what this agent owns in the chip flow.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: mode
+    # One-line charter of what this agent owns in the chip flow.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Identifier `flag_missing_power_isolation` under `skills` for `low_power`.
+- id: flag_missing_power_isolation
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: flag_missing_power_isolation
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish a domain crossing with no isolation.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Identifier `flag_upf_rtl_mismatch` under `skills` for `low_power`.
+- id: flag_upf_rtl_mismatch
+  # Module path exporting the skill callable (always `tools` here).
+  module: tools
+  # Python function in tools.py implementing this skill.
+  callable: flag_upf_rtl_mismatch
+  # One-line charter of what this agent owns in the chip flow.
+  description: Publish a module whose UPF domain and RTL hierarchy disagree.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # One-sentence finding text published into shared engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs that back the finding for later audit.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act next on this finding (lead or specialist).
+    recommended_recipient: ''
+  # Publishes a finding into shared memory for leads and validators.
+  action: publish_finding
+  # Documented parameter list for UI and schema generation.
+  params:
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: summary
+    # One-line charter of what this agent owns in the chip flow.
+    description: One-sentence finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: evidence_refs
+    # One-line charter of what this agent owns in the chip flow.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: severity
+    # One-line charter of what this agent owns in the chip flow.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, telemetry, and delegate targets.
+  - name: recommended_recipient
+    # One-line charter of what this agent owns in the chip flow.
+    description: Agent id that should act on the finding.
+# Local memory store configuration for this agent process.
+memory:
+  # Named stores the agent may read/write through the memory API.
+  stores:
+  # Identifier `journal` under `stores` for `low_power`.
+  - id: journal
+    # One-line charter of what this agent owns in the chip flow.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Memory store type `list`.
+    type: list
+    # file means journal keys are cached on local disk.
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Local journal cache root; override with SILICON_MEMORY_ROOT.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry wiring for fleet dashboards.
+observability:
+  # Seconds between liveness heartbeats to telemetry.
+  heartbeat_interval_secs: 5
+  # Where structured skill and artifact events are shipped.
+  telemetry:
+    # Telemetry base URL; override with TELEMETRY_URL.
+    endpoint: ${TELEMETRY_URL}
+    # Named event streams this agent emits.
+    streams:
+    # Stable agent id used in routing, telemetry, and delegate targets.
+    - name: skill_calls
+      # One-line charter of what this agent owns in the chip flow.
+      description: Tool invocations.
+    # Stable agent id used in routing, telemetry, and delegate targets.
+    - name: artifacts
+      # One-line charter of what this agent owns in the chip flow.
+      description: Structured task results.
+# Container image metadata used by compose generation.
+deployment:
+  # Container image tag built from this agent's Dockerfile.
+  image: agentfleet/low_power:1.0
+  # Dockerfile path relative to this agent directory.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Empty keeps adapters unbound; set to enable real tool execution.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Policy for which shared-memory records enter the LLM context window.
+context:
+  # Record kinds always considered for context assembly.
+  include:
+  # Context include kind: requirements (pulled into LLM context when present).
+  - requirements
+  # Context include kind: interface_contracts (pulled into LLM context when present).
+  - interface_contracts
+  # Context include kind: canonical_source (pulled into LLM context when present).
+  - canonical_source
+  # Context include kind: open_findings (pulled into LLM context when present).
+  - open_findings
+  # Context include kind: experiments (pulled into LLM context when present).
+  - experiments
+  # Record kinds never considered even if present.
+  exclude:
+  # Context exclude kind: stale_candidates (never assembled into prompts).
+  - stale_candidates
+  # States removed before ranking (e.g. rejected).
+  drop:
+  # Drop memory state before ranking: rejected.
+  - rejected
+  # Preferred record states first when trimming to token_budget.
+  precedence:
+  # Prefer memory state `human-authored` when trimming to token_budget.
+  - human-authored
+  # Prefer memory state `validated` when trimming to token_budget.
+  - validated
+  # Prefer memory state `provisional` when trimming to token_budget.
+  - provisional
+  # States kept even when over budget (usually human-authored).
+  protect:
+  # Never drop memory state `human-authored` even when over budget.
+  - human-authored
+  # Approximate max tokens of assembled context (80000).
+  token_budget: 80000

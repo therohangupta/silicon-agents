@@ -1,0 +1,671 @@
+# Fleet manifest for the Lab Procedure agent (lab_procedure).
+# Parsed by EDAAgent.read_spec / gateway YAML scanner. Comments are documentation only.
+
+# Fleet schema version for the agent manifest parser.
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for gateway YAML scanning.
+kind: Agent
+# Human- and machine-readable identity for dashboards and fleet select.
+metadata:
+  # Stable agent id used in delegates_to, tool agent_id, and routing.
+  name: lab_procedure
+  # UI label shown in the dashboard and logs.
+  display_name: Lab Procedure Agent
+  # One-paragraph charter for planners and operators.
+  description: Turn bring-up intent into a versioned procedure with prerequisites, safe bounds, expected
+    observations, rollback, and human-approval points.
+  # Stage and role for this agent.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: validation
+    # Role class: lead, specialist, or validator.
+    role: worker
+# Role class: lead, specialist, or validator.
+role: worker
+# Pipeline stage this agent owns or serves.
+stage: validation
+# Normative statement of what this agent owes the program.
+responsibility: Turn bring-up intent into a versioned procedure with prerequisites, safe bounds, expected
+  observations, rollback, and human-approval points.
+# Hard may / may_not envelope enforced in planning and reviews.
+boundary:
+  # Actions this agent is allowed to take on candidates and memory.
+  may:
+  # List entry consumed by the lab_procedure manifest: Write a procedure draft
+  - Write a procedure draft
+  # List entry consumed by the lab_procedure manifest: List human approval points
+  - List human approval points
+  # Forbidden actions (waivers, baseline promotion, self-signoff, etc.).
+  may_not:
+  # List entry consumed by the lab_procedure manifest: Run the procedure
+  - Run the procedure
+  # List entry consumed by the lab_procedure manifest: Widen a safety bound
+  - Widen a safety bound
+  # List entry consumed by the lab_procedure manifest: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # List entry consumed by the lab_procedure manifest: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # List entry consumed by the lab_procedure manifest: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows for.
+delegates_to: []
+# Independent gate agents that must grade this agent's output.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname from sibling containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port exposed by this agent's Dockerfile / server.
+  port: 8264
+  # HTTP paths the AgentService registers.
+  endpoints:
+    # Liveness probe path for orchestrators.
+    health: /health
+    # Task execution POST path used by the fleet server.
+    execute: /tasks/execute
+# EDA tool backend binding; none until a framework adapter is attached.
+backend:
+  # Backend adapter type (none means tool_observation returns not_run).
+  type: none
+# How tools are invoked inside the agent process.
+execution:
+  # Functional or test-mode filter for report reads.
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum simultaneous tasks for this specialist.
+    max_tasks: 1
+# Timeouts and retry policy for failed DFT/lab work.
+reliability:
+  # Wall-clock seconds before a task is abandoned.
+  task_timeout_secs: 120
+  # Automatic retries before on_failure policy applies.
+  max_retries: 1
+  # Planner reaction when the specialist fails (e.g. replan).
+  on_failure: replan
+# Advertised capability ids for planners (may mirror skills).
+capabilities:
+# Manifest field '- id' for lab_procedure (validation).
+- id: draft_lab_procedure
+  # One-paragraph charter for planners and operators.
+  description: Write prerequisites, steps, expected observations, and rollback.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_procedure_prerequisites
+  # One-paragraph charter for planners and operators.
+  description: Write the setup that must be true before the first step.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_safe_operating_bounds
+  # One-paragraph charter for planners and operators.
+  description: Write voltage, current, and temperature bounds. Bounds may only be copied from an approved
+    limit.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_expected_observations
+  # One-paragraph charter for planners and operators.
+  description: Write the measurements that mean the step passed.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_rollback_steps
+  # One-paragraph charter for planners and operators.
+  description: Write how to return the bench to a safe state.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_approval_points
+  # One-paragraph charter for planners and operators.
+  description: Mark the steps that require a human before they run.
+# Manifest field '- id' for lab_procedure (validation).
+- id: revise_procedure_draft
+  # One-paragraph charter for planners and operators.
+  description: Edit a draft that has not been approved.
+# Manifest field '- id' for lab_procedure (validation).
+- id: read_bringup_intent
+  # One-paragraph charter for planners and operators.
+  description: Read the bring-up intent this procedure implements.
+# Manifest field '- id' for lab_procedure (validation).
+- id: list_approval_points
+  # One-paragraph charter for planners and operators.
+  description: List the steps that require a human before they run.
+# Manifest field '- id' for lab_procedure (validation).
+- id: diff_procedure_revisions
+  # One-paragraph charter for planners and operators.
+  description: Show what changed between two procedure revisions.
+# Manifest field '- id' for lab_procedure (validation).
+- id: flag_missing_rollback
+  # One-paragraph charter for planners and operators.
+  description: Publish a procedure with no rollback.
+# Manifest field '- id' for lab_procedure (validation).
+- id: flag_widened_safety_bound
+  # One-paragraph charter for planners and operators.
+  description: Publish a draft whose bounds exceed the approved limit.
+# Manifest field '- id' for lab_procedure (validation).
+- id: record_procedure_version
+  # One-paragraph charter for planners and operators.
+  description: Record the procedure revision and the intent it traces to.
+# Concrete tool bindings: module, callable, action, params.
+skills:
+# Manifest field '- id' for lab_procedure (validation).
+- id: draft_lab_procedure
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: draft_lab_procedure
+  # One-paragraph charter for planners and operators.
+  description: Write prerequisites, steps, expected observations, and rollback.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for lab_procedure (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for lab_procedure (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_procedure_prerequisites
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_procedure_prerequisites
+  # One-paragraph charter for planners and operators.
+  description: Write the setup that must be true before the first step.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for lab_procedure (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for lab_procedure (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_safe_operating_bounds
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_safe_operating_bounds
+  # One-paragraph charter for planners and operators.
+  description: Write voltage, current, and temperature bounds. Bounds may only be copied from an approved
+    limit.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for lab_procedure (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for lab_procedure (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_expected_observations
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_expected_observations
+  # One-paragraph charter for planners and operators.
+  description: Write the measurements that mean the step passed.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for lab_procedure (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for lab_procedure (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_rollback_steps
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_rollback_steps
+  # One-paragraph charter for planners and operators.
+  description: Write how to return the bench to a safe state.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for lab_procedure (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for lab_procedure (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for lab_procedure (validation).
+- id: write_approval_points
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_approval_points
+  # One-paragraph charter for planners and operators.
+  description: Mark the steps that require a human before they run.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for lab_procedure (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for lab_procedure (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for lab_procedure (validation).
+- id: revise_procedure_draft
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: revise_procedure_draft
+  # One-paragraph charter for planners and operators.
+  description: Edit a draft that has not been approved.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for lab_procedure (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for lab_procedure (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for lab_procedure (validation).
+- id: read_bringup_intent
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_bringup_intent
+  # One-paragraph charter for planners and operators.
+  description: Read the bring-up intent this procedure implements.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for lab_procedure (validation).
+- id: list_approval_points
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: list_approval_points
+  # One-paragraph charter for planners and operators.
+  description: List the steps that require a human before they run.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for lab_procedure (validation).
+- id: diff_procedure_revisions
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: diff_procedure_revisions
+  # One-paragraph charter for planners and operators.
+  description: Show what changed between two procedure revisions.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for lab_procedure (validation).
+- id: flag_missing_rollback
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_missing_rollback
+  # One-paragraph charter for planners and operators.
+  description: Publish a procedure with no rollback.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for lab_procedure (validation).
+- id: flag_widened_safety_bound
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_widened_safety_bound
+  # One-paragraph charter for planners and operators.
+  description: Publish a draft whose bounds exceed the approved limit.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for lab_procedure (validation).
+- id: record_procedure_version
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: record_procedure_version
+  # One-paragraph charter for planners and operators.
+  description: Record the procedure revision and the intent it traces to.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for lab_procedure (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Local and shared engineering-memory configuration.
+memory:
+  # Named memory stores this agent may touch.
+  stores:
+  # Manifest field '- id' for lab_procedure (validation).
+  - id: journal
+    # One-paragraph charter for planners and operators.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none means tool_observation returns not_run).
+    type: list
+    # Where the store is kept (file vs ephemeral).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem root for silicon memory (env-substitutable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry stream configuration.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls and artifacts are ingested.
+  telemetry:
+    # Telemetry service base URL (TELEMETRY_URL).
+    endpoint: ${TELEMETRY_URL}
+    # Named high-level telemetry stream categories.
+    streams:
+    # Manifest field '- name' for lab_procedure (validation).
+    - name: skill_calls
+      # One-paragraph charter for planners and operators.
+      description: Tool invocations.
+    # Manifest field '- name' for lab_procedure (validation).
+    - name: artifacts
+      # One-paragraph charter for planners and operators.
+      description: Structured task results.
+# Container image and Dockerfile pointers for compose.
+deployment:
+  # Published image tag for this agent.
+  image: agentfleet/lab_procedure:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Env vars injected into the container.
+  environment:
+    # Optional bound EDA/lab framework adapter name.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory.
+context:
+  # Record kinds always preferred into the context package.
+  include:
+  # List entry consumed by the lab_procedure manifest: experiments
+  - experiments
+  # List entry consumed by the lab_procedure manifest: gates
+  - gates
+  # List entry consumed by the lab_procedure manifest: decisions
+  - decisions
+  # List entry consumed by the lab_procedure manifest: open_findings
+  - open_findings
+  # List entry consumed by the lab_procedure manifest: canonical_source
+  - canonical_source
+  # Record kinds filtered out before ranking.
+  exclude:
+  # List entry consumed by the lab_procedure manifest: stale_candidates
+  - stale_candidates
+  # Validation states removed before context ranking.
+  drop:
+  # List entry consumed by the lab_procedure manifest: rejected
+  - rejected
+  # Most-trusted authorship/validation states first.
+  precedence:
+  # List entry consumed by the lab_procedure manifest: validated
+  - validated
+  # List entry consumed by the lab_procedure manifest: provisional
+  - provisional
+  # States never dropped solely for token budget.
+  protect: []
+  # Approximate token cap for the assembled context package.
+  token_budget: 80000

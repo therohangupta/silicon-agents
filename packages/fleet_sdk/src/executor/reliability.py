@@ -28,7 +28,8 @@ import logging
 from typing import Any, Optional
 
 # Agent result + reliability policy models from the agent SDK.
-from packages.agent_sdk.src.models import AgentTaskResult, ReliabilityConfig
+from packages.agent_sdk.src.config import ReliabilityConfig
+from packages.agent_sdk.src.contracts import AgentTaskResult
 
 # Module logger (helpers currently return values without logging).
 logger = logging.getLogger(__name__)

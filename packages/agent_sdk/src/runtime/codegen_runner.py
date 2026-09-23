@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 from typing import Any, Optional
 
-from ..models import CodeExecution, ExecutionTrace, SkillCall
+from ..contracts import CodeExecution, ExecutionTrace, SkillCall
 from ..skills.registry import SkillRegistry
 
 
@@ -177,7 +177,7 @@ class CodeExecutionRunner:
         suffix: Optional[str] = None,
         import_paths: Optional[list[str]] = None,
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         self.skills = skills
         # Bind ``work_dir`` from Path(work_dir) for later use on this instance.
         self.work_dir = Path(work_dir)
@@ -193,7 +193,7 @@ class CodeExecutionRunner:
         self.import_paths = [str(Path(p).resolve()) for p in (import_paths or [])]
 
     def _build_skill_injection(self) -> str:
-        """``_build_skill_injection`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_build_skill_injection``"""
         lines = []
         # Loop: for spec, func in self.skills.iter_registered().
         for spec, func in self.skills.iter_registered():
@@ -210,7 +210,7 @@ class CodeExecutionRunner:
         return "".join(lines)
 
     def wrap_code(self, user_code: str) -> str:
-        """``wrap_code`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``wrap_code``"""
         injection = self._build_skill_injection()
         # Local ``body`` ← textwrap.dedent(user_code).
         body = textwrap.dedent(user_code)
@@ -230,7 +230,7 @@ class CodeExecutionRunner:
         task_id: str = "0",
         available_artifacts: Optional[list[dict]] = None,
     ) -> dict[str, str]:
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         env = os.environ.copy()
         runtime_paths: list[str] = []
         # Loop: for entry in sys.path.

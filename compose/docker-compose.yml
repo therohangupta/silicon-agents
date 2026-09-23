@@ -167,6 +167,9 @@ services:
       - "${GATEWAY_PUBLISHED_PORT:?config/platform.yaml}:${GATEWAY_CONTAINER_PORT:?config/platform.yaml}"
     volumes:
       - ../.data/telemetry:/data
+      - ../services/gateway/src:/app/services/gateway/src:ro
+      - ../packages:/app/packages:ro
+      - ../agents:/app/agents:ro
     depends_on:
       # Needs control plane, telemetry, and NATS before serving traffic.
       - fleet-server

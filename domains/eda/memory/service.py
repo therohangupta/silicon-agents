@@ -1,6 +1,6 @@
 """Engineering memory service: envelope rules over pluggable store backends.
 
-``EngineeringMemory`` is the shared write/read facade every ``EdaAgent`` uses.
+``EngineeringMemory`` is the shared write/read facade every ``EDAAgent`` uses.
 It owns the **envelope** (identity, scope, authorship, validation, evidence,
 idempotency, placements). The writing agent owns the **payload** dict.
 
@@ -111,7 +111,7 @@ class EngineeringMemory:
     ) -> MemoryRecord:
         """Append a provisional task-local journal record without publish checks.
 
-        Used by ``EdaAgent.handle`` for started/finished checkpoints. Always
+        Used by ``EDAAgent.handle`` for started/finished checkpoints. Always
         writes ``ValidationState.PROVISIONAL`` and ``AuthorKind.AGENT``.
 
         Args:

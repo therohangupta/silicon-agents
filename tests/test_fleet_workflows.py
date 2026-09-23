@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from domains.eda.fleet_workflow import to_fleet_workflow
-from domains.eda.schemas.messages import WorkflowSpec, WorkflowTask
+from domains.eda.fleet.workflow import to_fleet_workflow
+from domains.eda.schemas.messages import WorkflowProposal, ProposedTask
 from packages.fleet_sdk.src.allocators.types.deterministic.allocator import (
     DeterministicAllocator,
 )
@@ -106,13 +106,13 @@ def test_deterministic_allocator_enforces_capability_before_ranking():
 
 
 def test_eda_workflow_is_only_an_adapter_to_generic_graph():
-    eda = WorkflowSpec(
+    eda = WorkflowProposal(
         workflow_id="lead:task",
         parent_task_id="task",
         parent_agent="lead",
         tasks=[
-            WorkflowTask(id="rtl", agent_type="rtl_implementation", capability="compile_candidate"),
-            WorkflowTask(
+            ProposedTask(id="rtl", agent_type="rtl_implementation", capability="compile_candidate"),
+            ProposedTask(
                 id="gate",
                 agent_type="verification_validator",
                 capability="verification_validation",

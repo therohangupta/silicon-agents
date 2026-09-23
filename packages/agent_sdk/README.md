@@ -13,7 +13,7 @@ Fleet orchestration (Gateway, executor, plan workspace on the control plane) liv
 | Task HTTP API | [`src/server/`](src/server/README.md) — `AgentServer` (FastAPI + uvicorn) |
 | Execution strategy | [`src/runtime/`](src/runtime/README.md) — direct function, tool loop, codegen |
 | Callable tools | [`src/skills/`](src/skills/README.md) — `@tool`, `SkillRegistry` |
-| `config.yaml` contract | [`src/models.py`](src/models.py), [`src/schema/`](src/schema/README.md) |
+| `config.yaml` contract | [`src/contracts/`](src/contracts/) and [`src/config/`](src/config/), [`src/schema/`](src/schema/README.md) |
 | Observability | [`src/telemetry/`](src/telemetry/README.md) — HTTP ingest + optional gRPC streams |
 | Scratch / durable agent memory | [`src/memory/`](src/memory/README.md) — not fleet-wide `packages/memory` |
 | Large plan artifacts | [`src/workspace/`](src/workspace/README.md) — `PlanWorkspace`, local/S3 backends |
@@ -34,7 +34,7 @@ Domain-specific wrappers may compose these modules under `domains/`; generic age
 ┌─────────────────────────────────────────────────────────────┐
 │  Agent container (this SDK)                                    │
 │  AgentServer (or a domain-specific service wrapper)          │
-│    ├─ AgentConfigValidator ← config.yaml                     │
+│    ├─ load_agent_config ← config.yaml                        │
 │    ├─ SkillRegistry ← tools.py + memory skills               │
 │    ├─ MemoryManager ← memory.stores[]                        │
 │    ├─ AgentRuntime ← execution.mode                          │
@@ -57,7 +57,7 @@ Distinction from **`client_sdk/`**: the Gateway BFF client talks to the fleet AP
 |------|------|
 | [`__init__.py`](__init__.py) | Public re-exports: `AgentServer`, Pydantic models, `tool`, `TelemetryClient`, `PlanWorkspace` |
 | [`src/`](src/README.md) | Implementation root (prefer `packages.agent_sdk` imports in agent code) |
-| [`src/models.py`](src/models.py) | `AgentConfig`, `AgentTaskRequest` / `AgentTaskResult`, traces, memory/telemetry config |
+| [`src/contracts/`](src/contracts/) and [`src/config/`](src/config/) | `AgentConfig`, `AgentTaskRequest` / `AgentTaskResult`, traces, memory/telemetry config |
 | [`src/lifecycle.py`](src/lifecycle.py) | Domain-neutral `TaskLifecycle.handle()` hook pipeline |
 | [`src/server/`](src/server/README.md) | `AgentServer` wiring and routes |
 | [`src/runtime/`](src/runtime/README.md) | `AgentRuntime` implementations |
@@ -68,7 +68,7 @@ Distinction from **`client_sdk/`**: the Gateway BFF client talks to the fleet AP
 | [`src/workspace/`](src/workspace/README.md) | Plan-scoped blob storage |
 | [`src/client/`](src/client/README.md) | Async HTTP client for peer agents |
 
-There is no separate `pyproject.toml` in this folder; the package is consumed as part of the monorepo `agent_fleet` Python path (`packages.*` imports).
+There is no separate `pyproject.toml` in this folder; the package is consumed as part of the repository root Python path (`packages.*` imports).
 
 ---
 
@@ -117,7 +117,7 @@ Deep imports (`from packages.agent_sdk.src.runtime...`) are reserved for SDK int
 ## Newcomer reading order
 
 1. This README — fleet role and layout.
-2. [`src/models.py`](src/models.py) — request/result and config shape (skim `AgentConfig` sections).
+2. [`src/contracts/`](src/contracts/) and [`src/config/`](src/config/) — request/result and config shape (skim `AgentConfig` sections).
 3. [`src/server/README.md`](src/server/README.md) — how a process starts and serves tasks.
 4. [`src/skills/README.md`](src/skills/README.md) — how `tools.py` connects to YAML.
 5. Pick one execution path: [`src/runtime/README.md`](src/runtime/README.md) for mode selection.

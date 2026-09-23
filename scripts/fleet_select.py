@@ -16,7 +16,7 @@ from __future__ import annotations
 
 # argparse for subcommands (render/count/names/wait).
 import argparse
-# stderr for FleetError messages; exit codes via SystemExit.
+# stderr for FleetSelectionError messages; exit codes via SystemExit.
 import sys
 # Deadline-based health waiting.
 import time
@@ -35,24 +35,24 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 # Fleet selection + Compose rendering + typed errors.
-from domains.eda.fleet import FleetError, render_compose, select_agents
+from domains.eda.fleet import FleetSelectionError, render_compose, select_agents
 from packages.platform_config import load_platform
 
 
 def _load(path: str):
     """Load a fleet YAML file and return the selected agent list.
 
-    Raises ``FleetError`` when the path is missing or the document fails
+    Raises ``FleetSelectionError`` when the path is missing or the document fails
     selection validation. Returns the list from ``select_agents``.
     """
     # Resolve the fleet file path.
     file = Path(path)
     # Missing files are operator errors, not empty fleets.
     if not file.is_file():
-        raise FleetError(f"Fleet file not found: {file}")
+        raise FleetSelectionError(f"Fleet file not found: {file}")
     # Parse a path-only fleet YAML document with its required agents list.
     document = yaml.safe_load(file.read_text())
-    # Apply catalog selection rules.
+    # Apply registry selection rules.
     return select_agents(document)
 
 
@@ -79,7 +79,7 @@ def _wait(path: str, timeout: float) -> None:
     """Block until every selected agent's host health endpoint returns 200.
 
     Polls ``http://127.0.0.1:{host_port}/health`` once per second until all
-    agents succeed or *timeout* seconds elapse. Raises ``FleetError`` naming
+    agents succeed or *timeout* seconds elapse. Raises ``FleetSelectionError`` naming
     the agents that never became healthy.
     """
     # Agents to wait on (id + published host port).
@@ -108,13 +108,13 @@ def _wait(path: str, timeout: float) -> None:
     # Fail the command if anyone timed out.
     if pending:
         names = ", ".join(sorted(pending))
-        raise FleetError(f"Agents did not become healthy: {names}")
+        raise FleetSelectionError(f"Agents did not become healthy: {names}")
 
 
 def main() -> int:
     """Parse subcommands and dispatch; return process exit code (0 or 1).
 
-    ``FleetError`` becomes a stderr message and exit 1; other exceptions
+    ``FleetSelectionError`` becomes a stderr message and exit 1; other exceptions
     propagate. Successful commands return 0.
     """
     # Top-level parser describing the tool.
@@ -160,7 +160,7 @@ def main() -> int:
             if timeout is None:
                 timeout = float(load_platform()["startup"]["agent_health_timeout_seconds"])
             _wait(args.fleet, timeout)
-    except FleetError as exc:
+    except FleetSelectionError as exc:
         # Operator-facing selection/wait failures.
         print(exc, file=sys.stderr)
         return 1

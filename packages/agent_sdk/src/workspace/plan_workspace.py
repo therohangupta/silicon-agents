@@ -23,7 +23,7 @@ import sys
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from ..models import ArtifactRef
+from ..contracts import ArtifactRef
 from .backend import LocalWorkspaceBackend, S3WorkspaceBackend, WorkspaceBackend
 
 # Local ``logger`` ← logging.getLogger(__name__).
@@ -84,7 +84,7 @@ class PlanWorkspace:
         backend: Optional[WorkspaceBackend] = None,
         workspace_uri: Optional[str] = None,
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         self.plan_id = plan_id
         # Bind ``task_id`` from task_id for later use on this instance.
         self.task_id = task_id
@@ -106,7 +106,7 @@ class PlanWorkspace:
     @classmethod
     def from_request(cls, request) -> "PlanWorkspace":
         """Factory from an AgentTaskRequest."""
-        from ..models import AgentTaskRequest
+        from ..contracts import AgentTaskRequest
         req: AgentTaskRequest = request
         # Local ``backend`` ← None.
         backend = None

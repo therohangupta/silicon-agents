@@ -38,7 +38,7 @@ class TelemetryClient:
         port: Optional[int] = None,
         agent_type: Optional[str] = None,
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         from packages.platform_config import setting
 
         self.agent_id = agent_id
@@ -61,7 +61,7 @@ class TelemetryClient:
         self._sequence_id = 0
 
     async def _get_client(self) -> httpx.AsyncClient:
-        """``_get_client`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_get_client``"""
         if self._client is None:
             # Bind ``_client`` from httpx.AsyncClient(timeout=10.0) for later use on this instance.
             self._client = httpx.AsyncClient(timeout=10.0)
@@ -69,7 +69,7 @@ class TelemetryClient:
         return self._client
 
     async def close(self) -> None:
-        """``close`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``close``"""
         await self.stop_heartbeat()
         # Only when (self._client is not None).
         if self._client is not None:
@@ -79,11 +79,11 @@ class TelemetryClient:
             self._client = None
 
     def set_busy(self, busy: bool) -> None:
-        """``set_busy`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``set_busy``"""
         self._busy = busy
 
     def _next_sequence(self) -> int:
-        """``set_busy`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``set_busy``"""
         self._sequence_id += 1
         # Hand ``self._sequence_id`` back to the caller.
         return self._sequence_id
@@ -172,7 +172,7 @@ class TelemetryClient:
             logger.debug("Telemetry emit failed: %s", exc)
 
     async def _heartbeat_loop(self) -> None:
-        """``_heartbeat_loop`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_heartbeat_loop``"""
         while True:
             payload: dict[str, Any] = {
                 "host": self.host or "localhost",
@@ -194,13 +194,13 @@ class TelemetryClient:
             await asyncio.sleep(self.heartbeat_interval_secs)
 
     def start_heartbeat(self) -> None:
-        """``start_heartbeat`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``start_heartbeat``"""
         if self._heartbeat_task is None or self._heartbeat_task.done():
             # Bind ``_heartbeat_task`` from asyncio.create_task(self._heartbeat_loop()) for later use on this instance.
             self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
 
     async def stop_heartbeat(self) -> None:
-        """``stop_heartbeat`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``stop_heartbeat``"""
         if self._heartbeat_task is not None:
             # Call ``self._heartbeat_task.cancel``.
             self._heartbeat_task.cancel()

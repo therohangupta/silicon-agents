@@ -2,7 +2,7 @@
 
 This directory is the **Python implementation** of the Agent SDK. Application code in agent containers should import from the package root ([`../README.md`](../README.md)) — `from packages.agent_sdk import AgentServer, …` — which re-exports the stable surface from here.
 
-Internal SDK modules use relative imports (`from ..models import AgentTaskRequest`). Fleet domain code may import submodules directly when wiring custom servers.
+Internal SDK modules use relative imports (`from ..contracts import AgentTaskRequest`). Fleet domain code may import submodules directly when wiring custom servers.
 
 ---
 
@@ -28,7 +28,8 @@ packages/agent_sdk/__init__.py  (public re-exports)
         │
         ▼
 packages/agent_sdk/src/
-        ├── models.py          ← transport + config Pydantic models
+        ├── contracts/         ← task transport and execution traces
+        ├── config/            ← agent process configuration
         ├── lifecycle.py       ← optional domain lifecycle ABC
         ├── server/            ← AgentServer (HTTP entry)
         ├── runtime/           ← execute(request) strategies
@@ -49,13 +50,11 @@ packages/agent_sdk/src/
 | File / directory | Responsibility |
 |------------------|----------------|
 | [`__init__.py`](__init__.py) | Subset re-export of models for `from packages.agent_sdk.src import …` |
-| [`models.py`](models.py) | `AgentConfig`, task DTOs, execution traces, memory/telemetry/deployment config |
+| [`contracts/`](contracts/) and [`config/`](config/) | `AgentConfig`, `load_agent_config`, task DTOs, execution traces |
 | [`lifecycle.py`](lifecycle.py) | `TaskLifecycle` — decode → context → journal → execute → encode |
 | [`server/`](server/README.md) | `agent_server.py` — `AgentServer` |
 | [`runtime/`](runtime/README.md) | `AgentRuntime` and mode-specific executors |
 | [`skills/`](skills/README.md) | `@tool`, `SkillRegistry` |
-| [`schema/`](schema/README.md) | `AgentConfigValidator`, env expansion, legacy YAML migration |
-| [`memory/`](memory/README.md) | `MemoryManager`, memory skill factories, backends |
 | [`telemetry/`](telemetry/README.md) | HTTP ingest client, gRPC publisher |
 | [`workspace/`](workspace/README.md) | `PlanWorkspace`, local/S3 backends |
 | [`client/`](client/README.md) | `AgentClient` |
@@ -67,7 +66,7 @@ packages/agent_sdk/src/
 
 **Startup (typical `AgentServer`):**
 
-1. `AgentConfigValidator.validate_file(config.yaml)` → `AgentConfig`
+1. `load_agent_config(config.yaml)` → `AgentConfig`
 2. Construct `MemoryManager`, `SkillRegistry`, `TelemetryClient`
 3. Load `tools.py`, register YAML `skills`, inject `memory_*` skills
 4. Optionally load `telemetry_adapter.py` for gRPC streaming
@@ -100,7 +99,8 @@ packages/agent_sdk/src/
 
 ## Newcomer reading order
 
-1. [`models.py`](models.py) — especially `AgentTaskRequest`, `AgentTaskResult`, `AgentConfig`
+1. [`contracts/`](contracts/) — `AgentTaskRequest`, `AgentTaskResult`, and execution traces
+2. [`config/`](config/) — `AgentConfig` and process configuration
 2. [`server/README.md`](server/README.md)
 3. [`skills/README.md`](skills/README.md)
 4. [`runtime/README.md`](runtime/README.md) — match your agent’s `execution.mode`
@@ -110,7 +110,7 @@ packages/agent_sdk/src/
 
 ## Operational notes
 
-- **Import path** — Monorepo expects `PYTHONPATH` including `agent_fleet` so `packages.agent_sdk` resolves.
+- **Import path** — Run from repository root (or install the project editable) so `packages.agent_sdk` resolves.
 - **lifecycle.py** — Use when building other domains that need journaling without copying executor logic; Domain agents often implement equivalent steps inside `domain handler`.
 - **Testing** — Integration tests may construct validators and runtimes without HTTP; see fleet test layout outside this package.
 - **Do not duplicate** — Fleet-wide memory and gateway clients live in other `packages/*` trees; agent-local persistence is only [`memory/`](memory/README.md).

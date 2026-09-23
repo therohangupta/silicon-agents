@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from packages.agent_sdk.src.lifecycle import TaskLifecycle
-from packages.agent_sdk.src.models import AgentTaskRequest, AgentTaskResult
+from packages.agent_sdk.src.contracts import AgentTaskRequest, AgentTaskResult
 
 
 class _Lifecycle(TaskLifecycle):

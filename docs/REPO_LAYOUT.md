@@ -51,12 +51,11 @@ eda-agent-fleet/                 # repository root
 │   │       ├── models.py
 │   │       ├── instance_registry.py
 │   │       └── grpc_client.py
-│   ├── agent_sdk/                # Agent task client, server base, schema
+│   ├── agent_sdk/                # Agent task client, server base, config loading
 │   │   └── src/
-│   │       ├── models.py
+│   │       ├── config/           # AgentConfig and load_agent_config
 │   │       ├── client/agent_client.py
-│   │       ├── server/server_base.py
-│   │       └── schema/           # schema.yaml, yaml_validator.py
+│   │       └── server/agent_server.py
 │   └── client_sdk/               # Typed HTTP + WS clients for Gateway
 │       ├── README.md
 │       ├── contract/             # e.g. events.schema.json

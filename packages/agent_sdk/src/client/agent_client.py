@@ -13,13 +13,14 @@ Hand-written source for ``agent_client.py``. Behavior is unchanged; comments doc
 
 import httpx
 
-from ..models import AgentHealth, AgentTaskRequest, AgentTaskResult
+from ..contracts import AgentTaskRequest, AgentTaskResult
+from ..server import AgentHealth
 
 
 class AgentClient:
-    """``AgentClient`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+    """``AgentClient``"""
     def __init__(self, host: str, port: int, execute_path: str = "/tasks/execute"):
-        """``AgentClient`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``AgentClient``"""
         if not host or not isinstance(port, int):
             # Raise ``ValueError`` to signal this failure mode to callers.
             raise ValueError("Host and port must be provided and valid.")
@@ -31,7 +32,7 @@ class AgentClient:
         self._client = httpx.AsyncClient(timeout=None)
 
     async def health(self) -> AgentHealth:
-        """``health`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``health``"""
         response = await self._client.get(f"{self.base_url}/health")
         # Call ``response.raise_for_status``.
         response.raise_for_status()
@@ -39,7 +40,7 @@ class AgentClient:
         return AgentHealth(**response.json())
 
     async def execute_task(self, request: AgentTaskRequest) -> AgentTaskResult:
-        """``execute_task`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``execute_task``"""
         response = await self._client.post(f"{self.base_url}{self.execute_path}", json=request.model_dump(mode="json"))
         # Call ``response.raise_for_status``.
         response.raise_for_status()
@@ -47,5 +48,5 @@ class AgentClient:
         return AgentTaskResult(**response.json())
 
     async def close(self) -> None:
-        """``close`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``close``"""
         await self._client.aclose()

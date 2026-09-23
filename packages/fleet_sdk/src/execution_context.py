@@ -24,7 +24,7 @@ from typing import Any
 
 # Snapshot / summary / artifact models defined by the agent SDK contract that
 # agent task servers expect inside AgentTaskRequest.context.
-from packages.agent_sdk.src.models import ArtifactRef, ExecutionContextSnapshot, TaskSummary
+from packages.agent_sdk.src.contracts import ArtifactRef, ExecutionContextSnapshot, TaskSummary
 # Registry provides list_task_executions(plan_id) for durable execution rows.
 from packages.fleet_sdk.src.instance_registry import AgentInstanceRegistry
 

@@ -28,7 +28,7 @@ from .file_store import FileStore
 from .memory_store import InMemoryStore
 # Generic store protocol type alias.
 from .protocol import MemoryStore
-# Primary facade and factory used by EdaAgent and AgentService.
+# Primary facade and factory used by EDAAgent and AgentService.
 from .service import EngineeringMemory, MemoryPolicyError, open_memory
 
 # Public surface for ``from domains.eda.memory import ...``.

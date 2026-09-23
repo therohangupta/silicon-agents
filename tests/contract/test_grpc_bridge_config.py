@@ -18,7 +18,7 @@ from services.gateway.src.grpc_bridge import (
     _deployment_from_config,
 )
 # Validate then model_dump to the dict shape the bridge expects.
-from packages.agent_sdk.src.schema.validator import AgentConfigValidator
+from packages.agent_sdk.src.config.load import load_agent_config_dict
 
 
 def test_connection_from_v1_config():
@@ -51,7 +51,7 @@ deployment:
 """
         )
         # Validate and dump to JSON-mode dict (bridge input shape).
-        config = AgentConfigValidator().validate_file(path).model_dump(mode="json")
+        config = load_agent_config_dict(path)
         # Connection host/port come from the connection block.
         conn = _connection_from_config(config)
         assert conn["host"] == "10.0.0.5"

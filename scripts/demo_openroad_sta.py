@@ -21,14 +21,14 @@ def _load_tool(module_path: Path, fn_name: str):
 
 
 def main() -> None:
-    from domains.eda.eda import bind_eda_adapter
-    from domains.eda.eda.toolchain import ToolchainAdapter
+    from domains.eda.adapters import bind_eda_adapter
+    from domains.eda.adapters.toolchain import ToolchainAdapter
 
     bind_eda_adapter(ToolchainAdapter())
     params = {"design_path": "gcd.v", "top": "gcd", "recipe": "nangate45-gcd-v1"}
-    run_sta = _load_tool(ROOT / "agents/backend/signoff/timing_debug", "run_sta")
+    run_sta = _load_tool(ROOT / "agents/eda/backend/signoff/timing_debug", "run_sta")
     run_global_placement = _load_tool(
-        ROOT / "agents/backend/placement/placement_experiment", "run_global_placement"
+        ROOT / "agents/eda/backend/placement/placement_experiment", "run_global_placement"
     )
     print(json.dumps({
         "run_sta": run_sta(params=params),

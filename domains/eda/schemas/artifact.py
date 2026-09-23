@@ -19,7 +19,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 # Fleet-facing artifact pointer used on AgentTaskResult.
-from packages.agent_sdk.src.models import ArtifactRef as FleetArtifactRef
+from packages.agent_sdk.src.contracts import ArtifactRef as FleetArtifactRef
 
 
 class ArtifactRef(BaseModel):

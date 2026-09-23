@@ -19,7 +19,7 @@ The fleet HTTP stack (`AgentServer`, gateway, telemetry) speaks generic **AgentT
 - Versioned memory records with validation state and evidence
 - Context assembly driven by per-agent `config.yaml` policy
 
-Putting that logic in every agent under `agents/` would duplicate invariants. The EDA domain centralizes them so each concrete agent is mostly `spec` + `tools.py` + thin subclass glue.
+Putting that logic in every agent under `agents/` would duplicate invariants. The EDA domain centralizes them so each concrete agent is mostly `eda_config` + `tools.py` + thin subclass glue.
 
 ## Import conventions
 
@@ -32,7 +32,7 @@ Putting that logic in every agent under `agents/` would duplicate invariants. Th
 ```text
 packages/agent_sdk   → HTTP lifecycle, skills registry, task transport models
 packages/memory      → Generic stores, context assembler, write-policy kit
-domains/eda          → EDA TaskSpec, MemoryRecord, EdaAgent, EngineeringMemory
+domains/eda          → EDA TaskBrief, MemoryRecord, EDAAgent, EngineeringMemory
 agents/<path>/       → One catalog agent per directory (config.yaml + agent.py + tools.py)
 fleets/*.yaml        → Which agent directories startup.sh / fleet_select render into Compose
 ```
@@ -43,19 +43,17 @@ Fleet YAML and platform config (`config/platform.yaml`) are not under `domains/`
 
 ```text
 domains/
-├── __init__.py          # Package docstring; no re-exports
-├── README.md            # This file
+├── __init__.py
+├── README.md
 └── eda/                 # Chip-design domain (see eda/README.md)
-    ├── agent.py         # EdaAgent task handler
-    ├── context.py       # ContextService + INCLUDE_TYPES
-    ├── spec.py          # AgentSpec from config.yaml
-    ├── registry.py      # Catalog load/validate
-    ├── planning.py      # WorkflowSpec from plan_steps / delegates_to
-    ├── fleet.py         # Fleet YAML → Compose services
-    ├── server.py        # AgentService HTTP binding
+    ├── config/          # EDAAgentConfig + YAML loader
     ├── schemas/         # Pydantic contracts
-    ├── memory/          # EngineeringMemory + store bindings
-    └── eda/             # EDA framework adapter protocol (nested package)
+    ├── memory/          # EngineeringMemory + stores
+    ├── runtime/         # EDAAgent, AgentService, ContextService, planning
+    ├── fleet/           # Catalog, compose selection, workflow intake
+    ├── adapters/        # EDA framework bindings (was eda/eda/)
+    ├── platform.yaml
+    └── toolchain.yaml
 ```
 
 ## Adding a new domain (sketch)
@@ -64,7 +62,7 @@ domains/
 2. Document public imports in `<name>/__init__.py` and a root `<name>/README.md`.
 3. Wire catalog validation and fleet selection only if that domain owns its own agent tree; otherwise extend EDA.
 
-For EDA-specific depth—**EdaAgent** lifecycle, **EngineeringMemory**, and **schemas**—start at [`eda/README.md`](eda/README.md) and the nested READMEs under `eda/schemas/`, `eda/memory/`, and `eda/eda/`.
+For EDA-specific depth—**EDAAgent** lifecycle, **EngineeringMemory**, and **schemas**—start at [`eda/README.md`](eda/README.md) and the nested READMEs under `eda/schemas/`, `eda/memory/`, and `eda/eda/`.
 
 ## Related documentation
 

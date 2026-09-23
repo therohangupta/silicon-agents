@@ -1,4 +1,17 @@
-"""Package ``agent_sdk/src/skills/__init__.py``.
+"""Agent skill declarations, registration, and invocation."""
 
-Marks this directory as a Python package within packages. Import concrete symbols from sibling modules rather than this file when no re-exports are defined.
-"""
+from .declarations import (
+    CapabilityDeclaration,
+    OperationDeclaration,
+    ParameterDeclaration,
+    RoleDeclaration,
+    SkillDeclaration,
+)
+
+__all__ = [
+    "CapabilityDeclaration",
+    "OperationDeclaration",
+    "ParameterDeclaration",
+    "RoleDeclaration",
+    "SkillDeclaration",
+]

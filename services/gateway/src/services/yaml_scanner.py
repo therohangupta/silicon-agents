@@ -41,8 +41,8 @@ def _category_from_path(yaml_path: Path) -> str:
     Return the agent's stable full directory path under ``agents/``.
 
     Purpose:
-        Populate ``AgentTemplateResponse.category`` with the same path used by
-        fleet manifests, without adding a parallel taxonomy to YAML.
+        Populate ``AgentTemplateResponse.category`` with the directory path
+        under ``agents/``.
 
     Args:
         yaml_path: Absolute path to a ``config.yaml`` file.
@@ -58,10 +58,8 @@ def _category_from_path(yaml_path: Path) -> str:
         ``ValueError`` from ``relative_to`` is caught; falls back to parent name.
     """
     try:
-        # Express the agent package directory relative to agents/.
         relative = yaml_path.parent.relative_to(REPO_ROOT / "agents")
     except ValueError:
-        # YAML lives outside the expected agents tree; use folder name only.
         return yaml_path.parent.name
     return relative.as_posix()
 

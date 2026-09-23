@@ -30,7 +30,7 @@ class TelemetryPublisher:
         grpc_target: str,
         blob_upload_url: Optional[str] = None,
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         self.agent_id = agent_id
         # Bind ``agent_type`` from agent_type for later use on this instance.
         self.agent_type = agent_type
@@ -46,7 +46,7 @@ class TelemetryPublisher:
         self._sequence_id = 0
 
     async def connect(self) -> None:
-        """``connect`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``connect``"""
         try:
             import grpc
             from packages.proto import telemetry_pb2_grpc
@@ -64,7 +64,7 @@ class TelemetryPublisher:
             raise
 
     async def close(self) -> None:
-        """``close`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``close``"""
         if self._channel is not None:
             # Await ``self._channel.close`` and continue once it completes.
             await self._channel.close()
@@ -82,7 +82,7 @@ class TelemetryPublisher:
         done: bool = False,
         tags: Optional[dict[str, str]] = None,
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         from packages.proto import telemetry_pb2
 
         self._sequence_id += 1
@@ -115,7 +115,7 @@ class TelemetryPublisher:
         )
 
     async def _ingest(self, event: Any) -> None:
-        """``_ingest`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_ingest``"""
         if self._stub is None:
             return
         # Try the fallible work below.
@@ -138,7 +138,7 @@ class TelemetryPublisher:
         done: bool = False,
         tags: Optional[dict[str, str]] = None,
     ) -> None:
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         try:
             from packages.proto import telemetry_pb2
 
@@ -178,7 +178,7 @@ class TelemetryPublisher:
         done: bool = False,
         tags: Optional[dict[str, str]] = None,
     ) -> None:
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         try:
             from packages.proto import telemetry_pb2
 
@@ -220,7 +220,7 @@ class TelemetryPublisher:
         tags: Optional[dict[str, str]] = None,
         stream_name: Optional[str] = None,
     ) -> None:
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         try:
             from packages.proto import telemetry_pb2
 
@@ -264,7 +264,7 @@ class TelemetryPublisher:
         mime_type: str,
         task_id: str,
     ) -> str:
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         if self.blob_upload_url is None:
             # Hand ``f"memory://{agent_id}/{task_id}/{stream_name}/{filename}"`` back to the caller.
             return f"memory://{agent_id}/{task_id}/{stream_name}/{filename}"

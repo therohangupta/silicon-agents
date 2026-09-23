@@ -129,7 +129,7 @@ from pathlib import Path
 
 import yaml
 
-from domains.eda.platform_config import load_eda_platform
+from domains.eda.fleet.platform_config import load_eda_platform
 
 toolchain = load_eda_platform()["toolchain"]
 profile = yaml.safe_load((Path("domains/eda/toolchain.yaml")).read_text())

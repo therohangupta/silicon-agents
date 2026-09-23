@@ -1,0 +1,735 @@
+# Fleet manifest for the DFT Lead agent (dft_lead).
+# Parsed by EDAAgent.read_spec / gateway YAML scanner. Comments are documentation only.
+
+# Fleet schema version for the agent manifest parser.
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for gateway YAML scanning.
+kind: Agent
+# Human- and machine-readable identity for dashboards and fleet select.
+metadata:
+  # Stable agent id used in delegates_to, tool agent_id, and routing.
+  name: dft_lead
+  # UI label shown in the dashboard and logs.
+  display_name: DFT Lead
+  # One-paragraph charter for planners and operators.
+  description: Own the block and chip test strategy. Decompose it into scan, ATPG, self-test, and physical-integration
+    work, and coordinate closure against coverage, test time, area, power, and timing.
+  # Stage and role for this agent.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: dft
+    # Role class: lead, specialist, or validator.
+    role: lead
+# Role class: lead, specialist, or validator.
+role: lead
+# Pipeline stage this agent owns or serves.
+stage: dft
+# Normative statement of what this agent owes the program.
+responsibility: Own the block and chip test strategy. Decompose it into scan, ATPG, self-test, and physical-integration
+  work, and coordinate closure against coverage, test time, area, power, and timing.
+# Hard may / may_not envelope enforced in planning and reviews.
+boundary:
+  # Actions this agent is allowed to take on candidates and memory.
+  may:
+  # List entry consumed by the dft_lead manifest: Publish a DFT workflow
+  - Publish a DFT workflow
+  # List entry consumed by the dft_lead manifest: Read RTL and test requirements
+  - Read RTL and test requirements
+  # List entry consumed by the dft_lead manifest: Request a human decision on a coverage miss
+  - Request a human decision on a coverage miss
+  # Forbidden actions (waivers, baseline promotion, self-signoff, etc.).
+  may_not:
+  # List entry consumed by the dft_lead manifest: Edit functional RTL to chase coverage without a finding
+  - Edit functional RTL to chase coverage without a finding
+  # List entry consumed by the dft_lead manifest: Waive fault coverage
+  - Waive fault coverage
+  # List entry consumed by the dft_lead manifest: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # List entry consumed by the dft_lead manifest: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # List entry consumed by the dft_lead manifest: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows for.
+delegates_to:
+# List entry consumed by the dft_lead manifest: scan_insertion
+- scan_insertion
+# List entry consumed by the dft_lead manifest: atpg_campaign
+- atpg_campaign
+# List entry consumed by the dft_lead manifest: testability_analysis
+- testability_analysis
+# List entry consumed by the dft_lead manifest: mbist_lbist
+- mbist_lbist
+# List entry consumed by the dft_lead manifest: dft_physical_timing
+- dft_physical_timing
+# List entry consumed by the dft_lead manifest: dft_validator
+- dft_validator
+# Independent gate agents that must grade this agent's output.
+validators:
+# List entry consumed by the dft_lead manifest: dft_validator
+- dft_validator
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname from sibling containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port exposed by this agent's Dockerfile / server.
+  port: 8225
+  # HTTP paths the AgentService registers.
+  endpoints:
+    # Liveness probe path for orchestrators.
+    health: /health
+    # Task execution POST path used by the fleet server.
+    execute: /tasks/execute
+# EDA tool backend binding; none until a framework adapter is attached.
+backend:
+  # Backend adapter type (none means tool_observation returns not_run).
+  type: none
+# How tools are invoked inside the agent process.
+execution:
+  # Functional or test-mode filter for report reads.
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum simultaneous tasks for this specialist.
+    max_tasks: 1
+# Timeouts and retry policy for failed DFT/lab work.
+reliability:
+  # Wall-clock seconds before a task is abandoned.
+  task_timeout_secs: 120
+  # Automatic retries before on_failure policy applies.
+  max_retries: 1
+  # Planner reaction when the specialist fails (e.g. replan).
+  on_failure: replan
+# Advertised capability ids for planners (may mirror skills).
+capabilities:
+# Manifest field '- id' for dft_lead (dft).
+- id: plan_dft_closure
+  # One-paragraph charter for planners and operators.
+  description: Emit the DFT workflow for this revision.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_scan_insertion
+  # One-paragraph charter for planners and operators.
+  description: Open scan insertion for this RTL candidate.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_atpg_campaign
+  # One-paragraph charter for planners and operators.
+  description: Open an ATPG campaign for the required fault models.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_testability_analysis
+  # One-paragraph charter for planners and operators.
+  description: Open testability analysis against the latest ATPG report.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_bist_configuration
+  # One-paragraph charter for planners and operators.
+  description: Open MBIST or LBIST configuration for the memories and logic in scope.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_dft_physical_timing
+  # One-paragraph charter for planners and operators.
+  description: Open the handoff of scan and test-mode constraints into physical design.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_dft_gate
+  # One-paragraph charter for planners and operators.
+  description: Hand the candidate to the independent DFT validator.
+# Manifest field '- id' for dft_lead (dft).
+- id: read_dft_requirements
+  # One-paragraph charter for planners and operators.
+  description: Read fault-coverage, test-time, area, power, and timing requirements.
+# Manifest field '- id' for dft_lead (dft).
+- id: read_dft_status
+  # One-paragraph charter for planners and operators.
+  description: Read scan, ATPG, BIST, and test-mode timing status.
+# Manifest field '- id' for dft_lead (dft).
+- id: read_fault_coverage_summary
+  # One-paragraph charter for planners and operators.
+  description: Read coverage by fault model.
+# Manifest field '- id' for dft_lead (dft).
+- id: report_dft_gap
+  # One-paragraph charter for planners and operators.
+  description: Publish a coverage, test-time, or timing gap the strategy cannot close.
+# Manifest field '- id' for dft_lead (dft).
+- id: route_testability_finding
+  # One-paragraph charter for planners and operators.
+  description: Route a testability finding to RTL or architecture.
+# Manifest field '- id' for dft_lead (dft).
+- id: record_dft_strategy_change
+  # One-paragraph charter for planners and operators.
+  description: Record a change in fault model, compression, or pattern budget.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_dft_coverage_decision
+  # One-paragraph charter for planners and operators.
+  description: Ask a human to accept or reject a coverage miss. This agent cannot waive it.
+# Manifest field '- id' for dft_lead (dft).
+- id: delegate_tasks
+  # One-paragraph charter for planners and operators.
+  description: Propose a dependency graph for the agents in this scope. Do not execute their tools.
+# Concrete tool bindings: module, callable, action, params.
+skills:
+# Manifest field '- id' for dft_lead (dft).
+- id: plan_dft_closure
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: plan_dft_closure
+  # One-paragraph charter for planners and operators.
+  description: Emit the DFT workflow for this revision.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Natural-language outcome the child workflow or tool must achieve.
+    objective: ''
+    # Upstream task that owns this child workflow.
+    parent_task_id: ''
+    # Hierarchy block; empty means the parent task's current block.
+    scope_block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: create_workflow
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: objective
+    # One-paragraph charter for planners and operators.
+    description: Outcome the child workflow must achieve.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: parent_task_id
+    # One-paragraph charter for planners and operators.
+    description: Task that owns this workflow.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: scope_block
+    # One-paragraph charter for planners and operators.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_scan_insertion
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: request_scan_insertion
+  # One-paragraph charter for planners and operators.
+  description: Open scan insertion for this RTL candidate.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Natural-language outcome the child workflow or tool must achieve.
+    objective: ''
+    # Upstream task that owns this child workflow.
+    parent_task_id: ''
+    # Hierarchy block; empty means the parent task's current block.
+    scope_block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: create_workflow
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: objective
+    # One-paragraph charter for planners and operators.
+    description: Outcome the child workflow must achieve.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: parent_task_id
+    # One-paragraph charter for planners and operators.
+    description: Task that owns this workflow.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: scope_block
+    # One-paragraph charter for planners and operators.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_atpg_campaign
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: request_atpg_campaign
+  # One-paragraph charter for planners and operators.
+  description: Open an ATPG campaign for the required fault models.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Natural-language outcome the child workflow or tool must achieve.
+    objective: ''
+    # Upstream task that owns this child workflow.
+    parent_task_id: ''
+    # Hierarchy block; empty means the parent task's current block.
+    scope_block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: create_workflow
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: objective
+    # One-paragraph charter for planners and operators.
+    description: Outcome the child workflow must achieve.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: parent_task_id
+    # One-paragraph charter for planners and operators.
+    description: Task that owns this workflow.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: scope_block
+    # One-paragraph charter for planners and operators.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_testability_analysis
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: request_testability_analysis
+  # One-paragraph charter for planners and operators.
+  description: Open testability analysis against the latest ATPG report.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Natural-language outcome the child workflow or tool must achieve.
+    objective: ''
+    # Upstream task that owns this child workflow.
+    parent_task_id: ''
+    # Hierarchy block; empty means the parent task's current block.
+    scope_block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: create_workflow
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: objective
+    # One-paragraph charter for planners and operators.
+    description: Outcome the child workflow must achieve.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: parent_task_id
+    # One-paragraph charter for planners and operators.
+    description: Task that owns this workflow.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: scope_block
+    # One-paragraph charter for planners and operators.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_bist_configuration
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: request_bist_configuration
+  # One-paragraph charter for planners and operators.
+  description: Open MBIST or LBIST configuration for the memories and logic in scope.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Natural-language outcome the child workflow or tool must achieve.
+    objective: ''
+    # Upstream task that owns this child workflow.
+    parent_task_id: ''
+    # Hierarchy block; empty means the parent task's current block.
+    scope_block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: create_workflow
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: objective
+    # One-paragraph charter for planners and operators.
+    description: Outcome the child workflow must achieve.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: parent_task_id
+    # One-paragraph charter for planners and operators.
+    description: Task that owns this workflow.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: scope_block
+    # One-paragraph charter for planners and operators.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_dft_physical_timing
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: request_dft_physical_timing
+  # One-paragraph charter for planners and operators.
+  description: Open the handoff of scan and test-mode constraints into physical design.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Natural-language outcome the child workflow or tool must achieve.
+    objective: ''
+    # Upstream task that owns this child workflow.
+    parent_task_id: ''
+    # Hierarchy block; empty means the parent task's current block.
+    scope_block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: create_workflow
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: objective
+    # One-paragraph charter for planners and operators.
+    description: Outcome the child workflow must achieve.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: parent_task_id
+    # One-paragraph charter for planners and operators.
+    description: Task that owns this workflow.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: scope_block
+    # One-paragraph charter for planners and operators.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_dft_gate
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: request_dft_gate
+  # One-paragraph charter for planners and operators.
+  description: Hand the candidate to the independent DFT validator.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Natural-language outcome the child workflow or tool must achieve.
+    objective: ''
+    # Upstream task that owns this child workflow.
+    parent_task_id: ''
+    # Hierarchy block; empty means the parent task's current block.
+    scope_block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: create_workflow
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: objective
+    # One-paragraph charter for planners and operators.
+    description: Outcome the child workflow must achieve.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: parent_task_id
+    # One-paragraph charter for planners and operators.
+    description: Task that owns this workflow.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: scope_block
+    # One-paragraph charter for planners and operators.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Manifest field '- id' for dft_lead (dft).
+- id: read_dft_requirements
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_dft_requirements
+  # One-paragraph charter for planners and operators.
+  description: Read fault-coverage, test-time, area, power, and timing requirements.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for dft_lead (dft).
+- id: read_dft_status
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_dft_status
+  # One-paragraph charter for planners and operators.
+  description: Read scan, ATPG, BIST, and test-mode timing status.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for dft_lead (dft).
+- id: read_fault_coverage_summary
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_fault_coverage_summary
+  # One-paragraph charter for planners and operators.
+  description: Read coverage by fault model.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for dft_lead (dft).
+- id: report_dft_gap
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: report_dft_gap
+  # One-paragraph charter for planners and operators.
+  description: Publish a coverage, test-time, or timing gap the strategy cannot close.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for dft_lead (dft).
+- id: route_testability_finding
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: route_testability_finding
+  # One-paragraph charter for planners and operators.
+  description: Route a testability finding to RTL or architecture.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for dft_lead (dft).
+- id: record_dft_strategy_change
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: record_dft_strategy_change
+  # One-paragraph charter for planners and operators.
+  description: Record a change in fault model, compression, or pattern budget.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for dft_lead (dft).
+- id: request_dft_coverage_decision
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: request_dft_coverage_decision
+  # One-paragraph charter for planners and operators.
+  description: Ask a human to accept or reject a coverage miss. This agent cannot waive it.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Human decision prompt text.
+    decision: ''
+    # Comma-separated feasible options for a human.
+    options: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # ISO-8601 time after which the decision blocks schedule.
+    deadline: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: request_human_decision
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for dft_lead (dft).
+  - name: decision
+    # One-paragraph charter for planners and operators.
+    description: The choice a human must make.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: options
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated feasible options.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs for the tradeoff.
+  # Manifest field '- name' for dft_lead (dft).
+  - name: deadline
+    # One-paragraph charter for planners and operators.
+    description: ISO-8601 time after which the decision blocks the schedule.
+# Local and shared engineering-memory configuration.
+memory:
+  # Named memory stores this agent may touch.
+  stores:
+  # Manifest field '- id' for dft_lead (dft).
+  - id: journal
+    # One-paragraph charter for planners and operators.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none means tool_observation returns not_run).
+    type: list
+    # Where the store is kept (file vs ephemeral).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem root for silicon memory (env-substitutable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry stream configuration.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls and artifacts are ingested.
+  telemetry:
+    # Telemetry service base URL (TELEMETRY_URL).
+    endpoint: ${TELEMETRY_URL}
+    # Named high-level telemetry stream categories.
+    streams:
+    # Manifest field '- name' for dft_lead (dft).
+    - name: skill_calls
+      # One-paragraph charter for planners and operators.
+      description: Tool invocations.
+    # Manifest field '- name' for dft_lead (dft).
+    - name: artifacts
+      # One-paragraph charter for planners and operators.
+      description: Structured task results.
+# Container image and Dockerfile pointers for compose.
+deployment:
+  # Published image tag for this agent.
+  image: agentfleet/dft_lead:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Env vars injected into the container.
+  environment:
+    # Optional bound EDA/lab framework adapter name.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory.
+context:
+  # Record kinds always preferred into the context package.
+  include:
+  # List entry consumed by the dft_lead manifest: gates
+  - gates
+  # List entry consumed by the dft_lead manifest: workflows
+  - workflows
+  # List entry consumed by the dft_lead manifest: open_findings
+  - open_findings
+  # List entry consumed by the dft_lead manifest: decisions
+  - decisions
+  # List entry consumed by the dft_lead manifest: experiments
+  - experiments
+  # Record kinds filtered out before ranking.
+  exclude:
+  # List entry consumed by the dft_lead manifest: stale_candidates
+  - stale_candidates
+  # Validation states removed before context ranking.
+  drop:
+  # List entry consumed by the dft_lead manifest: rejected
+  - rejected
+  # Most-trusted authorship/validation states first.
+  precedence:
+  # List entry consumed by the dft_lead manifest: human-authored
+  - human-authored
+  # List entry consumed by the dft_lead manifest: validated
+  - validated
+  # List entry consumed by the dft_lead manifest: provisional
+  - provisional
+  # States never dropped solely for token budget.
+  protect:
+  # List entry consumed by the dft_lead manifest: human-authored
+  - human-authored
+  # Approximate token cap for the assembled context package.
+  token_budget: 80000

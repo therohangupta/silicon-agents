@@ -6,7 +6,7 @@ This directory holds every first-party chip-design specialist the fleet can sche
 
 | File | Role |
 |------|------|
-| `agent.py` | Concrete `EdaAgent` subclass; loads `spec` from sibling `config.yaml`. |
+| `agent.py` | Concrete `EDAAgent` subclass; loads `spec` from sibling `config.yaml`. |
 | `server.py` | HTTP bootstrap: `sys.path`, `AgentService`, FastAPI `app`. |
 | `tools.py` | `@tool` skill callables → `tool_observation` until adapters bind. |
 | `config.yaml` | Manifest: boundaries, delegation, ports, skills, memory, telemetry, context. |
@@ -105,5 +105,5 @@ See [`TELEMETRY.md`](TELEMETRY.md) for heartbeats, skill-call streams, and optio
 
 ## Related docs
 
-- Shared base class: `domains/eda/agent.py`.
+- Shared base class: `domains/eda/runtime/agent.py`.
 - Fleet YAML: `fleets/` and `config/platform.yaml`.

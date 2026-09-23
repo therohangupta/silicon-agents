@@ -1,6 +1,6 @@
 # Legacy physical demo agent Docker helpers
 
-These shell scripts previously built and ran **physical demo** agent containers that lived outside the current EDA catalog under **`agents/`**. Those packages were removed during the silicon catalog migration.
+These shell scripts previously built and ran **physical demo** agent containers that lived outside the current EDA registry under **`agents/`**. Those packages were removed during the silicon registry migration.
 
 ## Current behavior
 
@@ -16,7 +16,7 @@ Do not extend these files for new work — they remain only so old docs/links fa
 
 ## Supported replacement workflow
 
-Build and run **catalog agents** instead:
+Build and run **registered agents** instead:
 
 1. Pick an agent directory, e.g. **`agents/frontend/architecture/requirements/`**
 2. Use that directory's **`Dockerfile`**, or the shared **`services/silicon_agent`** image pattern documented under **`agents/`**
@@ -33,7 +33,7 @@ See [`../../cli/README.md`](../../cli/README.md) and [`../../agents/README.md`](
 
 ## Why demos were removed
 
-The fleet now treats **`agents/**/config.yaml`** as the single catalog source of truth (**`domains.eda.registry`**). Parallel “example” trees duplicated validation rules, ports, and memory policy. Consolidating on catalog agents keeps **`check_agents.py`**, contract tests, and gateway embodiment scans aligned.
+The fleet now treats **`agents/**/config.yaml`** as the single registry source of truth (**`domains.eda.fleet.registry`**). Parallel “example” trees duplicated validation rules, ports, and memory policy. Consolidating on registered agents keeps **`check_agents.py`**, contract tests, and gateway embodiment scans aligned.
 
 ## Related
 
@@ -45,17 +45,17 @@ The fleet now treats **`agents/**/config.yaml`** as the single catalog source of
 
 ## Historical context (for archaeologists)
 
-The removed demo agents predated **`domains.eda.registry`** as the catalog authority. They used ad hoc image tags and registration scripts in this folder, which caused port collisions with **`config/platform.yaml`** reserved ports and split memory policy between “demo” and “catalog” trees.
+The removed demo agents predated **`domains.eda.fleet.registry`** as the registry authority. They used ad hoc image tags and registration scripts in this folder, which caused port collisions with **`config/platform.yaml`** reserved ports and split memory policy between “demo” and “registry” trees.
 
 If you find external docs referencing **`run_examples_docker.sh`**, update them to **`startup.sh`** + fleet YAML. Do not restore the old scripts without reintroducing the full demo tree — contract tests will fail on embodiment and package layout.
 
 ## Docker build flags today
 
-Use **`startup.sh ... --build`** when Dockerfiles or base images change. Individual agent Dockerfiles live next to each catalog agent; the platform image for **`services/silicon_agent`** (when used) is documented under **`agents/`**.
+Use **`startup.sh ... --build`** when Dockerfiles or base images change. Individual agent Dockerfiles live next to each registered agent; the platform image for **`services/silicon_agent`** (when used) is documented under **`agents/`**.
 
 Port publishing respects **`config/platform.yaml`** **`host_port_collision_offset`** — demo scripts did not, which was a common source of “agent up but unreachable on expected localhost port” confusion.
 
-## Mapping old workflows to catalog paths
+## Mapping old workflows to registry paths
 
 | Old mental model | Current equivalent |
 |------------------|-------------------|
@@ -63,7 +63,7 @@ Port publishing respects **`config/platform.yaml`** **`host_port_collision_offse
 | “Run examples in dev mode” | Mount agent source via Compose working_dir prefix in **`platform.yaml`** |
 | “Pick three random agents” | Edit **`fleets/*.yaml`** **`agents:`** list explicitly |
 
-Each catalog agent exposes **`connection.port`** in **`config.yaml`**; **`domains.eda.fleet.select_agents`** assigns **`host_port`** after reserved-port shifting. Use **`scripts/fleet_select.py names`** to print the mapping when debugging local curls.
+Each registered agent exposes **`connection.port`** in **`config.yaml`**; **`domains.eda.fleet.select_agents`** assigns **`host_port`** after reserved-port shifting. Use **`scripts/fleet_select.py names`** to print the mapping when debugging local curls.
 
 ## Contact / ownership
 

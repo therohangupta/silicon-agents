@@ -1,0 +1,657 @@
+# Agent manifest for Routing Lead (id=routing_lead, port=8249).
+# EDA role: Global and detailed routing closure. Coordinates congestion relief, timing-driven route choices, signal-integrity (SI) noise repair, antenna fixes, and manufacturability checks before any routed candidate advances.
+# Loaded by EDAAgent.read_spec / AgentService.from_agent; skills map to tools.py.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for worker/lead physical-design agents.
+kind: Agent
+# Identity and labels used by the fleet registry and dashboards.
+metadata:
+  # Stable agent id ``routing_lead`` used in telemetry and tool_observation.
+  name: routing_lead
+  # Human-readable title shown in UIs and READMEs.
+  display_name: Routing Lead
+  # One-paragraph responsibility for this physical-design stage.
+  description: Own global and detailed routing closure, including congestion, timing, signal integrity,
+    antenna, and manufacturability.
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: routing
+    # Fleet role: lead orchestrates; worker executes; validator independently checks.
+    role: lead
+# Fleet role ``lead`` (lead orchestrates; worker executes).
+role: lead
+# Physical-design stage ``routing`` for planning and context filters.
+stage: routing
+# Authoritative responsibility string mirrored from description.
+responsibility: Own global and detailed routing closure, including congestion, timing, signal integrity,
+  antenna, and manufacturability.
+# Hard may / may_not contract enforced conceptually by planning and permissions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Allowed action: Publish a routing workflow
+  - Publish a routing workflow
+  # Allowed action: Read the placed and clocked candidate
+  - Read the placed and clocked candidate
+  # Allowed action: Recommend which routed candidate advances
+  - Recommend which routed candidate advances
+  # Forbidden actions (no silent promotion, no self-signoff, etc.).
+  may_not:
+  # Forbidden: Advance a routed database that failed antenna or SI checks
+  - Advance a routed database that failed antenna or SI checks
+  # Forbidden: Edit placement directly
+  - Edit placement directly
+  # Forbidden: Promote a route
+  - Promote a route
+  # Forbidden: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Forbidden: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Forbidden: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids a lead may schedule.
+delegates_to:
+# Child agent id this lead may schedule: global_routing
+- global_routing
+# Child agent id this lead may schedule: detailed_routing_repair
+- detailed_routing_repair
+# Child agent id this lead may schedule: si_noise_repair
+- si_noise_repair
+# Child agent id this lead may schedule: antenna_manufacturability
+- antenna_manufacturability
+# Optional independent validator agent ids.
+validators: []
+# HTTP reachability for AgentService inside Docker/compose.
+connection:
+  # Hostname peers use to reach this container (host.docker.internal for local).
+  host: host.docker.internal
+  # HTTP port 8249 for Routing Lead AgentService endpoints.
+  port: 8249
+  # Path map for health and execute routes.
+  endpoints:
+    # Liveness/readiness HTTP path.
+    health: /health
+    # Task submission HTTP path.
+    execute: /tasks/execute
+# EDA framework backend binding (none until OpenROAD adapter configured).
+backend:
+  # Backend type discriminator (none means observations stay not_run).
+  type: none
+# How skills are invoked by the agent runtime.
+execution:
+  # Mode parameter (overloaded key; YAML context distinguishes).
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum concurrent tasks for this agent process.
+    max_tasks: 1
+# Timeouts, retries, and failure policy for tasks.
+reliability:
+  # Wall-clock timeout for one task attempt.
+  task_timeout_secs: 120
+  # How many times to retry a failed task before replan/give-up.
+  max_retries: 1
+  # Planner hint when the task fails (e.g. replan).
+  on_failure: replan
+# Capability index mirroring skills for UIs and planners.
+capabilities:
+# Stable id for a capability, skill, memory store, or stream.
+- id: plan_routing_closure
+  # One-paragraph responsibility for this physical-design stage.
+  description: Emit the routing and repair workflow.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_global_route_trial
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open one global-route experiment.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_detailed_route_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open a localized detailed-route repair.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_si_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open an SI repair for nets over the noise limit.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_antenna_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open antenna and manufacturability repair.
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_routing_status
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read congestion, DRC, SI, antenna, and timing for each routed candidate.
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_routing_acceptance
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read the DRC, SI, antenna, and timing criteria for advancement.
+# Stable id for a capability, skill, memory store, or stream.
+- id: compare_routed_candidates
+  # One-paragraph responsibility for this physical-design stage.
+  description: Rank routed candidates that meet every hard check.
+# Stable id for a capability, skill, memory store, or stream.
+- id: recommend_routed_candidate
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record which routed candidate should advance to extraction. This does not promote it.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_failed_route_check
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a candidate that improved congestion and failed antenna, SI, or DRC.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_routing_strategy
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record the layer, cost, or repair change for the next trial.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_routing_decision
+  # One-paragraph responsibility for this physical-design stage.
+  description: Ask a human to choose among routed candidates or to change a physical limit.
+# Stable id for a capability, skill, memory store, or stream.
+- id: delegate_tasks
+  # One-paragraph responsibility for this physical-design stage.
+  description: Propose a dependency graph for the agents in this scope. Do not execute their tools.
+# Callable skills bound to tools.py functions.
+skills:
+# Stable id for a capability, skill, memory store, or stream.
+- id: plan_routing_closure
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: plan_routing_closure
+  # One-paragraph responsibility for this physical-design stage.
+  description: Emit the routing and repair workflow.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner objective string parameter.
+    objective: ''
+    # Parent task linkage parameter.
+    parent_task_id: ''
+    # Block/partition scope parameter.
+    scope_block: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: objective
+    # One-paragraph responsibility for this physical-design stage.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: parent_task_id
+    # One-paragraph responsibility for this physical-design stage.
+    description: Task that owns this workflow.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: scope_block
+    # One-paragraph responsibility for this physical-design stage.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_global_route_trial
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: request_global_route_trial
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open one global-route experiment.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner objective string parameter.
+    objective: ''
+    # Parent task linkage parameter.
+    parent_task_id: ''
+    # Block/partition scope parameter.
+    scope_block: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: objective
+    # One-paragraph responsibility for this physical-design stage.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: parent_task_id
+    # One-paragraph responsibility for this physical-design stage.
+    description: Task that owns this workflow.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: scope_block
+    # One-paragraph responsibility for this physical-design stage.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_detailed_route_repair
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: request_detailed_route_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open a localized detailed-route repair.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner objective string parameter.
+    objective: ''
+    # Parent task linkage parameter.
+    parent_task_id: ''
+    # Block/partition scope parameter.
+    scope_block: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: objective
+    # One-paragraph responsibility for this physical-design stage.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: parent_task_id
+    # One-paragraph responsibility for this physical-design stage.
+    description: Task that owns this workflow.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: scope_block
+    # One-paragraph responsibility for this physical-design stage.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_si_repair
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: request_si_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open an SI repair for nets over the noise limit.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner objective string parameter.
+    objective: ''
+    # Parent task linkage parameter.
+    parent_task_id: ''
+    # Block/partition scope parameter.
+    scope_block: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: objective
+    # One-paragraph responsibility for this physical-design stage.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: parent_task_id
+    # One-paragraph responsibility for this physical-design stage.
+    description: Task that owns this workflow.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: scope_block
+    # One-paragraph responsibility for this physical-design stage.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_antenna_repair
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: request_antenna_repair
+  # One-paragraph responsibility for this physical-design stage.
+  description: Open antenna and manufacturability repair.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Planner objective string parameter.
+    objective: ''
+    # Parent task linkage parameter.
+    parent_task_id: ''
+    # Block/partition scope parameter.
+    scope_block: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: create_workflow
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: objective
+    # One-paragraph responsibility for this physical-design stage.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: parent_task_id
+    # One-paragraph responsibility for this physical-design stage.
+    description: Task that owns this workflow.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: scope_block
+    # One-paragraph responsibility for this physical-design stage.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_routing_status
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: read_routing_status
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read congestion, DRC, SI, antenna, and timing for each routed candidate.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: read_routing_acceptance
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: read_routing_acceptance
+  # One-paragraph responsibility for this physical-design stage.
+  description: Read the DRC, SI, antenna, and timing criteria for advancement.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: compare_routed_candidates
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: compare_routed_candidates
+  # One-paragraph responsibility for this physical-design stage.
+  description: Rank routed candidates that meet every hard check.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: recommend_routed_candidate
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: recommend_routed_candidate
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record which routed candidate should advance to extraction. This does not promote it.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: flag_failed_route_check
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: flag_failed_route_check
+  # One-paragraph responsibility for this physical-design stage.
+  description: Publish a candidate that improved congestion and failed antenna, SI, or DRC.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_routing_strategy
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: record_routing_strategy
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record the layer, cost, or repair change for the next trial.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Stable id for a capability, skill, memory store, or stream.
+- id: request_routing_decision
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: request_routing_decision
+  # One-paragraph responsibility for this physical-design stage.
+  description: Ask a human to choose among routed candidates or to change a physical limit.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    decision: ''
+    options: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    deadline: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: request_human_decision
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: decision
+    # One-paragraph responsibility for this physical-design stage.
+    description: The choice a human must make.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: options
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated feasible options.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs for the tradeoff.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: deadline
+    # One-paragraph responsibility for this physical-design stage.
+    description: ISO-8601 time after which the decision blocks the schedule.
+# Engineering-memory configuration for this agent.
+memory:
+  # Named local memory stores (journal cache, etc.).
+  stores:
+  # Stable id for a capability, skill, memory store, or stream.
+  - id: journal
+    # One-paragraph responsibility for this physical-design stage.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend type discriminator (none means observations stay not_run).
+    type: list
+    # Persistence medium (file, ...).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path template for file-backed memory.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry export settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls/artifacts streams are shipped.
+  telemetry:
+    # Telemetry service URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: skill_calls
+      # One-paragraph responsibility for this physical-design stage.
+      description: Tool invocations.
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: artifacts
+      # One-paragraph responsibility for this physical-design stage.
+      description: Structured task results.
+# Container image and environment for compose/k8s.
+deployment:
+  # Container image name:tag for this agent.
+  image: agentfleet/routing_lead:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework selector for adapters (empty = unbound).
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory records.
+context:
+  # Record categories always considered for the prompt/context package.
+  include:
+  # Context include category: gates
+  - gates
+  # Context include category: workflows
+  - workflows
+  # Context include category: open_findings
+  - open_findings
+  # Context include category: decisions
+  - decisions
+  # Context include category: experiments
+  - experiments
+  # Record categories omitted from context.
+  exclude:
+  # Context exclude category: stale_candidates
+  - stale_candidates
+  # Statuses that cause records to be dropped.
+  drop:
+  # Drop records with status: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Context precedence preference: human-authored
+  - human-authored
+  # Context precedence preference: validated
+  - validated
+  # Context precedence preference: provisional
+  - provisional
+  # Record classes that must not be auto-dropped.
+  protect:
+  # Protected record class: human-authored
+  - human-authored
+  # Approximate token budget for assembled context.
+  token_budget: 80000

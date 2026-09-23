@@ -23,11 +23,11 @@ in-memory artifact manifest accumulated from prior ``artifact_refs``.
 # HTTP client for direct (non-durable) agent task execution.
 from packages.agent_sdk.src.client.agent_client import AgentClient
 # Request/result/context/reliability models for agent dispatch.
-from packages.agent_sdk.src.models import (
+from packages.agent_sdk.src.config import ReliabilityConfig
+from packages.agent_sdk.src.contracts import (
     AgentTaskRequest,
     ArtifactRef,
     ExecutionContextSnapshot,
-    ReliabilityConfig,
     TaskSummary,
 )
 # Allocated DAG schemas built from registry tasks.
@@ -384,7 +384,7 @@ class Executor:
             Exception: When retries are exhausted with only exceptions, or a
                 non-retryable exception occurs.
         """
-        from packages.agent_sdk.src.models import AgentTaskResult
+        from packages.agent_sdk.src.contracts import AgentTaskResult
 
         # Idempotency: skip if this task already reached a terminal state.
         task_key = str(request.task_id)

@@ -16,9 +16,9 @@ from typing import Any
 
 
 def tool(description: str = "", constraints: dict[str, Any] | None = None):
-    """``tool`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+    """``tool``"""
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        """``tool`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``tool``"""
         setattr(func, "_agent_tool", True)
         # Call ``setattr``.
         setattr(func, "_agent_tool_description", description or (func.__doc__ or "").strip())

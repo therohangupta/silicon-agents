@@ -1,0 +1,868 @@
+# Agent manifest for Placement Experiment Worker (id=placement_experiment, port=8244).
+# EDA role: Runs one isolated placement strategy: global placement, detailed placement, mirroring, legalization, buffering/sizing, and timing repair under OpenROAD, without promoting onto the canonical baseline.
+# Loaded by EDAAgent.read_spec / AgentService.from_agent; skills map to tools.py.
+
+# Fleet schema version for this Agent manifest (agentfleet/v1).
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for worker/lead physical-design agents.
+kind: Agent
+# Identity and labels used by the fleet registry and dashboards.
+metadata:
+  # Stable agent id ``placement_experiment`` used in telemetry and tool_observation.
+  name: placement_experiment
+  # Human-readable title shown in UIs and READMEs.
+  display_name: Placement Experiment Worker
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run one placement, legalization, buffering, and sizing strategy in an isolated workspace.
+    Adapter target: OpenROAD global and detailed placement.'
+  # Labels expose stage and role.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: placement
+    # Fleet role: lead orchestrates; worker executes; validator independently checks.
+    role: worker
+# Fleet role ``worker`` (lead orchestrates; worker executes).
+role: worker
+# Physical-design stage ``placement`` for planning and context filters.
+stage: placement
+# Authoritative responsibility string mirrored from description.
+responsibility: 'Run one placement, legalization, buffering, and sizing strategy in an isolated workspace.
+  Adapter target: OpenROAD global and detailed placement.'
+# Hard may / may_not contract enforced conceptually by planning and permissions.
+boundary:
+  # Actions this agent is allowed to perform.
+  may:
+  # Allowed action: Submit one placement job
+  - Submit one placement job
+  # Allowed action: Write placement directives
+  - Write placement directives
+  # Allowed action: Return multi-metric results with tool version
+  - Return multi-metric results with tool version
+  # Forbidden actions (no silent promotion, no self-signoff, etc.).
+  may_not:
+  # Forbidden: Edit the shared placement database
+  - Edit the shared placement database
+  # Forbidden: Drop a mode from the report
+  - Drop a mode from the report
+  # Forbidden: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Forbidden: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Forbidden: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids a lead may schedule.
+delegates_to: []
+# Optional independent validator agent ids.
+validators: []
+# HTTP reachability for AgentService inside Docker/compose.
+connection:
+  # Hostname peers use to reach this container (host.docker.internal for local).
+  host: host.docker.internal
+  # HTTP port 8244 for Placement Experiment Worker AgentService endpoints.
+  port: 8244
+  # Path map for health and execute routes.
+  endpoints:
+    # Liveness/readiness HTTP path.
+    health: /health
+    # Task submission HTTP path.
+    execute: /tasks/execute
+# EDA framework backend binding (none until OpenROAD adapter configured).
+backend:
+  # Backend type discriminator (none means observations stay not_run).
+  type: none
+# How skills are invoked by the agent runtime.
+execution:
+  # Mode parameter (overloaded key; YAML context distinguishes).
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum concurrent tasks for this agent process.
+    max_tasks: 1
+# Timeouts, retries, and failure policy for tasks.
+reliability:
+  # Wall-clock timeout for one task attempt.
+  task_timeout_secs: 120
+  # How many times to retry a failed task before replan/give-up.
+  max_retries: 1
+  # Planner hint when the task fails (e.g. replan).
+  on_failure: replan
+# Capability index mirroring skills for UIs and planners.
+capabilities:
+# Stable id for a capability, skill, memory store, or stream.
+- id: write_placement_directives
+  # One-paragraph responsibility for this physical-design stage.
+  description: Write density, padding, and dont-use directives for this trial.
+# Stable id for a capability, skill, memory store, or stream.
+- id: set_placement_padding
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Set padding for one cell class. Adapter target: OpenROAD set_placement_padding.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: set_dont_use
+  # One-paragraph responsibility for this physical-design stage.
+  description: Mark library cells this trial must not use.
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_global_placement
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run global placement. Adapter target: OpenROAD global_placement.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_detailed_placement
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run detailed placement and legalization. Adapter target: OpenROAD detailed_placement.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: optimize_mirroring
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run mirror optimization. Adapter target: OpenROAD optimize_mirroring.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: improve_placement
+  # One-paragraph responsibility for this physical-design stage.
+  description: Run a detailed-placement improvement pass.
+# Stable id for a capability, skill, memory store, or stream.
+- id: repair_placement_design
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Insert buffers and resize on the isolated candidate. Adapter target: OpenROAD repair_design.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: repair_placement_timing
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run a timing repair pass on the isolated candidate. Adapter target: OpenROAD repair_timing.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_placement_trial
+  # One-paragraph responsibility for this physical-design stage.
+  description: Place, legalize, and size one candidate as a single job.
+# Stable id for a capability, skill, memory store, or stream.
+- id: check_placement_legality
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Check overlap, row alignment, and site rules. Adapter target: OpenROAD check_placement.'
+# Stable id for a capability, skill, memory store, or stream.
+- id: summarize_placement_metrics
+  # One-paragraph responsibility for this physical-design stage.
+  description: Return timing, congestion, power, and legality for the trial.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_placement_wns
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report WNS and TNS for the modes this trial ran.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_placement_density
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report density and overflow.
+# Stable id for a capability, skill, memory store, or stream.
+- id: write_placement_def
+  # One-paragraph responsibility for this physical-design stage.
+  description: Write the placed DEF.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_placement_provenance
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record tool, version, directives, and modes actually run.
+# Callable skills bound to tools.py functions.
+skills:
+# Stable id for a capability, skill, memory store, or stream.
+- id: write_placement_directives
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: write_placement_directives
+  # One-paragraph responsibility for this physical-design stage.
+  description: Write density, padding, and dont-use directives for this trial.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Single-change hypothesis parameter.
+    hypothesis: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: hypothesis
+    # One-paragraph responsibility for this physical-design stage.
+    description: The single change this edit is testing.
+# Stable id for a capability, skill, memory store, or stream.
+- id: set_placement_padding
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: set_placement_padding
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Set padding for one cell class. Adapter target: OpenROAD set_placement_padding.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Single-change hypothesis parameter.
+    hypothesis: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: hypothesis
+    # One-paragraph responsibility for this physical-design stage.
+    description: The single change this edit is testing.
+# Stable id for a capability, skill, memory store, or stream.
+- id: set_dont_use
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: set_dont_use
+  # One-paragraph responsibility for this physical-design stage.
+  description: Mark library cells this trial must not use.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Single-change hypothesis parameter.
+    hypothesis: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: hypothesis
+    # One-paragraph responsibility for this physical-design stage.
+    description: The single change this edit is testing.
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_global_placement
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: run_global_placement
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run global placement. Adapter target: OpenROAD global_placement.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_detailed_placement
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: run_detailed_placement
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run detailed placement and legalization. Adapter target: OpenROAD detailed_placement.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: optimize_mirroring
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: optimize_mirroring
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run mirror optimization. Adapter target: OpenROAD optimize_mirroring.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: improve_placement
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: improve_placement
+  # One-paragraph responsibility for this physical-design stage.
+  description: Run a detailed-placement improvement pass.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: repair_placement_design
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: repair_placement_design
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Insert buffers and resize on the isolated candidate. Adapter target: OpenROAD repair_design.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: repair_placement_timing
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: repair_placement_timing
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Run a timing repair pass on the isolated candidate. Adapter target: OpenROAD repair_timing.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: run_placement_trial
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: run_placement_trial
+  # One-paragraph responsibility for this physical-design stage.
+  description: Place, legalize, and size one candidate as a single job.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: check_placement_legality
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: check_placement_legality
+  # One-paragraph responsibility for this physical-design stage.
+  description: 'Check overlap, row alignment, and site rules. Adapter target: OpenROAD check_placement.'
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Versioned recipe id parameter.
+    recipe: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: submit_tool_job
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate the job reads.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Baseline used when the job compares against a known result.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recipe
+    # One-paragraph responsibility for this physical-design stage.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Stable id for a capability, skill, memory store, or stream.
+- id: summarize_placement_metrics
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: summarize_placement_metrics
+  # One-paragraph responsibility for this physical-design stage.
+  description: Return timing, congestion, power, and legality for the trial.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_placement_wns
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: report_placement_wns
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report WNS and TNS for the modes this trial ran.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: report_placement_density
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: report_placement_density
+  # One-paragraph responsibility for this physical-design stage.
+  description: Report density and overflow.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Report artifact URI parameter.
+    report_ref: ''
+    # PVT corner parameter.
+    corner: ''
+    # Mode parameter (overloaded key; YAML context distinguishes).
+    mode: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: read_reports
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Candidate whose reports are read.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: report_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: corner
+    # One-paragraph responsibility for this physical-design stage.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: mode
+    # One-paragraph responsibility for this physical-design stage.
+    description: Mode filter. Empty reads every available mode.
+# Stable id for a capability, skill, memory store, or stream.
+- id: write_placement_def
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: write_placement_def
+  # One-paragraph responsibility for this physical-design stage.
+  description: Write the placed DEF.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Isolated candidate handle parameter.
+    candidate_ref: ''
+    # Immutable baseline handle parameter.
+    baseline_ref: ''
+    # Single-change hypothesis parameter.
+    hypothesis: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: write_candidate
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: candidate_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: baseline_ref
+    # One-paragraph responsibility for this physical-design stage.
+    description: Immutable baseline the candidate must descend from.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: hypothesis
+    # One-paragraph responsibility for this physical-design stage.
+    description: The single change this edit is testing.
+# Stable id for a capability, skill, memory store, or stream.
+- id: record_placement_provenance
+  # Python module name that holds the callable (tools).
+  module: tools
+  # Python function name inside module.
+  callable: record_placement_provenance
+  # One-paragraph responsibility for this physical-design stage.
+  description: Record tool, version, directives, and modes actually run.
+  # Default argument values when the planner omits them.
+  args_defaults:
+    # Finding summary parameter.
+    summary: ''
+    # Evidence URI list parameter.
+    evidence_refs: ''
+    # Finding severity parameter.
+    severity: ''
+    # Downstream agent id for a finding.
+    recommended_recipient: ''
+  # ToolAction category (write_candidate, submit_tool_job, read_reports, publish_finding, ...).
+  action: publish_finding
+  # Structured parameter descriptors for planners and UI forms.
+  params:
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: summary
+    # One-paragraph responsibility for this physical-design stage.
+    description: One-sentence finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: evidence_refs
+    # One-paragraph responsibility for this physical-design stage.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: severity
+    # One-paragraph responsibility for this physical-design stage.
+    description: low, medium, high, or critical.
+  # Stable agent id (matches tool_observation agent_id and deployment naming).
+  - name: recommended_recipient
+    # One-paragraph responsibility for this physical-design stage.
+    description: Agent id that should act on the finding.
+# Engineering-memory configuration for this agent.
+memory:
+  # Named local memory stores (journal cache, etc.).
+  stores:
+  # Stable id for a capability, skill, memory store, or stream.
+  - id: journal
+    # One-paragraph responsibility for this physical-design stage.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend type discriminator (none means observations stay not_run).
+    type: list
+    # Persistence medium (file, ...).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem path template for file-backed memory.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry export settings.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls/artifacts streams are shipped.
+  telemetry:
+    # Telemetry service URL (env-overridable).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: skill_calls
+      # One-paragraph responsibility for this physical-design stage.
+      description: Tool invocations.
+    # Stable agent id (matches tool_observation agent_id and deployment naming).
+    - name: artifacts
+      # One-paragraph responsibility for this physical-design stage.
+      description: Structured task results.
+# Container image and environment for compose/k8s.
+deployment:
+  # Container image name:tag for this agent.
+  image: agentfleet/placement_experiment:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at runtime.
+  environment:
+    # Optional framework selector for adapters (empty = unbound).
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory records.
+context:
+  # Record categories always considered for the prompt/context package.
+  include:
+  # Context include category: canonical_source
+  - canonical_source
+  # Context include category: open_findings
+  - open_findings
+  # Context include category: experiments
+  - experiments
+  # Context include category: gates
+  - gates
+  # Context include category: decisions
+  - decisions
+  # Record categories omitted from context.
+  exclude:
+  # Context exclude category: stale_candidates
+  - stale_candidates
+  # Statuses that cause records to be dropped.
+  drop:
+  # Drop records with status: rejected
+  - rejected
+  # Preference order when conflicting records exist.
+  precedence:
+  # Context precedence preference: human-authored
+  - human-authored
+  # Context precedence preference: validated
+  - validated
+  # Context precedence preference: provisional
+  - provisional
+  # Record classes that must not be auto-dropped.
+  protect:
+  # Protected record class: human-authored
+  - human-authored
+  # Approximate token budget for assembled context.
+  token_budget: 80000

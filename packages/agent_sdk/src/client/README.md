@@ -30,7 +30,7 @@ Agent A (caller)                          Agent B (callee)
               AgentTaskRequest                  AgentTaskResult
 ```
 
-Models are shared via [`../models.py`](../models.py) — no duplicate schema.
+Models are shared via [`../contracts/`](../contracts/) and [`../config/`](../config/) — no duplicate schema.
 
 ---
 
@@ -65,7 +65,7 @@ Methods:
 
 **Timeouts** — The underlying `httpx.AsyncClient` uses `timeout=None` for execute (long-running tasks). Callers should wrap with `asyncio.wait_for` if they need bounded waits.
 
-**Errors** — Non-2xx responses raise via `raise_for_status()`; callers map to replan or retry using [`ReliabilityConfig`](../models.py) on the callee side.
+**Errors** — Non-2xx responses raise via `raise_for_status()`; callers map to replan or retry using [`ReliabilityConfig`](../config/) on the callee side.
 
 ---
 
@@ -88,7 +88,7 @@ Health flow: optional preflight before execute in tests or circuit-breaker patte
 | Path | Relationship |
 |------|----------------|
 | [`../server/README.md`](../server/README.md) | Server routes this client calls |
-| [`../models.py`](../models.py) | Request/result types |
+| [`../contracts/`](../contracts/) and [`../config/`](../config/) | Request/result types |
 | [`../../../../client_sdk/`](../../../../client_sdk/) | Gateway client (different API) |
 
 ---
@@ -96,7 +96,7 @@ Health flow: optional preflight before execute in tests or circuit-breaker patte
 ## Newcomer reading order
 
 1. [`../server/README.md`](../server/README.md) — understand server endpoints
-2. [`../models.py`](../models.py) — `AgentTaskRequest` / `AgentTaskResult`
+2. [`../contracts/`](../contracts/) and [`../config/`](../config/) — `AgentTaskRequest` / `AgentTaskResult`
 3. This README — construct client and call patterns
 4. Agent’s `config.yaml` — callee port and endpoints
 

@@ -38,7 +38,7 @@ Keep long-form decisions in dedicated **`*.md`** files; extend this index when y
 | [TELEMETRY_AND_DATA_FLOW.md](TELEMETRY_AND_DATA_FLOW.md) | Heartbeats, stores, and data movement |
 | [TELEMETRY_STORE_AND_EVENTS.md](TELEMETRY_STORE_AND_EVENTS.md) | Storage patterns and event publishing |
 
-Engineering memory specifics (record types, plane backends, **`EdaAgent`** journaling) live in code-adjacent docs:
+Engineering memory specifics (record types, plane backends, **`EDAAgent`** journaling) live in code-adjacent docs:
 
 - [`../domains/eda/README.md`](../domains/eda/README.md)
 - [`../domains/eda/memory/README.md`](../domains/eda/memory/README.md)

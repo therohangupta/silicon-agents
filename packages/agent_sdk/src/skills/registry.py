@@ -18,29 +18,30 @@ import time
 from collections.abc import Callable
 from typing import Any, Optional
 
-from ..models import ExecutionTrace, SkillCall, SkillSpec
+from ..contracts import ExecutionTrace, SkillCall
+from .declarations import SkillDeclaration
 
 
 class SkillRegistry:
-    """``SkillRegistry`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+    """``SkillRegistry``"""
     def __init__(self):
-        """``SkillRegistry`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
-        self._skills: dict[str, tuple[SkillSpec, Callable[..., Any]]] = {}
+        """``SkillRegistry``"""
+        self._skills: dict[str, tuple[SkillDeclaration, Callable[..., Any]]] = {}
         self._capability_params: dict[str, dict[str, Any]] = {}
         self._on_call: Optional[Callable[[SkillCall], None]] = None
 
     @property
-    def specs(self) -> list[SkillSpec]:
-        """``specs`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
-        return [spec for spec, _ in self._skills.values()]
+    def declarations(self) -> list[SkillDeclaration]:
+        """Registered skill declarations in registration order."""
+        return [decl for decl, _ in self._skills.values()]
 
     def set_call_hook(self, hook: Callable[[SkillCall], None]) -> None:
-        """``specs`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``specs``"""
         self._on_call = hook
 
-    def register(self, spec: SkillSpec, func: Callable[..., Any]) -> None:
-        """``set_call_hook`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
-        self._skills[spec.id] = (spec, func)
+    def register(self, declaration: SkillDeclaration, func: Callable[..., Any]) -> None:
+        """Bind one skill declaration to its callable implementation."""
+        self._skills[declaration.id] = (declaration, func)
 
     def accepts_argument(self, skill_id: str, name: str) -> bool:
         """Return whether a registered callable accepts ``name``.
@@ -61,38 +62,28 @@ class SkillRegistry:
         """Merge capability-level skill_params: {skill_id: {arg: value}}."""
         self._capability_params = params
 
-    def load_from_config(self, specs: list[SkillSpec], package_root: str | None = None) -> None:
-        """``set_capability_params`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
-        for spec in specs:
-            # Local ``module_name`` ← spec.module.
-            module_name = spec.module
-            # Only when (package_root and not module_name.startswith(package_root)).
+    def load_from_config(self, declarations: list[SkillDeclaration], package_root: str | None = None) -> None:
+        """Import modules and register each declaration from agent config."""
+        for declaration in declarations:
+            module_name = declaration.module
             if package_root and not module_name.startswith(package_root):
-                # Local ``module_name`` ← f"{package_root}.{module_name}".
                 module_name = f"{package_root}.{module_name}"
-            # Local ``module`` ← importlib.import_module(module_name).
             module = importlib.import_module(module_name)
-            # Local ``func`` ← getattr(module, spec.callable).
-            func = getattr(module, spec.callable)
-            # Call ``self.register``.
-            self.register(spec, func)
+            func = getattr(module, declaration.callable)
+            self.register(declaration, func)
 
     async def call(self, skill_id: str, **kwargs: Any) -> SkillCall:
-        """``call`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``call``"""
         if skill_id not in self._skills:
             # Raise ``KeyError`` to signal this failure mode to callers.
             raise KeyError(f"Unknown skill: {skill_id}")
 
-        spec, func = self._skills[skill_id]
-        # Local ``cap_defaults`` ← self._capability_params.get(skill_id, {}).
+        declaration, func = self._skills[skill_id]
         cap_defaults = self._capability_params.get(skill_id, {})
-        # Local ``merged_args`` ← {**spec.args_defaults, **cap_defaults, **kwargs}.
-        merged_args = {**spec.args_defaults, **cap_defaults, **kwargs}
+        merged_args = {**declaration.args_defaults, **cap_defaults, **kwargs}
 
-        # Local ``start`` ← time.perf_counter().
         start = time.perf_counter()
-        # Local ``timeout`` ← spec.timeout_secs.
-        timeout = spec.timeout_secs
+        timeout = declaration.timeout_secs
 
         # Try the fallible work below.
         try:
@@ -150,7 +141,7 @@ class SkillRegistry:
 
     @staticmethod
     async def _invoke(func: Callable[..., Any], args: dict[str, Any]) -> Any:
-        """``_invoke`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_invoke``"""
         result = func(**args)
         # Only when (inspect.isawaitable(result)).
         if inspect.isawaitable(result):
@@ -160,7 +151,7 @@ class SkillRegistry:
         return result
 
     def skill_call_trace(self, sc: SkillCall) -> ExecutionTrace:
-        """``skill_call_trace`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``skill_call_trace``"""
         return ExecutionTrace(
             # Local ``trace_type`` ← "skill_call",.
             trace_type="skill_call",
@@ -169,7 +160,6 @@ class SkillRegistry:
         )
 
     def iter_registered(self):
-        """``iter_registered`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
-        for spec, func in self._skills.values():
-            # Yield spec, func to the consumer.
-            yield spec, func
+        """``iter_registered``"""
+        for declaration, func in self._skills.values():
+            yield declaration, func

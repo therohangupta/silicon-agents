@@ -1,8 +1,0 @@
-# FastAPI: ASGI web framework used by AgentService to expose /health and /tasks/execute.
-fastapi
-# Uvicorn with standard extras (websockets, httptools) to run the FastAPI app in production/dev.
-uvicorn[standard]
-# Pydantic: request/response and AgentSpec-related models used across the EDA agent SDK.
-pydantic
-# PyYAML: parse this agent's config.yaml into the AgentSpec consumed by EdaAgent.read_spec.
-PyYAML

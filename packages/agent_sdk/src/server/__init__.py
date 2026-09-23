@@ -1,4 +1,5 @@
-"""Package ``agent_sdk/src/server/__init__.py``.
+"""HTTP server implementation and response contracts."""
 
-Marks this directory as a Python package within packages. Import concrete symbols from sibling modules rather than this file when no re-exports are defined.
-"""
+from .contracts import AgentHealth
+
+__all__ = ["AgentHealth"]

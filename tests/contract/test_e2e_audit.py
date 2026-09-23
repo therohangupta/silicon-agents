@@ -1,6 +1,6 @@
 """Repo-wide audit checks (no live Postgres/NATS/Docker required).
 
-Locks in: flat agent package layout, embodiment catalog == config.yaml set,
+Locks in: flat agent package layout, embodiment registry == config.yaml set,
 ``find_yaml_for_agent`` path resolution, and schema validation for every
 checked-in agent config.
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 # Schema validator for agentfleet/v1 YAML.
-from packages.agent_sdk.src.schema.validator import AgentConfigValidator
+from packages.agent_sdk.src.config.load import load_agent_config
 # Gateway helpers that map registry names to on-disk YAML.
 from services.gateway.src.services.yaml_scanner import find_yaml_for_agent, scan_agent_templates
 
@@ -34,11 +34,11 @@ def test_agents_are_flat_packages():
     # Removed demo trees must not reappear.
     assert not (REPO / "agents" / "digital").exists()
     assert not (REPO / "agents" / "physical").exists()
-    # Catalog size floor (matches ~70 silicon agents).
+    # registry size floor (matches ~70 silicon agents).
     assert len(names) >= 70
 
 
-def test_agent_template_catalog_matches_packages():
+def test_agent_template_registry_matches_packages():
     """Gateway scan name set equals on-disk config.yaml parent names."""
     assert {entry["name"] for entry in scan_agent_templates()} == {path.parent.name for path in AGENT_CONFIGS}
 
@@ -49,14 +49,14 @@ def test_find_yaml_for_registered_type():
     # Must find a real file.
     assert path and Path(path).is_file()
     # Path ends with the expected package location.
-    assert path.endswith("agents/frontend/rtl/rtl_implementation/config.yaml")
+    assert path.endswith("agents/eda/frontend/rtl/rtl_implementation/config.yaml")
 
 
 def test_agent_configs_validate():
     """Every config.yaml validates and metadata.name matches directory name."""
     for config_path in AGENT_CONFIGS:
         # Schema validation must succeed for checked-in YAML.
-        config = AgentConfigValidator().validate_file(config_path)
+        config = load_agent_config(config_path)
         # Directory name is the agent id / metadata.name.
         assert config.metadata.name == config_path.parent.name
         # Every agent declares at least one skill.

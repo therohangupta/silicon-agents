@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Check that every agent directory is a complete catalog spec.
+"""Check that every agent directory is a complete registry entry.
 
 Agent directories under ``agents/`` are the source of truth. This script does
-not write or rewrite them; it only calls ``validate_catalog`` and prints how
-many specs ``all_specs`` returns. Use it in CI or before Compose renders to
+not write or rewrite them; it only calls ``validate_eda_registry`` and prints how
+many configs ``all_configs`` returns. Use it in CI or before Compose renders to
 catch missing tools/config/Dockerfile mismatches early.
 
 Run from ```` (or any cwd) — the script inserts its parent on
-``sys.path`` so ``domains.eda.registry`` imports resolve without install.
+``sys.path`` so ``domains.eda.fleet`` imports resolve without install.
 """
 
 from __future__ import annotations
@@ -23,22 +23,20 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Catalog validators from the EDA domain package (import after path fix).
-from domains.eda.registry import all_specs, validate_catalog  # noqa: E402
+# Registry validators from the EDA domain package (import after path fix).
+from domains.eda.fleet import all_configs, validate_eda_registry  # noqa: E402
 
 
 def main() -> None:
-    """Validate the agent catalog and print the number of agent directories.
+    """Validate the agent registry and print the number of agent directories.
 
-    ``validate_catalog`` raises on structural problems; on success
-    ``all_specs`` returns the full list and we print its length for operators.
+    ``validate_eda_registry`` raises on structural problems; on success
+    ``all_configs`` returns the full list and we print its length for operators.
     """
     # Raises if any checked-in agent package is incomplete or inconsistent.
-    validate_catalog()
-    # Materialize the full spec list after validation succeeded.
-    specs = all_specs()
-    # Human-readable count for CI logs / local smoke checks.
-    print(f"{len(specs)} agent directories")
+    validate_eda_registry()
+    configs = all_configs()
+    print(f"{len(configs)} agent directories")
 
 
 # Standard script guard.

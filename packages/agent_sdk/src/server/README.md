@@ -21,7 +21,7 @@ Each agent container exposes a **task server** the executor calls:
 ## Placement in architecture
 
 ```text
-config.yaml ──► AgentConfigValidator ──► AgentConfig
+config.yaml ──► load_agent_config ──► AgentConfig
                                               │
                                               ▼
                                         AgentServer.__init__
@@ -124,9 +124,9 @@ On shutdown: stop idle stream, close publisher, close telemetry client, `await m
 
 ## Data and control flow
 
-**Inbound** — Executor POST mirrors [`AgentTaskRequest`](../models.py): task id, description, plan/workspace fields, context snapshot, inputs, required capabilities, `record_episode` for telemetry persistence.
+**Inbound** — Executor POST mirrors [`AgentTaskRequest`](../contracts/): task id, description, plan/workspace fields, context snapshot, inputs, required capabilities, `record_episode` for telemetry persistence.
 
-**Outbound** — [`AgentTaskResult`](../models.py) with structured outcomes for replanning (`replan`, `outcome`, `reason_code`).
+**Outbound** — [`AgentTaskResult`](../contracts/) with structured outcomes for replanning (`replan`, `outcome`, `reason_code`).
 
 **Capability params** — `_capability_skill_params` merges `config.capabilities[].skill_params` for ids listed in `request.required_capabilities`.
 

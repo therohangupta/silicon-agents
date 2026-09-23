@@ -23,7 +23,7 @@ agentctl plan create dag llm 1
 
 Implementation modules:
 
-- `cli/agentctl.py` — command tree, YAML validation via `YAMLValidator`, gRPC calls
+- `cli/agentctl.py` — command tree, YAML validation via `load_agent_config_dict`, gRPC calls
 - `cli/printer.py` — stdout formatting and planning/allocation strategy maps
 - `cli/__init__.py` — package marker
 

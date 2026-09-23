@@ -20,15 +20,15 @@ from pathlib import Path
 from typing import Any
 
 from .base import AgentRuntime
-from ..models import (
+from ..config import BackendConfig
+from ..contracts import (
     AgentTaskRequest,
     AgentTaskResult,
-    BackendConfig,
     ExecutionTrace,
     MemoryOp,
     SkillCall,
 )
-from ..memory.loader import MemoryManager
+from packages.memory.runtime import MemoryManager
 from ..skills.registry import SkillRegistry
 
 # Local ``logger`` ← logging.getLogger(__name__).
@@ -44,7 +44,7 @@ _PROVIDER_CLASSES: dict[str, tuple[str, str]] = {
 
 
 def _import_llm_class(provider: str) -> type:
-    """``_import_llm_class`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+    """``_import_llm_class``"""
     if provider not in _PROVIDER_CLASSES:
         # Raise ``ValueError`` to signal this failure mode to callers.
         raise ValueError(
@@ -88,7 +88,7 @@ def _resolve_system_prompt(raw: str | None) -> str:
 
 
 def _build_system_message(system_prompt: str, request: AgentTaskRequest) -> str:
-    """``_build_system_message`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+    """``_build_system_message``"""
     parts: list[str] = []
     # Only when (system_prompt).
     if system_prompt:
@@ -167,7 +167,7 @@ class LangChainRuntime(AgentRuntime):
         backend_config: BackendConfig,
         system_prompt: str = "",
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         super().__init__(skills, memory)
         # Bind ``backend_config`` from backend_config for later use on this instance.
         self.backend_config = backend_config
@@ -189,15 +189,14 @@ class LangChainRuntime(AgentRuntime):
         calls: dict[str, list[SkillCall]] = {"items": []}
         tools: list[Any] = []
 
-        # Loop: for spec in self.skills.specs.
-        for spec in self.skills.specs:
+        for declaration in self.skills.declarations:
             # Local ``registry`` ← self.skills.
             registry = self.skills
 
             def _make_fn(skill_id: str):
                 """Factory to capture *skill_id* by value."""
                 def invoke(**kwargs: Any) -> str:
-                    """``_make_fn`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+                    """``_make_fn``"""
                     loop = asyncio.get_event_loop()
                     # Call ``sc: SkillCall = loop.run_until_complete``.
                     sc: SkillCall = loop.run_until_complete(registry.call(skill_id, **kwargs))
@@ -216,12 +215,9 @@ class LangChainRuntime(AgentRuntime):
 
             # Local ``tool`` ← StructuredTool.from_function(.
             tool = StructuredTool.from_function(
-                # Local ``func`` ← _make_fn(spec.id),.
-                func=_make_fn(spec.id),
-                # Local ``name`` ← spec.id,.
-                name=spec.id,
-                # Local ``description`` ← spec.description or f"Invoke the {spec.id} skill.",.
-                description=spec.description or f"Invoke the {spec.id} skill.",
+                func=_make_fn(declaration.id),
+                name=declaration.id,
+                description=declaration.description or f"Invoke the {declaration.id} skill.",
             )
             # Call ``tools.append``.
             tools.append(tool)
@@ -359,7 +355,7 @@ class LangChainRuntime(AgentRuntime):
     # ------------------------------------------------------------------
 
     def _create_llm(self) -> Any:
-        """``_create_llm`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_create_llm``"""
         cfg = self.backend_config
         # Local ``llm_cls`` ← _import_llm_class(cfg.provider or "openai").
         llm_cls = _import_llm_class(cfg.provider or "openai")
@@ -376,7 +372,7 @@ class LangChainRuntime(AgentRuntime):
     # ------------------------------------------------------------------
 
     async def execute(self, request: AgentTaskRequest) -> AgentTaskResult:
-        """``execute`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``execute``"""
         # --- guard: langchain_core must be importable -----------------
         try:
             from langchain_core.messages import HumanMessage, SystemMessage

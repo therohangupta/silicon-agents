@@ -40,7 +40,7 @@ from packages.fleet_sdk.src.models import PlanModel, TaskModel, GoalModel
 # Defaults if bridge constructed without explicit host/port/db_url.
 from packages.config import DATABASE_URL, GRPC_SERVER_HOST, GRPC_SERVER_PORT
 # Validates agent config.yaml before register_* RPCs.
-from packages.agent_sdk.src.schema.yaml_validator import YAMLValidator
+from packages.agent_sdk.src.config.load import load_agent_config_dict
 # Imported for potential MessageToDict use; retained for parity with prior imports.
 from google.protobuf.json_format import MessageToDict
 # asyncio retained for callers/helpers that may schedule work (parity import).
@@ -77,7 +77,7 @@ def _connection_from_config(config: Dict[str, Any]) -> Dict[str, Any]:
         and ``runtime`` keys so registration works across schema generations.
 
     Args:
-        config: Full agent config mapping produced by ``YAMLValidator``.
+        config: Full agent config mapping produced by ``load_agent_config_dict``.
 
     Returns:
         A dict of connection fields (may be empty if none of the keys exist).
@@ -173,7 +173,7 @@ class GRPCBridge:
     
     def __init__(self, host: str = GRPC_SERVER_HOST, port: int = GRPC_SERVER_PORT, db_url: Optional[str] = None):
         """
-        Create the fleet client, YAML validator, and instance registry.
+        Create the fleet client and instance registry.
 
         Args:
             host: Fleet manager hostname (default from packages.config).
@@ -184,7 +184,7 @@ class GRPCBridge:
             None (constructor).
 
         Side effects:
-            Instantiates ``FleetManagerClient``, ``YAMLValidator``, and
+            Instantiates ``FleetManagerClient`` and
             ``AgentInstanceRegistry``.
 
         Failure behavior:
@@ -195,8 +195,6 @@ class GRPCBridge:
         server_address = f"{host}:{port}"
         # Sync gRPC stub wrapper used by all RPC methods below.
         self.client = FleetManagerClient(server_address=server_address)
-        # Validates config.yaml paths before register RPCs.
-        self.validator = YAMLValidator()
         # Prefer explicit db_url from dependencies.init_bridge.
         self.db_url = db_url or DATABASE_URL
         # Registry provides async DB access for plan extras and metrics.
@@ -521,7 +519,7 @@ class GRPCBridge:
         """
         try:
             # Schema-validate and load the YAML into a dict.
-            config = self.validator.validate_file(config_path)
+            config = load_agent_config_dict(config_path)
             # Agent type is the metadata.name from the package.
             agent_type = config['metadata']['name']
             # Auto id when caller did not supply one.
@@ -572,7 +570,7 @@ class GRPCBridge:
             Returns ``{"success": False, "message": str(e)}`` on any exception.
         """
         try:
-            config = self.validator.validate_file(config_path)
+            config = load_agent_config_dict(config_path)
             agent_type = config['metadata']['name']
             conn = _connection_from_config(config)
             deployment = _deployment_from_config(config)
@@ -623,7 +621,7 @@ class GRPCBridge:
             Returns success=False message dict on exceptions.
         """
         try:
-            config = self.validator.validate_file(config_path)
+            config = load_agent_config_dict(config_path)
             agent_type = config['metadata']['name']
             deployment = _deployment_from_config(config)
             capabilities = _capabilities_from_config(config)

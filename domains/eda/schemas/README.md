@@ -42,11 +42,11 @@ Distinguishes **`HUMAN`** vs **`AGENT`** authorship; publish rules use this (age
 
 ### AgentRole and ToolAction
 
-**`AgentRole`**: **`LEAD`**, **`WORKER`**, **`VALIDATOR`** — selects **`EdaAgent.act`** branch.
+**`AgentRole`**: **`LEAD`**, **`WORKER`**, **`VALIDATOR`** — selects **`EDAAgent.act`** branch.
 
 **`ToolAction`**: permission verb each skill declares in `config.yaml` (read, write, run_tool, propose_workflow, emit_gate, …).
 
-**`ROLE_ACTIONS`**: static matrix **`assert_action`** and catalog validation enforce — e.g. workers cannot **`PROPOSE_WORKFLOW`**, validators cannot publish requirements without policy, leads cannot **`EMIT_GATE`** in ways workers do.
+**`ROLE_ACTIONS`**: static matrix **`assert_action`** and fleet registry validation enforce — e.g. workers cannot **`PROPOSE_WORKFLOW`**, validators cannot publish requirements without policy, leads cannot **`EMIT_GATE`** in ways workers do.
 
 ### PayloadSchemaStatus
 
@@ -56,14 +56,14 @@ How strictly a named payload schema (**`schema_record_name`**) is registered for
 
 ## task.py — bounded work
 
-**Conversations are not the contract.** A **`TaskSpec`** is one bounded unit of work:
+**Conversations are not the contract.** A **`TaskBrief`** is one bounded unit of work:
 
 - **`objective`**, **`task_id`**, **`project_id`**
 - Design fields: **`design_revision`**, **`subsystem`**, **`block`**, **`stage`**
 - **`constraints`**, optional **`ResourceBudget`**
 - **`allowed_actions`** / **`forbidden_actions`** for tool permission narrowing
 
-**`TaskSpec.from_request`** builds a spec from **`AgentTaskRequest`** (embedded **`inputs["task"]`** or synthesized from loose request fields).
+**`TaskBrief.from_request`** builds a brief from **`AgentTaskRequest`** (embedded **`inputs["task"]`** or synthesized from loose request fields).
 
 **`TaskResult`** is the domain answer:
 
@@ -89,10 +89,10 @@ How strictly a named payload schema (**`schema_record_name`**) is registered for
 | **`GateDecision`** | Validator gate payload |
 | **`ExperimentRecord`** | Hypothesis, metrics, evidence |
 | **`Decision`** | Recorded engineering decision |
-| **`WorkflowTask`** / **`WorkflowSpec`** | Lead-proposed DAG of child tasks |
+| **`ProposedTask`** / **`WorkflowProposal`** | Lead-proposed DAG of child tasks |
 | **`ToolObservation`** | Adapter/skill result (status, metrics, framework name) |
 
-**`WorkflowSpec`** is what **`EdaAgent.plan`** publishes under **`WORKFLOW_REVISION`**. **`ToolObservation`** is what **`EdaAdapter.invoke`** and skill functions return.
+**`WorkflowProposal`** is what **`EDAAgent.plan`** publishes under **`WORKFLOW_REVISION`**. **`ToolObservation`** is what **`EdaAdapter.invoke`** and skill functions return.
 
 ---
 
@@ -132,7 +132,7 @@ Full **system envelope**: ids, scope, type, validation, author, evidence artifac
 | File | Exports (representative) |
 |------|--------------------------|
 | **`enums.py`** | **`TaskOutcome`**, **`RecordType`**, **`ValidationState`**, **`AgentRole`**, **`ToolAction`**, **`ROLE_ACTIONS`** |
-| **`task.py`** | **`ResourceBudget`**, **`TaskSpec`**, **`TaskResult`** |
+| **`task.py`** | **`ResourceBudget`**, **`TaskBrief`**, **`TaskResult`** |
 | **`artifact.py`** | **`ArtifactRef`** |
 | **`messages.py`** | Workflow, gate, experiment, **`ToolObservation`** |
 | **`memory.py`** | **`MemoryScope`**, **`MemoryRecord`**, **`ContextPackage`**, **`PromotionResult`**, write-policy types |

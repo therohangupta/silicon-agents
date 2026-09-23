@@ -8,7 +8,7 @@ and binds them to a specific engineering vocabulary and policy.
 The EDA domain (``domains.eda``) is the chip-design specialization. It
 defines design scope, record types, role-based tool actions, engineering
 memory envelopes, context policies, agent specs loaded from ``config.yaml``,
-and the ``EdaAgent`` base class that every silicon agent subclasses.
+and the ``EDAAgent`` base class that every silicon agent subclasses.
 
 Nothing in this ``__init__`` module re-exports symbols. Callers import from
 ``domains.eda`` (or a deeper submodule) when they need concrete types. The

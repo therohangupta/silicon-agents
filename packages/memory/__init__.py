@@ -17,6 +17,9 @@ Public re-exports below are the symbols domain code should import from
 
 # Context assembly types and the ranking/budget function.
 from .context import AssembledContext, AssembledConflict, ContextPolicy, assemble
+# Named-store configuration belongs to the generic memory package.
+from .config import MemoryConfig, MemoryStoreConfig
+from .runtime import MemoryManager
 # Write-policy types and the copy-assembly / validation entry point.
 from .policy import Placement, PolicyError, StoreCopy, StoredCopy, WritePolicy, assemble_copies
 
@@ -25,6 +28,9 @@ __all__ = [
     "AssembledConflict",
     "AssembledContext",
     "ContextPolicy",
+    "MemoryConfig",
+    "MemoryManager",
+    "MemoryStoreConfig",
     "Placement",
     "PolicyError",
     "StoreCopy",

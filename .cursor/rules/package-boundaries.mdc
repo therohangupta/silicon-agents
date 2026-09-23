@@ -1,0 +1,68 @@
+---
+description: Enforce generic package and domain-extension boundaries
+alwaysApply: true
+---
+
+# Package boundaries
+
+Before editing or adding a model, name its owning layer:
+
+1. `packages/` owns only reusable, domain-neutral primitives. It must not
+   mention EDA, RTL, chip flow, reports, candidates, signoff, or a specific
+   domain workflow.
+2. `domains/<domain>/` owns domain vocabulary and behavior. Domain models must
+   extend or compose generic package primitives; do not duplicate generic
+   parameter, skill, operation, role, task, or configuration structure there.
+3. `agents/<domain>/` contains implementations and configuration for that
+   domain's agents. It must not define shared contracts.
+
+## Ownership is semantic, not dependency-driven
+
+Put a model beside the subsystem whose concept it represents, even when a
+different subsystem consumes it. Do not place a contract in the consumer's
+directory merely because that consumer references it.
+
+- Named stores, persistence modes, store configuration, and memory policies
+  belong in `packages/memory/`; an agent configuration may compose them.
+- Task graphs, planner contracts, and allocation formats belong in
+  `packages/fleet_sdk/`; a domain workflow may compose them.
+- HTTP lifecycle, execution, skills, and agent-process configuration belong
+  in `packages/agent_sdk/`; they must not absorb memory or fleet contracts.
+- Domain-specific vocabulary belongs in `domains/<domain>/`, not in a generic
+  package or an individual agent directory.
+
+Before adding or moving a model, state its owner in the change plan and check
+the matching package for an existing parent contract. Group source files by
+the owning subsystem (`memory/`, `fleet/`, `runtime/`, `adapters/`), not by
+which module happens to import them.
+
+## Refactor completeness and verification
+
+Treat a semantic move as incomplete until all relevant code, imports, tests,
+docstrings, documentation, filenames, directories, public exports, and
+terminology describe the new owner. Do not retain stale aliases or old paths
+for compatibility; this repository is not in production.
+
+For every implementation or refactor change, run the complete first-party
+repository test suite (all collected tests), not a targeted subset. The target
+is every first-party test passing: do not accept skips as completion. Start
+required containers/services and enable integration-test environment flags
+when those tests are part of the suite. Do not report completion while any
+test is skipped, unrun, failing, or blocked without explicitly resolving the
+blocker or obtaining the user's direction.
+
+Before adding a domain model, check whether a generic parent already exists.
+If not, add the smallest domain-neutral primitive under `packages/`, then make
+the domain type extend or compose it.
+
+Examples:
+
+- `ParameterDeclaration` and `SkillDeclaration` are generic.
+- `EDAAgentSkill(SkillDeclaration)` may add an EDA operation.
+- `OperationDeclaration` and `RoleDeclaration` are generic data contracts.
+- EDA operation ids and EDA role ids belong only in `domains/eda`.
+
+Do not use `*Spec` for agent runtime, workflow, or configuration models.
+Reserve “specification” terminology for actual engineering design specifications.
+
+DO NOT CARE ABOUT BACKWARDS COMPATIBILITY THIS CODE IS NOT IN PRODUCTION AT ALL. 

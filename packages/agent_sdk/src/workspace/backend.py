@@ -60,7 +60,7 @@ class LocalWorkspaceBackend(WorkspaceBackend):
     """
 
     def __init__(self, root: Optional[str] = None):
-        """``__init__`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``__init__``"""
         from packages.config import WORKSPACE_STORAGE_ROOT
 
         self._root = Path(
@@ -68,15 +68,15 @@ class LocalWorkspaceBackend(WorkspaceBackend):
         )
 
     def _plan_dir(self, plan_id: int) -> Path:
-        """``_plan_dir`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_plan_dir``"""
         return self._root / str(plan_id)
 
     def uri_for(self, plan_id: int, path: str) -> str:
-        """``_plan_dir`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_plan_dir``"""
         return f"workspace://{plan_id}/{path}"
 
     async def write(self, plan_id: int, path: str, data: bytes) -> str:
-        """``uri_for`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``uri_for``"""
         dest = self._plan_dir(plan_id) / path
         # Call ``dest.parent.mkdir``.
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -86,7 +86,7 @@ class LocalWorkspaceBackend(WorkspaceBackend):
         return self.uri_for(plan_id, path)
 
     async def read(self, plan_id: int, path: str) -> bytes:
-        """``read`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``read``"""
         target = self._plan_dir(plan_id) / path
         # Only when (not target.exists()).
         if not target.exists():
@@ -96,7 +96,7 @@ class LocalWorkspaceBackend(WorkspaceBackend):
         return target.read_bytes()
 
     async def list_paths(self, plan_id: int) -> list[str]:
-        """``list_paths`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``list_paths``"""
         plan_dir = self._plan_dir(plan_id)
         # Only when (not plan_dir.exists()).
         if not plan_dir.exists():
@@ -108,7 +108,7 @@ class LocalWorkspaceBackend(WorkspaceBackend):
         return [str(p.relative_to(base)) for p in base.rglob("*") if p.is_file()]
 
     async def delete(self, plan_id: int, path: str) -> None:
-        """``delete`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``delete``"""
         target = self._plan_dir(plan_id) / path
         # Only when (target.exists()).
         if target.exists():
@@ -116,7 +116,7 @@ class LocalWorkspaceBackend(WorkspaceBackend):
             target.unlink()
 
     async def exists(self, plan_id: int, path: str) -> bool:
-        """``exists`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``exists``"""
         return (self._plan_dir(plan_id) / path).exists()
 
 
@@ -132,7 +132,7 @@ class S3WorkspaceBackend(WorkspaceBackend):
         region: Optional[str] = None,
         prefix: str = "workspaces",
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         from packages.config import S3_BUCKET, S3_REGION, WORKSPACE_S3_BUCKET
 
         self._bucket = bucket or os.environ.get("WORKSPACE_S3_BUCKET") or WORKSPACE_S3_BUCKET or S3_BUCKET
@@ -143,7 +143,7 @@ class S3WorkspaceBackend(WorkspaceBackend):
         self._client = None
 
     def _get_client(self):
-        """``_get_client`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_get_client``"""
         if self._client is None:
             import boto3
             # Bind ``_client`` from boto3.client("s3", region_name=self._region) for later use on this instance.
@@ -152,15 +152,15 @@ class S3WorkspaceBackend(WorkspaceBackend):
         return self._client
 
     def _key(self, plan_id: int, path: str) -> str:
-        """``_key`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_key``"""
         return f"{self._prefix}/{plan_id}/{path}"
 
     def uri_for(self, plan_id: int, path: str) -> str:
-        """``_key`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_key``"""
         return f"s3://{self._bucket}/{self._key(plan_id, path)}"
 
     async def write(self, plan_id: int, path: str, data: bytes) -> str:
-        """``uri_for`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``uri_for``"""
         client = self._get_client()
         # Local ``key`` ← self._key(plan_id, path).
         key = self._key(plan_id, path)
@@ -170,7 +170,7 @@ class S3WorkspaceBackend(WorkspaceBackend):
         return self.uri_for(plan_id, path)
 
     async def read(self, plan_id: int, path: str) -> bytes:
-        """``read`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``read``"""
         client = self._get_client()
         # Local ``key`` ← self._key(plan_id, path).
         key = self._key(plan_id, path)
@@ -180,7 +180,7 @@ class S3WorkspaceBackend(WorkspaceBackend):
         return response["Body"].read()
 
     async def list_paths(self, plan_id: int) -> list[str]:
-        """``list_paths`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``list_paths``"""
         client = self._get_client()
         # Local ``prefix`` ← f"{self._prefix}/{plan_id}/".
         prefix = f"{self._prefix}/{plan_id}/"
@@ -200,7 +200,7 @@ class S3WorkspaceBackend(WorkspaceBackend):
         return paths
 
     async def delete(self, plan_id: int, path: str) -> None:
-        """``delete`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``delete``"""
         client = self._get_client()
         # Local ``key`` ← self._key(plan_id, path).
         key = self._key(plan_id, path)
@@ -208,7 +208,7 @@ class S3WorkspaceBackend(WorkspaceBackend):
         client.delete_object(Bucket=self._bucket, Key=key)
 
     async def exists(self, plan_id: int, path: str) -> bool:
-        """``exists`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``exists``"""
         client = self._get_client()
         # Local ``key`` ← self._key(plan_id, path).
         key = self._key(plan_id, path)

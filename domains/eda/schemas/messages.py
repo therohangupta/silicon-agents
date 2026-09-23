@@ -218,16 +218,16 @@ class Decision(BaseModel):
     revisit_condition: str = ""
 
 
-class WorkflowTask(BaseModel):
+class ProposedTask(BaseModel):
     """One node in a lead-proposed workflow dependency graph.
 
-    Produced by ``planning.build_workflow`` from ``PlanStep`` objects. The
+    Produced by ``planning.build_workflow`` from ``EDADelegationStep`` objects. The
     fleet scheduler uses ``depends_on`` to order execution across agents.
     """
 
-    # Step id unique within the parent WorkflowSpec.
+    # Step id unique within the parent WorkflowProposal.
     id: str
-    # Catalog agent_id that should run this node.
+    # registered agent_id that should run this node.
     agent_type: str
     # Capability id the assignee must provide.
     capability: str
@@ -237,7 +237,7 @@ class WorkflowTask(BaseModel):
     objective: str = ""
 
 
-class WorkflowSpec(BaseModel):
+class WorkflowProposal(BaseModel):
     """Versioned dependency graph a lead returns instead of doing the child work.
 
     Published as a provisional ``WORKFLOW_REVISION`` and also embedded under
@@ -254,7 +254,7 @@ class WorkflowSpec(BaseModel):
     # Lead agent that authored the graph.
     parent_agent: str
     # Ordered list of child workflow tasks with dependencies.
-    tasks: list[WorkflowTask] = Field(default_factory=list)
+    tasks: list[ProposedTask] = Field(default_factory=list)
 
 
 class ToolObservation(BaseModel):

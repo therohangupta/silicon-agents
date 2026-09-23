@@ -1,4 +1,9 @@
-"""Package ``agent_sdk/src/telemetry/__init__.py``.
+"""Telemetry configuration, clients, and publishers."""
 
-Marks this directory as a Python package within packages. Import concrete symbols from sibling modules rather than this file when no re-exports are defined.
-"""
+from .config import ObservabilityConfig, TelemetryConfig, TelemetryStreamConfig
+
+__all__ = [
+    "ObservabilityConfig",
+    "TelemetryConfig",
+    "TelemetryStreamConfig",
+]

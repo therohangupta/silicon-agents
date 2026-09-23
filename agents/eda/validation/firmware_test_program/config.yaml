@@ -1,0 +1,653 @@
+# Fleet manifest for the Firmware / Test Program agent (firmware_test_program).
+# Parsed by EDAAgent.read_spec / gateway YAML scanner. Comments are documentation only.
+
+# Fleet schema version for the agent manifest parser.
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for gateway YAML scanning.
+kind: Agent
+# Human- and machine-readable identity for dashboards and fleet select.
+metadata:
+  # Stable agent id used in delegates_to, tool agent_id, and routing.
+  name: firmware_test_program
+  # UI label shown in the dashboard and logs.
+  display_name: Firmware and Test-Program Agent
+  # One-paragraph charter for planners and operators.
+  description: Draft and debug low-level firmware, diagnostics, boot flows, and test programs used to
+    exercise silicon.
+  # Stage and role for this agent.
+  labels:
+    # Pipeline stage this agent owns or serves.
+    stage: validation
+    # Role class: lead, specialist, or validator.
+    role: worker
+# Role class: lead, specialist, or validator.
+role: worker
+# Pipeline stage this agent owns or serves.
+stage: validation
+# Normative statement of what this agent owes the program.
+responsibility: Draft and debug low-level firmware, diagnostics, boot flows, and test programs used to
+  exercise silicon.
+# Hard may / may_not envelope enforced in planning and reviews.
+boundary:
+  # Actions this agent is allowed to take on candidates and memory.
+  may:
+  # List entry consumed by the firmware_test_program manifest: Edit firmware on an isolated branch
+  - Edit firmware on an isolated branch
+  # List entry consumed by the firmware_test_program manifest: Draft a test program
+  - Draft a test program
+  # List entry consumed by the firmware_test_program manifest: Compile the firmware
+  - Compile the firmware
+  # Forbidden actions (waivers, baseline promotion, self-signoff, etc.).
+  may_not:
+  # List entry consumed by the firmware_test_program manifest: Flash a part
+  - Flash a part
+  # List entry consumed by the firmware_test_program manifest: Change bring-up limits
+  - Change bring-up limits
+  # List entry consumed by the firmware_test_program manifest: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # List entry consumed by the firmware_test_program manifest: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # List entry consumed by the firmware_test_program manifest: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open workflows for.
+delegates_to: []
+# Independent gate agents that must grade this agent's output.
+validators: []
+# How other services reach this agent's HTTP process.
+connection:
+  # Hostname from sibling containers (Docker Desktop bridge).
+  host: host.docker.internal
+  # TCP port exposed by this agent's Dockerfile / server.
+  port: 8266
+  # HTTP paths the AgentService registers.
+  endpoints:
+    # Liveness probe path for orchestrators.
+    health: /health
+    # Task execution POST path used by the fleet server.
+    execute: /tasks/execute
+# EDA tool backend binding; none until a framework adapter is attached.
+backend:
+  # Backend adapter type (none means tool_observation returns not_run).
+  type: none
+# How tools are invoked inside the agent process.
+execution:
+  # Functional or test-mode filter for report reads.
+  mode: direct_function
+  # Parallelism limits for in-flight tasks.
+  concurrency:
+    # Maximum simultaneous tasks for this specialist.
+    max_tasks: 1
+# Timeouts and retry policy for failed DFT/lab work.
+reliability:
+  # Wall-clock seconds before a task is abandoned.
+  task_timeout_secs: 120
+  # Automatic retries before on_failure policy applies.
+  max_retries: 1
+  # Planner reaction when the specialist fails (e.g. replan).
+  on_failure: replan
+# Advertised capability ids for planners (may mirror skills).
+capabilities:
+# Manifest field '- id' for firmware_test_program (validation).
+- id: draft_firmware_change
+  # One-paragraph charter for planners and operators.
+  description: Write one bounded firmware or diagnostic change.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_boot_flow
+  # One-paragraph charter for planners and operators.
+  description: Write or edit the boot sequence on the isolated branch.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_diagnostic
+  # One-paragraph charter for planners and operators.
+  description: Write one diagnostic that exercises a named block.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: draft_test_program
+  # One-paragraph charter for planners and operators.
+  description: Write a characterization or production test program.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_test_limits
+  # One-paragraph charter for planners and operators.
+  description: Write pass limits copied from the approved specification. This agent cannot widen them.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_test_pattern
+  # One-paragraph charter for planners and operators.
+  description: Write one pattern the test program applies.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: compile_firmware
+  # One-paragraph charter for planners and operators.
+  description: Compile the firmware branch.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: compile_test_program
+  # One-paragraph charter for planners and operators.
+  description: Compile the test program.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: read_firmware_diff
+  # One-paragraph charter for planners and operators.
+  description: Read the diff against the firmware baseline.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: flag_limit_widening
+  # One-paragraph charter for planners and operators.
+  description: Publish a test program whose limits are looser than the approved specification.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: flag_firmware_without_diagnostic
+  # One-paragraph charter for planners and operators.
+  description: Publish a change that has no way to observe the block it touches.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: record_firmware_revision
+  # One-paragraph charter for planners and operators.
+  description: Record the firmware revision, compiler, and test program.
+# Concrete tool bindings: module, callable, action, params.
+skills:
+# Manifest field '- id' for firmware_test_program (validation).
+- id: draft_firmware_change
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: draft_firmware_change
+  # One-paragraph charter for planners and operators.
+  description: Write one bounded firmware or diagnostic change.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for firmware_test_program (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_boot_flow
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_boot_flow
+  # One-paragraph charter for planners and operators.
+  description: Write or edit the boot sequence on the isolated branch.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for firmware_test_program (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_diagnostic
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_diagnostic
+  # One-paragraph charter for planners and operators.
+  description: Write one diagnostic that exercises a named block.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for firmware_test_program (validation).
+    hypothesis: ''
+    # Manifest field 'block' for firmware_test_program (validation).
+    block: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: block
+    # One-paragraph charter for planners and operators.
+    description: Block the diagnostic exercises.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: draft_test_program
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: draft_test_program
+  # One-paragraph charter for planners and operators.
+  description: Write a characterization or production test program.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for firmware_test_program (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_test_limits
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_test_limits
+  # One-paragraph charter for planners and operators.
+  description: Write pass limits copied from the approved specification. This agent cannot widen them.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for firmware_test_program (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: write_test_pattern
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: write_test_pattern
+  # One-paragraph charter for planners and operators.
+  description: Write one pattern the test program applies.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'hypothesis' for firmware_test_program (validation).
+    hypothesis: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: write_candidate
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Isolated candidate to edit. Empty means create one from the baseline.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Immutable baseline the candidate must descend from.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: hypothesis
+    # One-paragraph charter for planners and operators.
+    description: The single change this edit is testing.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: compile_firmware
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: compile_firmware
+  # One-paragraph charter for planners and operators.
+  description: Compile the firmware branch.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'recipe' for firmware_test_program (validation).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: submit_tool_job
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate the job reads.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Baseline used when the job compares against a known result.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: recipe
+    # One-paragraph charter for planners and operators.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: compile_test_program
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: compile_test_program
+  # One-paragraph charter for planners and operators.
+  description: Compile the test program.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Manifest field 'baseline_ref' for firmware_test_program (validation).
+    baseline_ref: ''
+    # Manifest field 'recipe' for firmware_test_program (validation).
+    recipe: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: submit_tool_job
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate the job reads.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: baseline_ref
+    # One-paragraph charter for planners and operators.
+    description: Baseline used when the job compares against a known result.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: recipe
+    # One-paragraph charter for planners and operators.
+    description: Versioned tool recipe. The adapter rejects an unknown recipe.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: PVT corner. Empty when the job is not corner-specific.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Functional or analysis mode. Empty when the job is not mode-specific.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: read_firmware_diff
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: read_firmware_diff
+  # One-paragraph charter for planners and operators.
+  description: Read the diff against the firmware baseline.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # Artifact URI of the RTL/netlist/physical candidate under test.
+    candidate_ref: ''
+    # Artifact URI of a DFT or lab report; empty means latest.
+    report_ref: ''
+    # PVT corner filter for report reads.
+    corner: ''
+    # Functional or test-mode filter for report reads.
+    mode: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: read_reports
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: candidate_ref
+    # One-paragraph charter for planners and operators.
+    description: Candidate whose reports are read.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: report_ref
+    # One-paragraph charter for planners and operators.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: corner
+    # One-paragraph charter for planners and operators.
+    description: Corner filter. Empty reads every available corner.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: mode
+    # One-paragraph charter for planners and operators.
+    description: Mode filter. Empty reads every available mode.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: flag_limit_widening
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_limit_widening
+  # One-paragraph charter for planners and operators.
+  description: Publish a test program whose limits are looser than the approved specification.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: flag_firmware_without_diagnostic
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: flag_firmware_without_diagnostic
+  # One-paragraph charter for planners and operators.
+  description: Publish a change that has no way to observe the block it touches.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Manifest field '- id' for firmware_test_program (validation).
+- id: record_firmware_revision
+  # Python module (relative) that defines the callable.
+  module: tools
+  # Function name exported from tools.py.
+  callable: record_firmware_revision
+  # One-paragraph charter for planners and operators.
+  description: Record the firmware revision, compiler, and test program.
+  # Default argument values when the LLM omits them.
+  args_defaults:
+    # One-sentence finding text published to engineering memory.
+    summary: ''
+    # Comma-separated artifact URIs backing a finding.
+    evidence_refs: ''
+    # Finding severity: low, medium, high, or critical.
+    severity: ''
+    # Agent id that should act on a published finding.
+    recommended_recipient: ''
+  # ToolAction enum semantic (create_workflow, read_reports, …).
+  action: publish_finding
+  # Documented parameters the planner/LLM may fill.
+  params:
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: summary
+    # One-paragraph charter for planners and operators.
+    description: One-sentence finding.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: evidence_refs
+    # One-paragraph charter for planners and operators.
+    description: Comma-separated artifact URIs that support the finding.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: severity
+    # One-paragraph charter for planners and operators.
+    description: low, medium, high, or critical.
+  # Manifest field '- name' for firmware_test_program (validation).
+  - name: recommended_recipient
+    # One-paragraph charter for planners and operators.
+    description: Agent id that should act on the finding.
+# Local and shared engineering-memory configuration.
+memory:
+  # Named memory stores this agent may touch.
+  stores:
+  # Manifest field '- id' for firmware_test_program (validation).
+  - id: journal
+    # One-paragraph charter for planners and operators.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend adapter type (none means tool_observation returns not_run).
+    type: list
+    # Where the store is kept (file vs ephemeral).
+    persistence: file
+    # Store-specific configuration block.
+    config:
+      # Filesystem root for silicon memory (env-substitutable).
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry stream configuration.
+observability:
+  # Seconds between liveness heartbeats.
+  heartbeat_interval_secs: 5
+  # Where skill_calls and artifacts are ingested.
+  telemetry:
+    # Telemetry service base URL (TELEMETRY_URL).
+    endpoint: ${TELEMETRY_URL}
+    # Named high-level telemetry stream categories.
+    streams:
+    # Manifest field '- name' for firmware_test_program (validation).
+    - name: skill_calls
+      # One-paragraph charter for planners and operators.
+      description: Tool invocations.
+    # Manifest field '- name' for firmware_test_program (validation).
+    - name: artifacts
+      # One-paragraph charter for planners and operators.
+      description: Structured task results.
+# Container image and Dockerfile pointers for compose.
+deployment:
+  # Published image tag for this agent.
+  image: agentfleet/firmware_test_program:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Env vars injected into the container.
+  environment:
+    # Optional bound EDA/lab framework adapter name.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context assembly policy for engineering memory.
+context:
+  # Record kinds always preferred into the context package.
+  include:
+  # List entry consumed by the firmware_test_program manifest: experiments
+  - experiments
+  # List entry consumed by the firmware_test_program manifest: gates
+  - gates
+  # List entry consumed by the firmware_test_program manifest: decisions
+  - decisions
+  # List entry consumed by the firmware_test_program manifest: open_findings
+  - open_findings
+  # List entry consumed by the firmware_test_program manifest: canonical_source
+  - canonical_source
+  # Record kinds filtered out before ranking.
+  exclude:
+  # List entry consumed by the firmware_test_program manifest: stale_candidates
+  - stale_candidates
+  # Validation states removed before context ranking.
+  drop:
+  # List entry consumed by the firmware_test_program manifest: rejected
+  - rejected
+  # Most-trusted authorship/validation states first.
+  precedence:
+  # List entry consumed by the firmware_test_program manifest: validated
+  - validated
+  # List entry consumed by the firmware_test_program manifest: provisional
+  - provisional
+  # States never dropped solely for token budget.
+  protect: []
+  # Approximate token cap for the assembled context package.
+  token_budget: 80000

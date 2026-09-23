@@ -14,7 +14,7 @@ pytest tests/ -q -k "not memory_plane and not agent_mesh"   # skip live Docker t
 | Module | What it locks in |
 |--------|------------------|
 | **`test_fleet_select.py`** | Fleet YAML parsing, **`select_agents`**, host port shifting, **`render_compose`** output |
-| **`test_silicon.py`** | Catalog completeness, memory publish policy, **`EdaAgent`** handle path, **`AgentService`** wiring |
+| **`test_silicon.py`** | registry completeness, memory publish policy, **`EDAAgent`** handle path, **`AgentService`** wiring |
 | **`test_task_lifecycle.py`** | SDK **`TaskLifecycle`** hook ordering with EDA overrides |
 | **`test_context_assembly.py`** | Generic **`packages.memory.context.assemble`** precedence, conflicts, budgeting (domain-agnostic) |
 | **`test_memory_plane.py`** | Live **`EngineeringMemory`** against multi-store plane |
@@ -31,7 +31,7 @@ Without the flag, these modules skip or no-op so CI and laptop unit runs stay fa
 
 ## Shared fixtures — `conftest.py`
 
-Centralizes path setup, optional async markers, and shared memory backends for silicon tests. Read **`conftest.py`** before adding new fixtures to avoid duplicating **`open_memory`** or catalog load logic.
+Centralizes path setup, optional async markers, and shared memory backends for silicon tests. Read **`conftest.py`** before adding new fixtures to avoid duplicating **`open_memory`** or registry load logic.
 
 ## Contract subdirectory
 
@@ -44,7 +44,7 @@ Contract tests intentionally **do not** require full Compose except where a modu
 | Layer | Typical test home |
 |-------|-------------------|
 | Pydantic schemas, enums | Implicit via domain tests; direct model tests when added |
-| **`registry.validate_catalog`** | **`test_silicon.py`**, **`check_agents.py`** in CI |
+| **`registry.validate_eda_registry`** | **`test_silicon.py`**, **`check_agents.py`** in CI |
 | **`ContextService` + INCLUDE_TYPES** | **`test_silicon.py`**, **`test_context_assembly.py`** |
 | **`fleet_select.py` CLI** | **`test_fleet_select.py`** |
 | HTTP agent health/execute | **`contract/test_agent_package.py`** |
@@ -57,15 +57,15 @@ Contract tests intentionally **do not** require full Compose except where a modu
 
 ## Adding tests
 
-- Prefer injecting **`EngineeringMemory`** / **`ContextService`** into **`EdaAgent`** rather than hitting Docker.
-- For new catalog agents, extend parametrized contract tests rather than one-off scripts.
+- Prefer injecting **`EngineeringMemory`** / **`ContextService`** into **`EDAAgent`** rather than hitting Docker.
+- For new registered agents, extend parametrized contract tests rather than one-off scripts.
 - Mark long-running tests clearly; do not fold plane mesh into default CI without skip guards.
 
 ## Related documentation
 
 | Document | Topic |
 |----------|--------|
-| [`../domains/eda/README.md`](../domains/eda/README.md) | **`EdaAgent`** and memory behavior under test |
+| [`../domains/eda/README.md`](../domains/eda/README.md) | **`EDAAgent`** and memory behavior under test |
 | [`../scripts/README.md`](../scripts/README.md) | Scripts mirrored by fleet tests |
 | [`../docs/RUN.md`](../docs/RUN.md) | Compose bring-up for live tests |
 
@@ -79,6 +79,6 @@ Contract tests intentionally **do not** require full Compose except where a modu
 ## Debugging failed silicon tests
 
 1. Run the single failing file with **`pytest -vv`** and no xdist.
-2. For catalog failures, run **`python scripts/check_agents.py`** — error messages often match **`test_silicon.py`** assertions.
+2. For registry failures, run **`python scripts/check_agents.py`** — error messages often match **`test_silicon.py`** assertions.
 3. For fleet render diffs, compare **`fleet_select.py render`** output to committed **`docker-compose.agents.yml`** expectations in **`test_fleet_select.py`**.
 4. For plane tests, confirm OpenSearch/Postgres/NATS containers are healthy before blaming agent code.

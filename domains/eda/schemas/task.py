@@ -1,10 +1,10 @@
 """Task and result schemas that bound agent work for the EDA fleet.
 
-Conversations are not the contract. A ``TaskSpec`` is a bounded unit of work
+Conversations are not the contract. A ``TaskBrief`` is a bounded unit of work
 with objective, design scope, constraints, allow/forbid action lists, and an
 optional resource budget. Agents receive it either embedded under
 ``request.inputs["task"]`` or synthesized from the looser fleet
-``AgentTaskRequest`` fields via ``TaskSpec.from_request``.
+``AgentTaskRequest`` fields via ``TaskBrief.from_request``.
 
 ``TaskResult`` is the domain answer: outcome enum, reason code, summary,
 evidence, observations, and optional workflow payload. ``to_agent_task_result``
@@ -23,7 +23,7 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
 
 # Fleet request/result envelopes we convert to and from.
-from packages.agent_sdk.src.models import AgentTaskRequest, AgentTaskResult
+from packages.agent_sdk.src.contracts import AgentTaskRequest, AgentTaskResult
 # Evidence pointers attached to results.
 from .artifact import ArtifactRef
 # Outcome enum that drives success/replan mapping.
@@ -33,7 +33,7 @@ from .enums import TaskOutcome
 class ResourceBudget(BaseModel):
     """Optional caps on compute, experiments, licenses, and model tokens.
 
-    Planners and schedulers may read these fields; the default ``EdaAgent``
+    Planners and schedulers may read these fields; the default ``EDAAgent``
     path does not enforce them itself. Empty/None values mean "unspecified".
 
     Attributes:
@@ -56,12 +56,12 @@ class ResourceBudget(BaseModel):
     max_model_tokens: Optional[int] = None
 
 
-class TaskSpec(BaseModel):
+class TaskBrief(BaseModel):
     """Bounded unit of work. Conversations are not the contract.
 
     Carries design scope (project, revision, subsystem, block, stage), hard
     and soft objectives, free-form inputs, permission lists, resource budget,
-    and idempotency key. ``EdaAgent.handle`` fills missing idempotency and
+    and idempotency key. ``EDAAgent.handle`` fills missing idempotency and
     stage from the agent identity when they are empty.
 
     Attributes:
@@ -98,7 +98,7 @@ class TaskSpec(BaseModel):
     subsystem: str = ""
     # Optional block segment in MemoryScope.
     block: str = ""
-    # Optional stage; EdaAgent fills from AgentSpec.stage when empty.
+    # Optional stage; EDAAgent fills from EDAAgentConfig.stage when empty.
     stage: str = ""
     # Constraints that must hold for acceptance.
     hard_constraints: dict[str, Any] = Field(default_factory=dict)
@@ -120,8 +120,8 @@ class TaskSpec(BaseModel):
     required_capabilities: list[str] = Field(default_factory=list)
 
     @classmethod
-    def from_request(cls, request: AgentTaskRequest) -> "TaskSpec":
-        """Build a ``TaskSpec`` from a fleet ``AgentTaskRequest``.
+    def from_request(cls, request: AgentTaskRequest) -> "TaskBrief":
+        """Build a ``TaskBrief`` from a fleet ``AgentTaskRequest``.
 
         Preferentially validates ``request.inputs["task"]`` when it is a dict,
         filling ``task_id`` and ``objective`` from the request when missing.
@@ -132,7 +132,7 @@ class TaskSpec(BaseModel):
             request: Inbound fleet task request.
 
         Returns:
-            A validated ``TaskSpec``.
+            A validated ``TaskBrief``.
 
         Side effects:
             None.
@@ -149,7 +149,7 @@ class TaskSpec(BaseModel):
             # Ensure identity fields exist even if the embed omitted them.
             data.setdefault("task_id", request.task_id)
             data.setdefault("objective", request.description)
-            # Validate into the TaskSpec model.
+            # Validate into the TaskBrief model.
             return cls.model_validate(data)
         # No embed: derive project from plan_id when the fleet provided one.
         project = str(request.plan_id) if request.plan_id is not None else "sandbox"
@@ -164,7 +164,7 @@ class TaskSpec(BaseModel):
 
 
 class TaskResult(BaseModel):
-    """Domain result returned by ``EdaAgent`` before fleet conversion.
+    """Domain result returned by ``EDAAgent`` before fleet conversion.
 
     Carries the engineering ``TaskOutcome``, a machine-readable reason code,
     human summary, evidence refs, observations from tools, and an optional
@@ -181,12 +181,12 @@ class TaskResult(BaseModel):
         recommended_recipient: Suggested next agent or human role.
         resume_checkpoint: Memory id to resume from (e.g. gate id).
         observations: Tool observation dicts.
-        workflow: Serialized ``WorkflowSpec`` when a lead proposed one.
+        workflow: Serialized ``WorkflowProposal`` when a lead proposed one.
     """
 
     # Schema discriminator for versioned task results.
     schema_name: Literal["eda.task-result/v1"] = "eda.task-result/v1"
-    # Must match the TaskSpec.task_id that produced this result.
+    # Must match the TaskBrief.task_id that produced this result.
     task_id: str
     # Engineering outcome the parent workflow interprets.
     outcome: TaskOutcome

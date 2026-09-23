@@ -13,20 +13,20 @@ Hand-written source for ``base.py``. Behavior is unchanged; comments document co
 
 from abc import ABC, abstractmethod
 
-from ..models import AgentTaskRequest, AgentTaskResult
+from ..contracts import AgentTaskRequest, AgentTaskResult
 from ..skills.registry import SkillRegistry
-from ..memory.loader import MemoryManager
+from packages.memory.runtime import MemoryManager
 
 
 class AgentRuntime(ABC):
-    """``AgentRuntime`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+    """``AgentRuntime``"""
     def __init__(self, skills: SkillRegistry, memory: MemoryManager):
-        """``AgentRuntime`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``AgentRuntime``"""
         self.skills = skills
         # Bind ``memory`` from memory for later use on this instance.
         self.memory = memory
 
     @abstractmethod
     async def execute(self, request: AgentTaskRequest) -> AgentTaskResult:
-        """``execute`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``execute``"""
         raise NotImplementedError

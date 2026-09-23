@@ -13,8 +13,9 @@ Hand-written source for ``tool_loop_runtime.py``. Behavior is unchanged; comment
 
 from .base import AgentRuntime
 from .langchain_runtime import LangChainRuntime
-from ..models import AgentTaskRequest, AgentTaskResult, BackendConfig, ExecutionTrace
-from ..memory.loader import MemoryManager
+from ..config import BackendConfig
+from ..contracts import AgentTaskRequest, AgentTaskResult, ExecutionTrace
+from packages.memory.runtime import MemoryManager
 from ..skills.registry import SkillRegistry
 
 
@@ -27,13 +28,13 @@ class ToolLoopRuntime(AgentRuntime):
         memory: MemoryManager,
         backend: BackendConfig,
     ):
-        """``callable`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``callable``"""
         super().__init__(skills, memory)
         # Bind ``_inner`` from LangChainRuntime(skills, memory, backend) for later use on this instance.
         self._inner = LangChainRuntime(skills, memory, backend)
 
     async def execute(self, request: AgentTaskRequest) -> AgentTaskResult:
-        """``execute`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``execute``"""
         result = await self._inner.execute(request)
         traces: list[ExecutionTrace] = []
         # Loop: for sc in result.skill_calls.

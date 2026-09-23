@@ -1,0 +1,662 @@
+# Agent Fleet manifest for ECO Lead (eco_lead).
+# Domain: engineering change orders (ECO) for late RTL/timing/power/physical fixes.
+# EDA focus: ECO scope, equivalence, impacted STA/DRC/LVS gates, human authorization.
+# Loaded by agent.py via EDAAgent.read_spec and by server.py via AgentService.from_agent.
+# HTTP port 8261 must stay aligned with connection.port, Dockerfile EXPOSE, and deployment.
+
+# Agent Fleet manifest schema version for this Agent resource.
+apiVersion: agentfleet/v1
+# Resource kind; must be Agent for fleet loaders.
+kind: Agent
+# Identity and labeling block consumed by discovery and observability.
+metadata:
+  # Stable agent id `eco_lead` used in tool_observation and fleet routing.
+  name: eco_lead
+  # Human-readable agent title shown in UIs and journals.
+  display_name: ECO Lead
+  # Short charter describing what this signoff agent is responsible for.
+  description: Plan a late functional, timing, power, or physical change. Minimize disruption, preserve
+    equivalence, and name every check the change invalidates.
+  # Stage and role for this agent.
+  labels:
+    # Pipeline stage this agent participates in.
+    stage: signoff
+    # Fleet role: worker executes tools; lead plans and delegates.
+    role: lead
+# Fleet role: worker executes tools; lead plans and delegates.
+role: lead
+# Pipeline stage this agent participates in.
+stage: signoff
+# Authoritative one-paragraph responsibility used in prompts and docs.
+responsibility: Plan a late functional, timing, power, or physical change. Minimize disruption, preserve
+  equivalence, and name every check the change invalidates.
+# Hard may / may_not contract enforced by policy and reviewers.
+boundary:
+  # Operations this agent is allowed to perform in the signoff flow.
+  may:
+  # Signoff boundary or context item: Publish an ECO workflow
+  - Publish an ECO workflow
+  # Signoff boundary or context item: Read the open finding and the current baseline
+  - Read the open finding and the current baseline
+  # Signoff boundary or context item: Request a human decision before an ECO is applied
+  - Request a human decision before an ECO is applied
+  # Forbidden actions (waiver, promote, edit canonical baseline, etc.).
+  may_not:
+  # Signoff boundary or context item: Apply the ECO without equivalence when function changes
+  - Apply the ECO without equivalence when function changes
+  # Signoff boundary or context item: Skip an impacted signoff check
+  - Skip an impacted signoff check
+  # Signoff boundary or context item: Promote the ECO
+  - Promote the ECO
+  # Signoff boundary or context item: Promote a candidate onto the canonical baseline
+  - Promote a candidate onto the canonical baseline
+  # Signoff boundary or context item: Approve a waiver or relax a hard requirement
+  - Approve a waiver or relax a hard requirement
+  # Signoff boundary or context item: Treat its own summary as independent signoff
+  - Treat its own summary as independent signoff
+# Child agent ids this lead may open tasks against (empty for pure workers).
+delegates_to:
+# Signoff boundary or context item: rtl_implementation
+- rtl_implementation
+# Signoff boundary or context item: equivalence
+- equivalence
+# Signoff boundary or context item: timing_debug
+- timing_debug
+# Signoff boundary or context item: drc_lvs
+- drc_lvs
+# Independent validators that must grade this agent's outputs (often empty).
+validators: []
+# Network binding for the HTTP AgentService inside Docker.
+connection:
+  # Docker-published host reachable from other fleet services.
+  host: host.docker.internal
+  # TCP port 8261 for this agent's AgentService (must match Dockerfile EXPOSE).
+  port: 8261
+  # HTTP paths for health probes and task execution.
+  endpoints:
+    # Liveness/readiness path returning service health.
+    health: /health
+    # Path that accepts execute-task requests from the orchestrator.
+    execute: /tasks/execute
+# LLM/tool backend binding; type none means tools are observations until adapted.
+backend:
+  # Backend type discriminator for the agent runtime.
+  type: none
+# How skills are invoked when a task arrives.
+execution:
+  # Functional/analysis mode filter or target.
+  mode: direct_function
+  # Limits on parallel signoff jobs for this container.
+  concurrency:
+    # Maximum concurrent tasks; signoff tools are often serialized at 1.
+    max_tasks: 1
+# Timeouts and failure policy for long EDA jobs.
+reliability:
+  # Wall seconds before a hanging tool job is aborted.
+  task_timeout_secs: 120
+  # Retries before the orchestrator must replan.
+  max_retries: 1
+  # Orchestrator action when the task fails after retries.
+  on_failure: replan
+# Advertised capability ids matching tools (discovery surface).
+capabilities:
+# Stable capability or skill or stream identifier.
+- id: plan_eco
+  # Short charter describing what this signoff agent is responsible for.
+  description: Emit the smallest workflow that implements and revalidates one ECO.
+# Stable capability or skill or stream identifier.
+- id: request_eco_rtl_edit
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open one bounded RTL edit for a functional ECO.
+# Stable capability or skill or stream identifier.
+- id: request_eco_equivalence
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open equivalence for an ECO that changes logic.
+# Stable capability or skill or stream identifier.
+- id: request_eco_timing
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open timing on the paths the ECO can move.
+# Stable capability or skill or stream identifier.
+- id: request_eco_physical_verification
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open DRC and LVS for a physical ECO.
+# Stable capability or skill or stream identifier.
+- id: list_impacted_checks
+  # Short charter describing what this signoff agent is responsible for.
+  description: List the gates this ECO invalidates.
+# Stable capability or skill or stream identifier.
+- id: read_eco_finding
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the finding this ECO is supposed to close.
+# Stable capability or skill or stream identifier.
+- id: read_eco_baseline
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the baseline the ECO must descend from.
+# Stable capability or skill or stream identifier.
+- id: estimate_eco_disruption
+  # Short charter describing what this signoff agent is responsible for.
+  description: List files, nets, and path groups the ECO touches.
+# Stable capability or skill or stream identifier.
+- id: flag_missing_eco_check
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish an impacted check the workflow does not rerun.
+# Stable capability or skill or stream identifier.
+- id: record_eco_scope
+  # Short charter describing what this signoff agent is responsible for.
+  description: Record the hypothesis, the baseline, and the checks that must rerun.
+# Stable capability or skill or stream identifier.
+- id: request_eco_authorization
+  # Short charter describing what this signoff agent is responsible for.
+  description: Ask a human to authorize the ECO before it is applied.
+# Stable capability or skill or stream identifier.
+- id: delegate_tasks
+  # Short charter describing what this signoff agent is responsible for.
+  description: Propose a dependency graph for the agents in this scope. Do not execute their tools.
+# Concrete skill bindings: module/callable plus action and params.
+skills:
+# Stable capability or skill or stream identifier.
+- id: plan_eco
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: plan_eco
+  # Short charter describing what this signoff agent is responsible for.
+  description: Emit the smallest workflow that implements and revalidates one ECO.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Workflow or ECO objective string.
+    objective: ''
+    # Parent task correlation id.
+    parent_task_id: ''
+    # Block/partition scope for planning.
+    scope_block: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: create_workflow
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: objective
+    # Short charter describing what this signoff agent is responsible for.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: parent_task_id
+    # Short charter describing what this signoff agent is responsible for.
+    description: Task that owns this workflow.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: scope_block
+    # Short charter describing what this signoff agent is responsible for.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable capability or skill or stream identifier.
+- id: request_eco_rtl_edit
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: request_eco_rtl_edit
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open one bounded RTL edit for a functional ECO.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Workflow or ECO objective string.
+    objective: ''
+    # Parent task correlation id.
+    parent_task_id: ''
+    # Block/partition scope for planning.
+    scope_block: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: create_workflow
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: objective
+    # Short charter describing what this signoff agent is responsible for.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: parent_task_id
+    # Short charter describing what this signoff agent is responsible for.
+    description: Task that owns this workflow.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: scope_block
+    # Short charter describing what this signoff agent is responsible for.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable capability or skill or stream identifier.
+- id: request_eco_equivalence
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: request_eco_equivalence
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open equivalence for an ECO that changes logic.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Workflow or ECO objective string.
+    objective: ''
+    # Parent task correlation id.
+    parent_task_id: ''
+    # Block/partition scope for planning.
+    scope_block: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: create_workflow
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: objective
+    # Short charter describing what this signoff agent is responsible for.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: parent_task_id
+    # Short charter describing what this signoff agent is responsible for.
+    description: Task that owns this workflow.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: scope_block
+    # Short charter describing what this signoff agent is responsible for.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable capability or skill or stream identifier.
+- id: request_eco_timing
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: request_eco_timing
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open timing on the paths the ECO can move.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Workflow or ECO objective string.
+    objective: ''
+    # Parent task correlation id.
+    parent_task_id: ''
+    # Block/partition scope for planning.
+    scope_block: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: create_workflow
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: objective
+    # Short charter describing what this signoff agent is responsible for.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: parent_task_id
+    # Short charter describing what this signoff agent is responsible for.
+    description: Task that owns this workflow.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: scope_block
+    # Short charter describing what this signoff agent is responsible for.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable capability or skill or stream identifier.
+- id: request_eco_physical_verification
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: request_eco_physical_verification
+  # Short charter describing what this signoff agent is responsible for.
+  description: Open DRC and LVS for a physical ECO.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Workflow or ECO objective string.
+    objective: ''
+    # Parent task correlation id.
+    parent_task_id: ''
+    # Block/partition scope for planning.
+    scope_block: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: create_workflow
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: objective
+    # Short charter describing what this signoff agent is responsible for.
+    description: Outcome the child workflow must achieve.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: parent_task_id
+    # Short charter describing what this signoff agent is responsible for.
+    description: Task that owns this workflow.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: scope_block
+    # Short charter describing what this signoff agent is responsible for.
+    description: Block the workflow applies to. Empty means the task's current block.
+# Stable capability or skill or stream identifier.
+- id: list_impacted_checks
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: list_impacted_checks
+  # Short charter describing what this signoff agent is responsible for.
+  description: List the gates this ECO invalidates.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: read_eco_finding
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: read_eco_finding
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the finding this ECO is supposed to close.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: read_eco_baseline
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: read_eco_baseline
+  # Short charter describing what this signoff agent is responsible for.
+  description: Read the baseline the ECO must descend from.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: estimate_eco_disruption
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: estimate_eco_disruption
+  # Short charter describing what this signoff agent is responsible for.
+  description: List files, nets, and path groups the ECO touches.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Candidate artifact the skill reads or analyzes.
+    candidate_ref: ''
+    # Report artifact URI; empty selects latest for the candidate.
+    report_ref: ''
+    # PVT/extraction/timing corner filter or target.
+    corner: ''
+    # Functional/analysis mode filter or target.
+    mode: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: read_reports
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: candidate_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Candidate whose reports are read.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: report_ref
+    # Short charter describing what this signoff agent is responsible for.
+    description: Artifact URI of the report. Empty reads the latest report for this candidate.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: corner
+    # Short charter describing what this signoff agent is responsible for.
+    description: Corner filter. Empty reads every available corner.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: mode
+    # Short charter describing what this signoff agent is responsible for.
+    description: Mode filter. Empty reads every available mode.
+# Stable capability or skill or stream identifier.
+- id: flag_missing_eco_check
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: flag_missing_eco_check
+  # Short charter describing what this signoff agent is responsible for.
+  description: Publish an impacted check the workflow does not rerun.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Finding summary sentence.
+    summary: ''
+    # Supporting artifact URIs.
+    evidence_refs: ''
+    # Finding severity band.
+    severity: ''
+    # Downstream agent id for the finding.
+    recommended_recipient: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: publish_finding
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: summary
+    # Short charter describing what this signoff agent is responsible for.
+    description: One-sentence finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: evidence_refs
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: severity
+    # Short charter describing what this signoff agent is responsible for.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recommended_recipient
+    # Short charter describing what this signoff agent is responsible for.
+    description: Agent id that should act on the finding.
+# Stable capability or skill or stream identifier.
+- id: record_eco_scope
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: record_eco_scope
+  # Short charter describing what this signoff agent is responsible for.
+  description: Record the hypothesis, the baseline, and the checks that must rerun.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Finding summary sentence.
+    summary: ''
+    # Supporting artifact URIs.
+    evidence_refs: ''
+    # Finding severity band.
+    severity: ''
+    # Downstream agent id for the finding.
+    recommended_recipient: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: publish_finding
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: summary
+    # Short charter describing what this signoff agent is responsible for.
+    description: One-sentence finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: evidence_refs
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated artifact URIs that support the finding.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: severity
+    # Short charter describing what this signoff agent is responsible for.
+    description: low, medium, high, or critical.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: recommended_recipient
+    # Short charter describing what this signoff agent is responsible for.
+    description: Agent id that should act on the finding.
+# Stable capability or skill or stream identifier.
+- id: request_eco_authorization
+  # Python module providing the callable (tools for this package).
+  module: tools
+  # Function name inside the module invoked for this skill.
+  callable: request_eco_authorization
+  # Short charter describing what this signoff agent is responsible for.
+  description: Ask a human to authorize the ECO before it is applied.
+  # Default argument values when the orchestrator omits fields.
+  args_defaults:
+    # Human decision prompt text.
+    decision: ''
+    # Options offered to the human.
+    options: ''
+    # Supporting artifact URIs.
+    evidence_refs: ''
+    # Decision deadline string.
+    deadline: ''
+  # Framework action verb (submit_tool_job, read_reports, publish_finding, etc.).
+  action: request_human_decision
+  # Documented parameters the skill accepts from the task payload.
+  params:
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: decision
+    # Short charter describing what this signoff agent is responsible for.
+    description: The choice a human must make.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: options
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated feasible options.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: evidence_refs
+    # Short charter describing what this signoff agent is responsible for.
+    description: Comma-separated artifact URIs for the tradeoff.
+  # Stable agent id used in routing, findings, and agent_id tool observations.
+  - name: deadline
+    # Short charter describing what this signoff agent is responsible for.
+    description: ISO-8601 time after which the decision blocks the schedule.
+# Local and shared memory configuration for journals and silicon store.
+memory:
+  # Named memory stores attached to this agent.
+  stores:
+  # Stable capability or skill or stream identifier.
+  - id: journal
+    # Short charter describing what this signoff agent is responsible for.
+    description: Local cache of task journal keys. Shared engineering memory is the silicon store.
+    # Backend type discriminator for the agent runtime.
+    type: list
+    # How the store survives process restarts (file, etc.).
+    persistence: file
+    # Store-specific configuration map.
+    config:
+      # Filesystem root for journal cache keys under SILICON_MEMORY_ROOT.
+      path: ${SILICON_MEMORY_ROOT:-/tmp/silicon_memory}
+# Heartbeat and telemetry emission settings.
+observability:
+  # Seconds between liveness heartbeats to the fleet.
+  heartbeat_interval_secs: 5
+  # Remote telemetry sink configuration.
+  telemetry:
+    # Telemetry service URL (overridable via TELEMETRY_URL).
+    endpoint: ${TELEMETRY_URL}
+    # Named telemetry streams this agent emits.
+    streams:
+    # Stable agent id used in routing, findings, and agent_id tool observations.
+    - name: skill_calls
+      # Short charter describing what this signoff agent is responsible for.
+      description: Tool invocations.
+    # Stable agent id used in routing, findings, and agent_id tool observations.
+    - name: artifacts
+      # Short charter describing what this signoff agent is responsible for.
+      description: Structured task results.
+# Container image and runtime environment for this agent.
+deployment:
+  # Container image tag for deploying the ECO Lead.
+  image: agentfleet/eco_lead:1.0
+  # Relative Dockerfile path used to build the image.
+  dockerfile: Dockerfile
+  # Environment variables injected at container start.
+  environment:
+    # Optional bound EDA framework name; empty until an adapter is configured.
+    EDA_FRAMEWORK: ${EDA_FRAMEWORK:-}
+# Context-pack rules for what engineering memory the agent may see.
+context:
+  # Context categories always considered for prompts.
+  include:
+  # Signoff boundary or context item: gates
+  - gates
+  # Signoff boundary or context item: workflows
+  - workflows
+  # Signoff boundary or context item: open_findings
+  - open_findings
+  # Signoff boundary or context item: decisions
+  - decisions
+  # Signoff boundary or context item: experiments
+  - experiments
+  # Context categories withheld from this agent.
+  exclude:
+  # Signoff boundary or context item: stale_candidates
+  - stale_candidates
+  # Statuses that cause context entries to be dropped.
+  drop:
+  # Signoff boundary or context item: rejected
+  - rejected
+  # Ordering when multiple context sources conflict.
+  precedence:
+  # Signoff boundary or context item: human-authored
+  - human-authored
+  # Signoff boundary or context item: validated
+  - validated
+  # Signoff boundary or context item: provisional
+  - provisional
+  # Context classes that must not be overwritten by lower-trust sources.
+  protect:
+  # Signoff boundary or context item: human-authored
+  - human-authored
+  # Approximate token budget for assembled context windows.
+  token_budget: 80000

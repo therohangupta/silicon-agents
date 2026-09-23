@@ -31,10 +31,9 @@ from packages.platform_config import load_platform, setting
 # Resolve the repository root (parent of packages/).
 REPO_ROOT = Path(__file__).parent.parent.resolve()
 
-# Directory that holds one subdirectory per agent implementation.
+# Directory that holds agent implementations. Domain packages live underneath.
 AGENTS_DIR = REPO_ROOT / "agents"
-# Tuple of roots the agent loader walks when discovering config.yaml files.
-# One directory per agent, each with its own config.yaml.
+# Roots the agent loader walks when discovering config.yaml files.
 AGENT_PACKAGE_DIRS = (AGENTS_DIR,)
 
 # Where planner strategy type modules live under fleet_server.

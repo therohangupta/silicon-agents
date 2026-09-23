@@ -56,11 +56,11 @@ from .messages import (
     GateDecision,
     JobHandle,
     ToolObservation,
-    WorkflowSpec,
-    WorkflowTask,
+    WorkflowProposal,
+    ProposedTask,
 )
 # Task contract, resource budget, and result conversion helpers.
-from .task import ResourceBudget, TaskResult, TaskSpec
+from .task import ResourceBudget, TaskResult, TaskBrief
 
 # Public surface for ``from domains.eda.schemas import ...``.
 __all__ = [
@@ -87,12 +87,12 @@ __all__ = [
     "StoredCopy",
     "TaskOutcome",
     "TaskResult",
-    "TaskSpec",
+    "TaskBrief",
     "ToolAction",
     "ToolObservation",
     "ValidationState",
-    "WorkflowSpec",
+    "WorkflowProposal",
     "WritePolicy",
-    "WorkflowTask",
+    "ProposedTask",
     "new_id",
 ]

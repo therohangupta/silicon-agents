@@ -14,7 +14,8 @@ Hand-written source for ``langchain_backend.py``. Behavior is unchanged; comment
 import json
 from typing import Any
 
-from ..models import AgentTaskRequest, BackendConfig
+from ..config import BackendConfig
+from ..contracts import AgentTaskRequest
 from ..skills.registry import SkillRegistry
 
 
@@ -39,7 +40,7 @@ async def generate_task_code(
 
     # Local ``skill_docs`` ← "\n".join(.
     skill_docs = "\n".join(
-        f"- {s.id}: {s.description}" for s in skills.specs
+        f"- {s.id}: {s.description}" for s in skills.declarations
     )
     # Local ``prompt`` ← _build_system_message(.
     prompt = _build_system_message(

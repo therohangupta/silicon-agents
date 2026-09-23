@@ -1,0 +1,8 @@
+# Python dependencies for the Regression Agent container / local venv.
+# HTTP and config stack only; does not install a simulator, formal engine, or UVM library.
+# Agent role: schedules seed/test manifests on the simulator farm and collects pass/fail results.
+
+fastapi  # ASGI web framework exposing /health and /tasks/execute for this specialist.
+uvicorn[standard]  # ASGI server that runs the FastAPI app in Docker or locally.
+pydantic  # Request/response and EDAAgentConfig validation used by AgentService.
+PyYAML  # Parses this agent's config.yaml fleet metadata and skill bindings.

@@ -1,6 +1,6 @@
 # memory
 
-**Engineering memory** binds the generic memory kit in `packages/memory` to the EDA **`MemoryRecord`** envelope and default **placement** rules per **`RecordType`**. Every **`EdaAgent`** reads and writes through **`EngineeringMemory`**; bypassing the facade risks breaking publish policy, idempotency, and multi-store copies.
+**Engineering memory** binds the generic memory kit in `packages/memory` to the EDA **`MemoryRecord`** envelope and default **placement** rules per **`RecordType`**. Every **`EDAAgent`** reads and writes through **`EngineeringMemory`**; bypassing the facade risks breaking publish policy, idempotency, and multi-store copies.
 
 ## Design split: envelope vs payload
 
@@ -15,7 +15,7 @@ The generic kit knows how to insert, scan, and replicate **copies** across store
 
 ### Write paths
 
-**`append`** — Provisional **task-local** journal entries. Used by **`EdaAgent.journal_started`** / **`journal_finished`**. Always **`ValidationState.PROVISIONAL`**, **`AuthorKind.AGENT`**, typically **`RecordType.TASK_CHECKPOINT`**. Does **not** run full publish policy (checkpoints are not promoted engineering facts).
+**`append`** — Provisional **task-local** journal entries. Used by **`EDAAgent.journal_started`** / **`journal_finished`**. Always **`ValidationState.PROVISIONAL`**, **`AuthorKind.AGENT`**, typically **`RecordType.TASK_CHECKPOINT`**. Does **not** run full publish policy (checkpoints are not promoted engineering facts).
 
 **`publish`** / **`write`** — Records visible to other agents. Flow:
 
@@ -97,5 +97,5 @@ Rejected records never enter the package regardless of include lists.
 |----------|--------|
 | [`../schemas/memory.py`](../schemas/memory.py) | **`MemoryRecord`**, **`MemoryScope`**, **`ContextPackage`** models |
 | [`../schemas/README.md`](../schemas/README.md) | Enums and message types |
-| [`../agent.py`](../agent.py) | Journaling and publish calls from **`EdaAgent`** |
+| [`../agent.py`](../agent.py) | Journaling and publish calls from **`EDAAgent`** |
 | [`../../docs/TELEMETRY_AND_DATA_FLOW.md`](../../docs/TELEMETRY_AND_DATA_FLOW.md) | Platform data movement |

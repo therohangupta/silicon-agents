@@ -73,7 +73,7 @@ For production deployments, replace this file with a secured cluster config **ou
 ## Memory plane data flow (local)
 
 ```text
-EdaAgent.publish/query
+EDAAgent.publish/query
     → EngineeringMemory (plane backend)
         → Postgres (envelope of record)
         → OpenSearch (searchable copies — config from this directory)

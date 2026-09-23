@@ -25,22 +25,21 @@ from urllib.parse import urlparse
 import uvicorn
 from fastapi import FastAPI, HTTPException
 
-from ..memory.loader import MemoryManager
-from ..memory.skills import make_memory_skills
-from ..models import (
-    AgentConfig,
-    AgentHealth,
+from packages.memory.runtime import MemoryManager
+from ..skills.memory import make_memory_skills
+from ..config import AgentConfig, ReliabilityConfig
+from ..contracts import (
     AgentTaskRequest,
     AgentTaskResult,
     ExecutionTrace,
     MemoryOp,
-    ReliabilityConfig,
-    SkillSpec,
 )
+from ..server.contracts import AgentHealth
+from ..skills.declarations import SkillDeclaration
 from ..runtime.codegen_runtime import CodegenRuntime
 from ..runtime.direct_function_runtime import DirectFunctionRuntime
 from ..runtime.tool_loop_runtime import ToolLoopRuntime
-from ..schema.validator import AgentConfigValidator
+from ..config.load import load_agent_config
 from ..skills.registry import SkillRegistry
 from ..telemetry.client import TelemetryClient
 from ..telemetry.publisher import TelemetryPublisher
@@ -50,9 +49,9 @@ logger = logging.getLogger(__name__)
 
 
 class AgentServer:
-    """``AgentServer`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+    """``AgentServer``"""
     def __init__(self, config: AgentConfig, config_path: str | Path | None = None):
-        """``AgentServer`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``AgentServer``"""
         self.config = config
         # Bind ``config_path`` from Path(config_path) if config_path else None for later use on this instance.
         self.config_path = Path(config_path) if config_path else None
@@ -93,18 +92,18 @@ class AgentServer:
 
     @classmethod
     def from_config(cls, path: str | Path) -> "AgentServer":
-        """``from_config`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``from_config``"""
         return cls.from_yaml(path)
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> "AgentServer":
-        """``from_yaml`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
-        config = AgentConfigValidator().validate_file(path)
+        """``from_yaml``"""
+        config = load_agent_config(path)
         # Hand ``cls(config, config_path=path)`` back to the caller.
         return cls(config, config_path=path)
 
     def _setup_telemetry(self) -> None:
-        """``_setup_telemetry`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_setup_telemetry``"""
         obs = self.config.observability
         # Local ``endpoint`` ← obs.telemetry.endpoint.
         endpoint = obs.telemetry.endpoint
@@ -127,7 +126,7 @@ class AgentServer:
         self.skills.set_call_hook(self._on_skill_call)
 
     def _grpc_target(self) -> str:
-        """``_grpc_target`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_grpc_target``"""
         from packages.platform_config import setting
 
         configured = os.environ.get("TELEMETRY_GRPC_TARGET")
@@ -141,7 +140,7 @@ class AgentServer:
         return f"{host}:{port}"
 
     def _on_skill_call(self, sc) -> None:
-        """``_on_skill_call`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_on_skill_call``"""
         if self._telemetry is None:
             return
         asyncio.create_task(
@@ -154,7 +153,7 @@ class AgentServer:
         )
 
     def _load_skills(self) -> None:
-        """``_load_skills`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_load_skills``"""
         if self.config_path:
             # Local ``agent_dir`` ← str(self.config_path.parent.resolve()).
             agent_dir = str(self.config_path.parent.resolve())
@@ -210,7 +209,7 @@ class AgentServer:
         # Loop: for skill_id, func in memory_skill_funcs.items().
         for skill_id, func in memory_skill_funcs.items():
             self.skills.register(
-                SkillSpec(
+                SkillDeclaration(
                     # Local ``id`` ← skill_id,.
                     id=skill_id,
                     # Local ``callable`` ← skill_id,.
@@ -235,7 +234,7 @@ class AgentServer:
                 logger.debug("telemetry.py present but failed to import", exc_info=True)
 
     def _load_telemetry_adapter(self) -> None:
-        """``_load_telemetry_adapter`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_load_telemetry_adapter``"""
         if not self.config_path:
             return
         # Local ``adapter_path`` ← self.config_path.parent / "telemetry_adapter.py".
@@ -267,7 +266,7 @@ class AgentServer:
             logger.warning("Telemetry adapter failed to import: %s", adapter_path, exc_info=True)
 
     async def _start_stream_publisher(self) -> None:
-        """``_start_stream_publisher`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_start_stream_publisher``"""
         if self._telemetry_adapter is None:
             return
         # Local ``endpoint`` ← self.config.observability.telemetry.endpoint.rstrip("/").
@@ -298,7 +297,7 @@ class AgentServer:
         await self._start_idle_stream()
 
     async def _start_idle_stream(self) -> None:
-        """``_start_idle_stream`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_start_idle_stream``"""
         if (
             self._telemetry_adapter is None
             or self._stream_publisher is None
@@ -315,7 +314,7 @@ class AgentServer:
             )
 
     async def _stop_idle_stream(self) -> None:
-        """``_stop_idle_stream`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_stop_idle_stream``"""
         if self._idle_stream_task is not None:
             # Call ``self._idle_stream_task.cancel``.
             self._idle_stream_task.cancel()
@@ -330,7 +329,7 @@ class AgentServer:
             self._idle_stream_task = None
 
     async def _start_task_stream(self, request: AgentTaskRequest) -> Optional[asyncio.Task]:
-        """``_start_task_stream`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_start_task_stream``"""
         if (
             self._telemetry_adapter is None
             or self._stream_publisher is None
@@ -364,7 +363,7 @@ class AgentServer:
         )
 
     async def _stop_task_stream(self, task: Optional[asyncio.Task]) -> None:
-        """``_stop_task_stream`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_stop_task_stream``"""
         if task is None:
             return
         # Call ``task.cancel``.
@@ -378,7 +377,7 @@ class AgentServer:
             pass
 
     def _capability_skill_params(self, request: AgentTaskRequest) -> dict[str, dict]:
-        """``_capability_skill_params`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_capability_skill_params``"""
         if not request.required_capabilities:
             # Hand ``{}`` back to the caller.
             return {}
@@ -399,7 +398,7 @@ class AgentServer:
         return merged
 
     def _make_runtime(self):
-        """``_make_runtime`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_make_runtime``"""
         mode = self.config.execution.mode
         # Only when (mode == "codegen").
         if mode == "codegen":
@@ -431,7 +430,7 @@ class AgentServer:
 
     @asynccontextmanager
     async def _lifespan(self, _app: FastAPI):
-        """``_lifespan`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_lifespan``"""
         if self._telemetry:
             # Call ``self._telemetry.start_heartbeat``.
             self._telemetry.start_heartbeat()
@@ -452,12 +451,12 @@ class AgentServer:
         await self.memory.close()
 
     def _install_routes(self) -> None:
-        """``_install_routes`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``_install_routes``"""
         endpoints = self.config.connection.endpoints
 
         @self.app.get(endpoints.get("health", "/health"), response_model=AgentHealth)
         async def health():
-            """``health`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+            """``health``"""
             return AgentHealth(
                 # Local ``agent_id`` ← self.config.metadata.name,.
                 agent_id=self.config.metadata.name,
@@ -473,12 +472,12 @@ class AgentServer:
 
         @self.app.get("/skills")
         async def skills():
-            """``skills`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
-            return [spec.model_dump(mode="json") for spec in self.skills.specs]
+            """``skills``"""
+            return [decl.model_dump(mode="json") for decl in self.skills.declarations]
 
         @self.app.get(endpoints.get("memory", "/memory/state"))
         async def memory_state():
-            """``memory_state`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+            """``memory_state``"""
             return await self.memory.dump()
 
         # Local ``execute_path`` ← endpoints.get("execute", "/tasks/execute").
@@ -486,7 +485,7 @@ class AgentServer:
 
         @self.app.post(execute_path, response_model=AgentTaskResult)
         async def execute(request: AgentTaskRequest):
-            """``execute`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+            """``execute``"""
             if self._runtime is None:
                 # Raise ``HTTPException`` to signal this failure mode to callers.
                 raise HTTPException(status_code=503, detail="Runtime not initialized")
@@ -582,7 +581,7 @@ class AgentServer:
                         self._telemetry.set_busy(False)
 
     def run(self, host: str = "0.0.0.0", port: Optional[int] = None) -> None:
-        """``run`` — agent_fleet packages helper; see body comments for step-by-step behavior."""
+        """``run``"""
         uvicorn.run(
             self.app,
             # Local ``host`` ← host,.

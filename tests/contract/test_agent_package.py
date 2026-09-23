@@ -1,8 +1,8 @@
 """Contract tests for standard agent packages.
 
-Parametrized over ``agents/*/*/config.yaml`` parents (two-level glob). Locks
-in: config parse, ``/health`` + ``/tasks/execute`` via TestClient, and the
-``tools.py`` callable surface declared by each agent configuration.
+Parametrized over ``agents/eda/**/config.yaml``. Locks in config parse,
+``/health`` + ``/tasks/execute`` via TestClient, and the ``tools.py`` callable
+surface declared by each agent configuration.
 """
 
 from __future__ import annotations
@@ -15,22 +15,22 @@ from fastapi.testclient import TestClient
 
 # Server factory + request model.
 from packages.agent_sdk import AgentServer, AgentTaskRequest
-from packages.agent_sdk.src.schema.validator import AgentConfigValidator
+from packages.agent_sdk.src.config.load import load_agent_config
 
-# Agent dirs that match agents/<track-or-domain>/<name>/config.yaml.
-AGENT_DIRS = list(Path(__file__).resolve().parents[2].glob("agents/*/*/config.yaml"))
-# Convert config paths to package directories for parametrization.
-AGENT_DIRS = [p.parent for p in AGENT_DIRS]
+# Every EDA agent package: agents/eda/<track>/<area>/<name>/config.yaml.
+_REPO = Path(__file__).resolve().parents[2]
+AGENT_DIRS = [
+    path.parent
+    for path in _REPO.glob("agents/eda/**/config.yaml")
+    if "runtime" not in path.parts and "__pycache__" not in path.parts
+]
 
 
 @pytest.mark.parametrize("agent_dir", AGENT_DIRS)
 def test_config_parses(agent_dir: Path):
     """Each agent package config validates with named capabilities."""
     config_path = agent_dir / "config.yaml"
-    # Historical fallback name if config.yaml missing.
-    if not config_path.exists():
-        config_path = agent_dir / "agent.yaml"
-    config = AgentConfigValidator().validate_file(config_path)
+    config = load_agent_config(config_path)
     # metadata.name must be non-empty.
     assert config.metadata.name
     # At least one capability declared.
@@ -46,7 +46,7 @@ def test_health_and_execute(agent_dir: Path):
     """AgentServer serves /health and accepts /tasks/execute for each package."""
     config_path = agent_dir / "config.yaml"
     if not config_path.exists():
-        pytest.skip("no config.yaml")
+        raise AssertionError(f"missing {config_path}")
     # Build ASGI app from the package config.
     server = AgentServer.from_config(config_path)
     client = TestClient(server.app)
@@ -80,7 +80,7 @@ def test_declared_tools_are_loadable(agent_dir: Path):
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    config = AgentConfigValidator().validate_file(agent_dir / "config.yaml")
+    config = load_agent_config(agent_dir / "config.yaml")
     for skill in config.skills:
         assert skill.module == "tools"
         assert callable(getattr(module, skill.callable))

@@ -1,14 +1,14 @@
 # Legacy example population scripts
 
-This directory held helpers that registered **physical/digital demo agents** into an older fleet layout. Those agent packages were removed when the repository standardized on the EDA **catalog** under **`agents/`**.
+This directory held helpers that registered **physical/digital demo agents** into an older fleet layout. Those agent packages were removed when the repository standardized on the EDA **registry** under **`agents/`**.
 
 ## Current state
 
 **`populate_fake.sh`** (if present) exits with a removal notice. It no longer mutates fleet registration state or starts containers.
 
-Do not add new “fake” agents here — they would bypass **`domains.eda.registry.validate_catalog`** and drift from contract tests.
+Do not add new “fake” agents here — they would bypass **`domains.eda.fleet.registry.validate_eda_registry`** and drift from contract tests.
 
-## Register a real catalog agent instead
+## Register a real registered agent instead
 
 1. Choose or create an agent directory with **`config.yaml`**, **`agent.py`**, **`tools.py`**, **`server.py`**, and **`Dockerfile`**.
 2. Validate the tree:
@@ -57,7 +57,7 @@ Then:
 ./scripts/startup.sh fleets/my-dev.yaml
 ```
 
-This declares exactly which catalog agents get Compose services — the same outcome the old populate script attempted, but validated by **`fleet.select_agents`** and **`check_agents.py`**.
+This declares exactly which registered agents get Compose services — the same outcome the old populate script attempted, but validated by **`fleet.select_agents`** and **`check_agents.py`**.
 
 ## FAQ
 
@@ -68,7 +68,7 @@ A: Yes — use **`agentctl register`** against fleet-server when it is running; 
 A: No — engineering memory for agents uses the plane/file backends; Postgres holds fleet control-plane state. Seed via normal goal/task flows or tests.
 
 **Q: Why was populate_fake removed?**  
-A: It bypassed catalog validation and duplicated agents already defined under **`agents/`**, breaking contract and embodiment tests.
+A: It bypassed fleet registry validation and duplicated agents already defined under **`agents/`**, breaking contract and embodiment tests.
 
 ## CI alignment
 
